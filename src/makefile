@@ -1,28 +1,37 @@
+# SPDX-FileCopyrightText: FLEXPART 1998-2019, see flexpart_license.txt
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 SHELL = /bin/bash
-################################################################################
+
+##############################################################
 #  DESCRIPTION
-#    Makefile for FLEXPART. Standard (serial) and parallel (MPI) version
+#    Makefile for FLEXPART. 
+#    Standard (serial) and parallel (MPI) version
 #
-#    Dependencies are resolved in this makefile, so parallel make is
-#    possible ("make -j")
+#    Dependencies are resolved in this makefile, 
+#    so parallel make is possible ("make -j")
 #
-#    At NILU we have installed gcc-4.9.1 and libraries under user /homevip/flexpart
-#    ("ROOT_DIR")
-#    To use gfortran version 4.9, add "gcc=4.9" to the make command, e.g.
-#       'make -j ecmwf gcc=4.9',
-#    also set environment variable LD_LIBRARY_PATH to point to compiler libraries
+#    At NILU we have installed gcc-4.9.1 and libraries under 
+#    user /homevip/flexpart ("ROOT_DIR"). You may adapt that
+#    for your needs; also set environment variable 
+#    LD_LIBRARY_PATH to point to compiler libraries if not in
+#    the standard location 
+#    There are different definitions of paths included below
+#    You have to comment them in or out according to your
+#    environment, or adapt them!
 #
-#    Makefile was modified to produce unified executable for both ECMWF and GFS meteo data formats
-#    gributils were included to detect format of meteo data
-#
-#    Cpp directives USE_MPIINPLACE were added to three source files. The effect of these directives 
-#    are to enable the MPI_IN_PLACE option only if compiled with a -DUSE_MPIINPLACE directive. 
-#    Otherwise, a safer option (which requires the allocation of another array) is used by default. 
-#    In makefile added the -x f95-cpp-input flag for compiling of cpp directives.
+#    cpp directives USE_MPIINPLACE were added to three  
+#    source files. The effect of these directives is to enable 
+#    the MPI_IN_PLACE option only if compiled with a 
+#    -DUSE_MPIINPLACE directive. Otherwise, a safer option 
+#    (which requires the allocation of another array) is used by default. 
+#    -x f95-cpp-input added  for compiling of cpp directives.
 # 
 #  USAGE
 #    Compile serial FLEXPART 
 #      make [-j] serial
+#    or simply
+#      make [-j] 
 #
 #    Compile parallel FLEXPART 
 #      make [-j] mpi
@@ -49,29 +58,46 @@ FLEXPART-MPI-DBG = DBG_FLEXPART_MPI
 # Serial processing executable
 FLEXPART-SERIAL = FLEXPART
 
+# the following is for NILU only
 
-ifeq ($(gcc), 4.9)
-# Compiled libraries under user ~flexpart, gfortran v4.9
-	ROOT_DIR = /homevip/flexpart/
+#ifeq ($(gcc), 4.9)
+## Compiled libraries under user ~flexpart, gfortran v4.9
+#	ROOT_DIR = /homevip/flexpart/
+#
+#	F90	  = ${ROOT_DIR}/gcc-4.9.1/bin/gfortran
+#	MPIF90    = ${ROOT_DIR}/bin/mpifort
+#
+#	INCPATH1  = ${ROOT_DIR}/gcc-4.9.1/include	
+#	INCPATH2  = ${ROOT_DIR}/include
+#	LIBPATH1  = ${ROOT_DIR}/lib
+#else 
+## Compiled libraries under user ~flexpart, gfortran v5.4
+#	ROOT_DIR = /homevip/flexpart/
+#
+#	F90	  = /usr/bin/gfortran
+#	MPIF90    = /usr/bin/mpifort
+#
+#	INCPATH1  = ${ROOT_DIR}/gcc-5.4.0/include	
+#	INCPATH2  = /usr/include
+#	LIBPATH1  = ${ROOT_DIR}/gcc-5.4.0/lib
+#endif
 
-	F90	  = ${ROOT_DIR}/gcc-4.9.1/bin/gfortran
-	MPIF90    = ${ROOT_DIR}/bin/mpifort
+# the following works on a Debian stretch machine
 
-	INCPATH1  = ${ROOT_DIR}/gcc-4.9.1/include	
-	INCPATH2  = ${ROOT_DIR}/include
-	LIBPATH1 = ${ROOT_DIR}/lib
-else 
-# Compiled libraries under user ~flexpart, gfortran v5.4
-	ROOT_DIR = /homevip/flexpart/
+	F90	  = gfortran
+	MPIF90    = mpifort
 
-	F90	  = /usr/bin/gfortran
-	MPIF90    = /usr/bin/mpifort
+	INCPATH1  = /usr/include/
+	INCPATH2  = ./
+	LIBPATH1  = /usr/lib/
 
-	INCPATH1  = ${ROOT_DIR}/gcc-5.4.0/include	
-	INCPATH2  = /usr/include
-	LIBPATH1 = ${ROOT_DIR}/gcc-5.4.0/lib
-endif
-
+# the following works on a Debian buster (and probably newer) machine
+#	F90	  = gfortran
+#	MPIF90    = mpifort
+#
+#	INCPATH1  = /usr/lib/x86_64-linux-gnu/fortran/gfortran-mod-15
+#	INCPATH2  = /usr/include
+#	LIBPATH1  = /usr/lib/x86_64-linux-gnu/
 
 ### Enable netCDF output?
 ifeq ($(ncf), yes)
@@ -87,19 +113,24 @@ VPATH = gributils/
 
 
 ## OPTIMIZATION LEVEL
-O_LEV = 0 # [0,1,2,3,g,s,fast]
-O_LEV_DBG = g # [0,g]
+O_LEV = 2 # [0,1,2,3,g,s,fast] # 0 may give trouble; then use -mcmdoel=large
+O_LEV_DBG = 0 # [0,g] # use g only for debugging
 
 ## LIBRARIES
-#LIBS = -lgrib_api_f90 -lgrib_api -lm -ljasper -lnetcdff
 LIBS = -lgrib_api_f90 -lgrib_api -lm -ljasper $(NCOPT)
 
-FFLAGS   = -I$(INCPATH1) -I$(INCPATH2) -O$(O_LEV) -g -cpp -m64 -mcmodel=medium -fconvert=little-endian -frecord-marker=4 -fmessage-length=0 -flto=jobserver -O$(O_LEV) $(NCOPT) $(FUSER)  #-Warray-bounds -fcheck=all # -march=native
+FFLAGS   = -I$(INCPATH1) -I$(INCPATH2) -O$(O_LEV) -g -cpp -m64 -mcmodel=medium \
+           -fconvert=little-endian -frecord-marker=4 -fmessage-length=0 \
+           -flto=jobserver -O$(O_LEV) $(NCOPT) $(FUSER)  #-Warray-bounds -fcheck=all # -march=native
 
-DBGFLAGS = -I$(INCPATH1) -I$(INCPATH2) -O$(O_LEV_DBG) -g3 -ggdb3 -cpp -m64 -mcmodel=medium -fconvert=little-endian -frecord-marker=4 -fmessage-length=0 -flto=jobserver -O$(O_LEV_DBG) $(NCOPT) -fbacktrace   -Wall  -fdump-core $(FUSER)  #  -ffpe-trap=invalid,overflow,denormal,underflow,zero  -Warray-bounds -fcheck=all
+DBGFLAGS = -I$(INCPATH1) -I$(INCPATH2) -O$(O_LEV_DBG) -g3 -ggdb3 -cpp \
+           -m64 -mcmodel=medium -fconvert=little-endian -frecord-marker=4  \
+           -fmessage-length=0 -flto=jobserver -O$(O_LEV_DBG) $(NCOPT) \
+           -fbacktrace   -Wall  -fdump-core $(FUSER) -fcheck=all #\
+            #  -ffpe-trap=invalid,overflow,denormal,underflow,zero 
 
-LDFLAGS  = $(FFLAGS) -L$(LIBPATH1) -Wl,-rpath,$(LIBPATH1) $(LIBS) #-L$(LIBPATH2)
-LDDEBUG  = $(DBGFLAGS) -L$(LIBPATH1) $(LIBS) #-L$(LIBPATH2)
+LDFLAGS  = $(FFLAGS) -L$(LIBPATH1) -Wl,-rpath,$(LIBPATH1) $(LIBS)
+LDDEBUG  = $(DBGFLAGS) -L$(LIBPATH1) $(LIBS)
 
 MODOBJS = \
 par_mod.o    		com_mod.o \
@@ -146,7 +177,9 @@ OBJECTS_MPI = releaseparticles_mpi.o partoutput_mpi.o \
 	getfields_mpi.o \
         readwind_ecmwf_mpi.o 
 
-OBJECTS_NCF = netcdf_output_mod.o
+ifeq ($(ncf), yes)
+        OBJECTS_NCF = netcdf_output_mod.o
+endif
 
 OBJECTS = \
 advance.o		initialize.o		\
@@ -257,8 +290,8 @@ boundcond_domainfill.o: com_mod.o par_mod.o point_mod.o random_mod.o
 boundcond_domainfill_mpi.o: com_mod.o mpi_mod.o par_mod.o point_mod.o \
 	random_mod.o
 calcfluxes.o: com_mod.o flux_mod.o outg_mod.o par_mod.o
-calcmatrix.o: com_mod.o conv_mod.o par_mod.o
-calcpar.o: com_mod.o par_mod.o
+calcmatrix.o: com_mod.o conv_mod.o par_mod.o class_gribfile_mod.o
+calcpar.o: com_mod.o par_mod.o class_gribfile_mod.o
 calcpar_nests.o: com_mod.o par_mod.o
 calcpv.o: com_mod.o par_mod.o
 calcpv_nests.o: com_mod.o par_mod.o
@@ -291,24 +324,38 @@ concoutput_surf_nest_mpi.o: com_mod.o mean_mod.o mpi_mod.o outg_mod.o \
 	par_mod.o point_mod.o unc_mod.o
 conv_mod.o: par_mod.o
 convect43c.o: conv_mod.o par_mod.o
-convmix.o: com_mod.o conv_mod.o flux_mod.o par_mod.o
+convmix.o: com_mod.o conv_mod.o flux_mod.o par_mod.o class_gribfile_mod.o
 coordtrafo.o: com_mod.o par_mod.o point_mod.o
-detectformat.o: com_mod.o par_mod.o
+detectformat.o: com_mod.o par_mod.o class_gribfile_mod.o
 distance.o: par_mod.o
 distance2.o: par_mod.o
 drydepokernel.o: com_mod.o par_mod.o unc_mod.o
 drydepokernel_nest.o: com_mod.o par_mod.o unc_mod.o
 erf.o: par_mod.o
-FLEXPART.o: com_mod.o conv_mod.o netcdf_output_mod.o par_mod.o point_mod.o \
+ifeq ($(ncf), yes)
+        FLEXPART.o: com_mod.o conv_mod.o par_mod.o point_mod.o random_mod.o netcdf_output_mod.o class_gribfile_mod.o \
 	random_mod.o
-FLEXPART_MPI.o: com_mod.o conv_mod.o mpi_mod.o netcdf_output_mod.o par_mod.o \
-	point_mod.o random_mod.o
+        FLEXPART_MPI.o: com_mod.o conv_mod.o mpi_mod.o netcdf_output_mod.o par_mod.o \
+	point_mod.o random_mod.o class_gribfile_mod.o
+        netcdf_output_mod.o: com_mod.o mean_mod.o outg_mod.o par_mod.o point_mod.o unc_mod.o
+        timemanager.o: com_mod.o flux_mod.o netcdf_output_mod.o oh_mod.o outg_mod.o \
+	par_mod.o point_mod.o unc_mod.o xmass_mod.o
+        timemanager_mpi.o: com_mod.o flux_mod.o mpi_mod.o netcdf_output_mod.o \
+	oh_mod.o outg_mod.o par_mod.o point_mod.o unc_mod.o xmass_mod.o
+else        
+        FLEXPART.o: com_mod.o conv_mod.o par_mod.o point_mod.o random_mod.o  class_gribfile_mod.o random_mod.o
+        FLEXPART_MPI.o: com_mod.o conv_mod.o mpi_mod.o par_mod.o point_mod.o random_mod.o class_gribfile_mod.o
+        timemanager.o: com_mod.o flux_mod.o oh_mod.o outg_mod.o \
+	par_mod.o point_mod.o unc_mod.o xmass_mod.o
+        timemanager_mpi.o: com_mod.o flux_mod.o mpi_mod.o \
+	oh_mod.o outg_mod.o par_mod.o point_mod.o unc_mod.o xmass_mod.o
+endif
 fluxoutput.o: com_mod.o flux_mod.o outg_mod.o par_mod.o
 get_settling.o: com_mod.o par_mod.o
 get_vdep_prob.o: com_mod.o interpol_mod.o par_mod.o point_mod.o
 get_wetscav.o: com_mod.o par_mod.o point_mod.o
-getfields.o: com_mod.o par_mod.o
-getfields_mpi.o: com_mod.o mpi_mod.o par_mod.o
+getfields.o: com_mod.o par_mod.o class_gribfile_mod.o
+getfields_mpi.o: com_mod.o mpi_mod.o par_mod.o class_gribfile_mod.o
 gethourlyOH.o: com_mod.o oh_mod.o par_mod.o
 getrb.o: par_mod.o
 getrc.o: com_mod.o par_mod.o
@@ -345,9 +392,7 @@ interpol_wind_short_nests.o: com_mod.o interpol_mod.o par_mod.o
 juldate.o: par_mod.o
 mean_mod.o: par_mod.o
 mpi_mod.o: com_mod.o par_mod.o unc_mod.o
-netcdf_output_mod.o: com_mod.o mean_mod.o outg_mod.o par_mod.o point_mod.o \
-	unc_mod.o
-obukhov.o: par_mod.o
+obukhov.o: par_mod.o class_gribfile_mod.o
 ohreaction.o: com_mod.o oh_mod.o par_mod.o
 openouttraj.o: com_mod.o par_mod.o point_mod.o
 openreceptors.o: com_mod.o par_mod.o
@@ -393,14 +438,10 @@ redist_mpi.o: com_mod.o conv_mod.o mpi_mod.o par_mod.o random_mod.o
 releaseparticles.o: com_mod.o par_mod.o point_mod.o random_mod.o xmass_mod.o
 releaseparticles_mpi.o: com_mod.o mpi_mod.o par_mod.o point_mod.o \
 	random_mod.o xmass_mod.o
-richardson.o: par_mod.o
+richardson.o: par_mod.o class_gribfile_mod.o
 scalev.o: par_mod.o
 shift_field.o: par_mod.o
 shift_field_0.o: par_mod.o
-timemanager.o: com_mod.o flux_mod.o netcdf_output_mod.o oh_mod.o outg_mod.o \
-	par_mod.o point_mod.o unc_mod.o xmass_mod.o
-timemanager_mpi.o: com_mod.o flux_mod.o mpi_mod.o netcdf_output_mod.o \
-	oh_mod.o outg_mod.o par_mod.o point_mod.o unc_mod.o xmass_mod.o
 unc_mod.o: par_mod.o
 verttransform_ecmwf.o: cmapf_mod.o com_mod.o par_mod.o
 verttransform_gfs.o: cmapf_mod.o com_mod.o par_mod.o

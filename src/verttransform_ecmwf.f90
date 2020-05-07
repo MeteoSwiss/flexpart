@@ -37,6 +37,9 @@ subroutine verttransform_ecmwf(n,uuh,vvh,wwh,pvh)
 !*****************************************************************************
 ! Date: 2017-05-30 modification of a bug in ew. Don Morton (CTBTO project)   *
 !*****************************************************************************
+! PS 2020-07-05: 
+! remove superfluous comma in write, write and open to lowercase
+!*****************************************************************************
 !                                                                            *
 ! Variables:                                                                 *
 ! nx,ny,nz                        field dimensions in x,y and z direction    *
@@ -726,7 +729,7 @@ subroutine verttransform_ecmwf(n,uuh,vvh,wwh,pvh)
      !********* TEST ************'**
 !teller(:)=0
 virr=virr+1
-WRITE(aspec, '(i3.3)'), virr
+write(aspec, '(i3.3)') virr
 
 !if (readclouds) then
 !fnameH=trim(zhgpath)//trim(aspec)//'Vertical_placement.txt'
@@ -774,9 +777,9 @@ write(*,*) 'Writing data to file: ',fnameH
 !OPEN(UNIT=113, FILE=fnameC,FORM='FORMATTED',STATUS = 'UNKNOWN')
 !OPEN(UNIT=114, FILE=fnameD,FORM='FORMATTED',STATUS = 'UNKNOWN')
 !else
-OPEN(UNIT=115, FILE=fnameH,FORM='FORMATTED',STATUS = 'UNKNOWN')
-OPEN(UNIT=116, FILE=fnameI,FORM='FORMATTED',STATUS = 'UNKNOWN')
-OPEN(UNIT=117, FILE=fnameJ,FORM='FORMATTED',STATUS = 'UNKNOWN')
+open(unit=115, file=fnameh,form='formatted',status = 'unknown')
+open(unit=116, file=fnamei,form='formatted',status = 'unknown')
+open(unit=117, file=fnamej,form='formatted',status = 'unknown')
 !endif
 !
 do ix=0,nxmin1
@@ -798,9 +801,9 @@ end do
 !CLOSE(113)
 !CLOSE(114)
 !else
-CLOSE(115)
-CLOSE(116)
-CLOSE(117)
+close(115)
+close(116)
+close(117)
 endif
 !endif
 !
