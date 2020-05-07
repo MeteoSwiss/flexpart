@@ -11,7 +11,7 @@ SHELL = /bin/bash
 #    Dependencies are resolved in this makefile, 
 #    so parallel make is possible ("make -j")
 #
-#    At NILU we have installed gcc-4.9.1 and libraries under 
+#    NILU has installed gcc-4.9.1 and libraries under 
 #    user /homevip/flexpart ("ROOT_DIR"). You may adapt that
 #    for your needs; also set environment variable 
 #    LD_LIBRARY_PATH to point to compiler libraries if not in
@@ -19,6 +19,8 @@ SHELL = /bin/bash
 #    There are different definitions of paths included below
 #    You have to comment them in or out according to your
 #    environment, or adapt them!
+#    If you have a system with grib_api instead of eccodes
+#    library, you will have comment in/out the corresponding 2 lines!
 #
 #    cpp directives USE_MPIINPLACE were added to three  
 #    source files. The effect of these directives is to enable 
@@ -117,7 +119,8 @@ O_LEV = 2 # [0,1,2,3,g,s,fast] # 0 may give trouble; then use -mcmdoel=large
 O_LEV_DBG = 0 # [0,g] # use g only for debugging
 
 ## LIBRARIES
-LIBS = -lgrib_api_f90 -lgrib_api -lm -ljasper $(NCOPT)
+#LIBS = -lgrib_api_f90 -lgrib_api -lm -ljasper $(NCOPT)
+LIBS = -leccodes_f90 -leccodes -lm -ljasper $(NCOPT)
 
 FFLAGS   = -I$(INCPATH1) -I$(INCPATH2) -O$(O_LEV) -g -cpp -m64 -mcmodel=medium \
            -fconvert=little-endian -frecord-marker=4 -fmessage-length=0 \
