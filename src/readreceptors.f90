@@ -9,8 +9,8 @@ subroutine readreceptors
   !                                                                            *
   !     Author: A. Stohl                                                       *
   !     1 August 1996                                                          *
-  !     HSO, 14 August 2013
-  !     Added optional namelist input
+  !     HSO, 14 August 2013: Added optional namelist input                     *
+  !     PS, 2020-05-28: correct bug in nml input, code cosmetics               *
   !                                                                            *
   !*****************************************************************************
   !                                                                            *
@@ -33,15 +33,12 @@ subroutine readreceptors
   real :: x,y,xm,ym
   character(len=16) :: receptor
 
-  integer :: readerror
+  integer :: ierr
   real :: lon,lat   ! for namelist input, lon/lat are used instead of x,y
-  integer,parameter :: unitreceptorout=2
+  integer,parameter :: iunitreceptorout=2
 
   ! declare namelist
-  namelist /receptors/ &
-    receptor, lon, lat
-
-  lon=-999.9
+  namelist /receptors/ receptor, lon, lat
 
   ! For backward runs, do not allow receptor output. Thus, set number of receptors to zero
   !*****************************************************************************
@@ -51,25 +48,22 @@ subroutine readreceptors
     return
   endif
 
+! prepare namelist output if requested
+  if (nmlout .and. lroot) &
+    open(iunitreceptorout,file=path(2)(1:length(2))//'RECEPTORS.namelist', &
+      status='replace',err=1000)
 
-  ! Open the RECEPTORS file and read output grid specifications
-  !************************************************************
+! Open the RECEPTORS file and read output grid specifications
+!************************************************************
+! try namelist input
+  open(unitreceptor,file=path(1)(1:length(1))//'RECEPTORS',status='old',err=999)
+  read(unitreceptor,receptors,iostat=ierr)
+  close(unitreceptor)
 
-  open(unitreceptor,file=path(1)(1:length(1))//'RECEPTORS',form='formatted',status='old',err=999)
+  open(unitreceptor,file=path(1)(1:length(1))//'RECEPTORS')
 
-  ! try namelist input
-  read(unitreceptor,receptors,iostat=readerror)
-
-  ! prepare namelist output if requested
-  if (nmlout.and.lroot) then
-    open(unitreceptorout,file=path(2)(1:length(2))//'RECEPTORS.namelist',&
-         &access='append',status='replace',err=1000)
-  endif
-
-  if ((lon.lt.-900).or.(readerror.ne.0)) then
-
-    close(unitreceptor)
-    open(unitreceptor,file=path(1)(1:length(1))//'RECEPTORS',status='old',err=999)
+  if (ierr.ne.0) then ! not namelist
+  
     call skplin(5,unitreceptor)
 
     ! Read the names and coordinates of the receptors
@@ -77,91 +71,81 @@ subroutine readreceptors
 
     j=0
 100 j=j+1
-    read(unitreceptor,*,end=99)
-    read(unitreceptor,*,end=99)
-    read(unitreceptor,*,end=99)
-    read(unitreceptor,'(4x,a16)',end=99) receptor
-    call skplin(3,unitreceptor)
-    read(unitreceptor,'(4x,f11.4)',end=99) x
-    call skplin(3,unitreceptor)
-    read(unitreceptor,'(4x,f11.4)',end=99) y
-    if ((x.eq.0.).and.(y.eq.0.).and. &
-         (receptor.eq.'                ')) then
-      j=j-1
-      goto 100
-    endif
-    if (j.gt.maxreceptor) then
-      write(*,*) ' #### FLEXPART MODEL ERROR! TOO MANY RECEPTOR #### '
-      write(*,*) ' #### POINTS ARE GIVEN.                       #### '
-      write(*,*) ' #### MAXIMUM NUMBER IS ',maxreceptor,'       #### '
-      write(*,*) ' #### PLEASE MAKE CHANGES IN FILE RECEPTORS   #### '
-    endif
-    receptorname(j)=receptor
-    xreceptor(j)=(x-xlon0)/dx       ! transform to grid coordinates
-    yreceptor(j)=(y-ylat0)/dy
-    xm=r_earth*cos(y*pi/180.)*dx/180.*pi
-    ym=r_earth*dy/180.*pi
-    receptorarea(j)=xm*ym
+      read(unitreceptor,*,end=99)
+      read(unitreceptor,*,end=99)
+      read(unitreceptor,*,end=99)
+      read(unitreceptor,'(4x,a16)',end=99) receptor
+      call skplin(3,unitreceptor)
+      read(unitreceptor,'(4x,f11.4)',end=99) x
+      call skplin(3,unitreceptor)
+      read(unitreceptor,'(4x,f11.4)',end=99) y
+      if (x.eq.0. .and. y.eq.0. .and. receptor.eq.'                ') then
+        j=j-1
+        goto 100
+      endif
+      if (j.gt.maxreceptor) goto 998 ! ERROR - STOP
+      receptorname(j)=receptor
+      xreceptor(j)=(x-xlon0)/dx       ! transform to grid coordinates
+      yreceptor(j)=(y-ylat0)/dy
+      xm=r_earth*cos(y*pi/180.)*dx/180.*pi
+      ym=r_earth*dy/180.*pi
+      receptorarea(j)=xm*ym
 
-    ! write receptors file in namelist format to output directory if requested
-    if (nmlout.and.lroot) then
-      lon=x
-      lat=y
-      write(unitreceptorout,nml=receptors)
-    endif
+      ! write receptors file in namelist format to output directory if requested
+      if (nmlout .and. lroot) then
+        lon=x
+        lat=y
+        write(iunitreceptorout,nml=receptors)
+      endif
 
-    goto 100
+    goto 100 ! read next
 
-99  numreceptor=j-1
+99  numreceptor=j-1 ! read all
 
   else ! continue with namelist input
 
     j=0
-    do while (readerror.eq.0)
+    do while (ierr.eq.0)
       j=j+1
-      lon=-999.9
-      read(unitreceptor,receptors,iostat=readerror)
-      if ((lon.lt.-900).or.(readerror.ne.0)) then
-        readerror=1
-      else
-        if (j.gt.maxreceptor) then
-          write(*,*) ' #### FLEXPART MODEL ERROR! TOO MANY RECEPTOR #### '
-          write(*,*) ' #### POINTS ARE GIVEN.                       #### '
-          write(*,*) ' #### MAXIMUM NUMBER IS ',maxreceptor,'       #### '
-          write(*,*) ' #### PLEASE MAKE CHANGES IN FILE RECEPTORS   #### '
-        endif
+      read(unitreceptor,receptors,iostat=ierr)
+      if (ierr.eq.0) then
+        if (j.gt.maxreceptor) goto 998 ! ERROR - STOP
         receptorname(j)=receptor
         xreceptor(j)=(lon-xlon0)/dx       ! transform to grid coordinates
         yreceptor(j)=(lat-ylat0)/dy
         xm=r_earth*cos(lat*pi/180.)*dx/180.*pi
         ym=r_earth*dy/180.*pi
         receptorarea(j)=xm*ym
-      endif
-
       ! write receptors file in namelist format to output directory if requested
-      if (nmlout.and.lroot) then
-        write(unitreceptorout,nml=receptors)
+        if (nmlout.and.lroot) &
+        write(iunitreceptorout,nml=receptors)
       endif
-
     end do
     numreceptor=j-1
     close(unitreceptor)
 
-  endif
+  endif ! end reading nml input
 
-  if (nmlout.and.lroot) then
-    close(unitreceptorout)
-  endif
+  if (nmlout.and.lroot) &
+    close(iunitreceptorout)
 
   return
 
+998 continue
+  write(*,*) ' #### FLEXPART MODEL ERROR! TOO MANY RECEPTOR #### '
+  write(*,*) ' #### POINTS ARE GIVEN.                       #### '
+  write(*,*) ' #### MAXIMUM NUMBER IS ',maxreceptor,'       #### '
+  write(*,*) ' #### PLEASE MAKE CHANGES IN FILE RECEPTORS   #### '
+  stop
 
-999 write(*,*) ' #### FLEXPART MODEL ERROR! FILE "RECEPTORS"  #### '
+999 continue
+  write(*,*) ' #### FLEXPART MODEL ERROR! FILE "RECEPTORS"  #### '
   write(*,*) ' #### CANNOT BE OPENED IN THE DIRECTORY       #### '
   write(*,'(a)') path(1)(1:length(1))
   stop
 
-1000 write(*,*) ' #### FLEXPART MODEL ERROR! FILE "RECEPTORS"    #### '
+1000 continue
+  write(*,*) ' #### FLEXPART MODEL ERROR! FILE "RECEPTORS"  #### '
   write(*,*) ' #### CANNOT BE OPENED IN THE DIRECTORY       #### '
   write(*,'(a)') path(2)(1:length(2))
   stop
