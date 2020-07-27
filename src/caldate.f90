@@ -26,6 +26,8 @@ subroutine caldate(juldate,yyyymmdd,hhmiss)
   !     Constants:                                                             *
   !     igreg          help constant                                           *
   !                                                                            *
+  !     PS 2020-07-27: add a check to avoid giving back 240000 for hhmiss      *
+  !                                                                            *
   !*****************************************************************************
 
   use par_mod, only: dp
@@ -38,6 +40,11 @@ subroutine caldate(juldate,yyyymmdd,hhmiss)
   integer,parameter :: igreg=2299161
 
   julday=int(juldate)
+! PS check to avoid 240000 as hhmiss:  
+  if ((xjuldate-julday)*86400._dp .ge. 86399.5_dp) then
+    juldate = juldate + juldate-julday-86399.5_dp/86400._dp
+    julday=int(juldate)
+  end
   if(julday.ge.igreg)then
     jalpha=int(((julday-1867216)-0.25)/36524.25)
     ja=julday+1+jalpha-int(0.25*jalpha)
