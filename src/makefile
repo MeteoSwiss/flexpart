@@ -43,8 +43,8 @@ SHELL = /bin/bash
 #
 #  NETCDF OUTPUT
 #    To add support for output in netCDF format, append `ncf=yes` to the
-#    `make` command
-# 
+#    `make` command (now the default)
+#    To remove the dependency  append `ncf=no` (or any string different from "yes") 
 ################################################################################
 
 ## PROGRAMS
@@ -59,6 +59,8 @@ FLEXPART-MPI-DBG = DBG_FLEXPART_MPI
 
 # Serial processing executable
 FLEXPART-SERIAL = FLEXPART
+
+ncf=yes
 
 # the following is for NILU only
 
@@ -92,6 +94,10 @@ FLEXPART-SERIAL = FLEXPART
 	INCPATH1  = /usr/include/
 	INCPATH2  = ./
 	LIBPATH1  = /usr/lib/
+
+	INCPATH2  = /opt/eccodes/include/
+#	INCPATH2  = ./
+	LIBPATH2  = /opt/eccodes/lib/
 
 # the following works on a Debian buster (and probably newer) machine
 #	F90	  = gfortran
@@ -132,7 +138,7 @@ DBGFLAGS = -I$(INCPATH1) -I$(INCPATH2) -O$(O_LEV_DBG) -g3 -ggdb3 -cpp \
            -fbacktrace   -Wall  -fdump-core $(FUSER) -fcheck=all #\
             #  -ffpe-trap=invalid,overflow,denormal,underflow,zero 
 
-LDFLAGS  = $(FFLAGS) -L$(LIBPATH1) -Wl,-rpath,$(LIBPATH1) $(LIBS)
+LDFLAGS  = $(FFLAGS) -L$(LIBPATH1) -L$(LIBPATH2) -Wl,-rpath,$(LIBPATH1) $(LIBS)
 LDDEBUG  = $(DBGFLAGS) -L$(LIBPATH1) $(LIBS)
 
 MODOBJS = \
