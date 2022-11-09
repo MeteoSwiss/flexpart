@@ -43,7 +43,7 @@ program flexpart
 
   implicit none
 
-  integer :: i,j,ix,jy,inest, iopt
+  integer :: i, j, ix, jy, inest, iopt
   integer :: idummy = -320
   character(len=256) :: inline_options  !pathfile, flexversion, arg2
   integer :: metdata_format = GRIBFILE_CENTRE_UNKNOWN
@@ -61,21 +61,21 @@ program flexpart
 
   ! FLEXPART version string
   flexversion_major = '10' ! Major version number, also used for species file names
-  flexversion='Version '//trim(flexversion_major)//'.4.1 (2020-08-05)'
+  flexversion='Version '//trim(flexversion_major)//'.4.1 (2022-11-09)'
   verbosity=0
 
   ! Read the pathnames where input/output files are stored
   !*******************************************************
 
   inline_options='none'
-  select case (iargc())
+  select case (command_argument_count())  ! Portable standard Fortran intrinsic procedure
   case (2)
-    call getarg(1,arg1)
+    call get_command_argument(1,arg1)     ! Portable standard Fortran intrinsic procedure
     pathfile=arg1
-    call getarg(2,arg2)
+    call get_command_argument(2,arg2)     ! Portable standard Fortran intrinsic procedure
     inline_options=arg2
   case (1)
-    call getarg(1,arg1)
+    call get_command_argument(1,arg1)     ! Portable standard Fortran intrinsic procedure
     pathfile=arg1
     if (arg1(1:1).eq.'-') then
       write(pathfile,'(a11)') './pathnames'
@@ -89,7 +89,7 @@ program flexpart
   !*******************************************************
   print*,'Welcome to FLEXPART ', trim(flexversion)
   print*,'FLEXPART is free software released under the GNU General Public License.'
- 
+
 
   ! Ingest inline options
   !*******************************************************
@@ -111,14 +111,14 @@ program flexpart
       debug_mode=.true.
     endif
     if (trim(inline_options).eq.'-i') then
-       print*, 'Info mode: provide detailed run specific information and stop'
-       verbosity=1
-       info_flag=1
+      print*, 'Info mode: provide detailed run specific information and stop'
+      verbosity=1
+      info_flag=1
     endif
     if (trim(inline_options).eq.'-i2') then
-       print*, 'Info mode: provide more detailed run specific information and stop'
-       verbosity=2
-       info_flag=1
+      print*, 'Info mode: provide more detailed run specific information and stop'
+      verbosity=2
+      info_flag=1
     endif
   endif
            
@@ -137,7 +137,7 @@ program flexpart
   if (verbosity.gt.1) then !show clock info 
      !print*,'length(4)',length(4)
      !count=0,count_rate=1000
-     CALL SYSTEM_CLOCK(count_clock0, count_rate, count_max)
+     call system_clock(count_clock0, count_rate, count_max)
      !WRITE(*,*) 'SYSTEM_CLOCK',count, count_rate, count_max
      !WRITE(*,*) 'SYSTEM_CLOCK, count_clock0', count_clock0
      !WRITE(*,*) 'SYSTEM_CLOCK, count_rate', count_rate
@@ -158,7 +158,7 @@ program flexpart
     if (verbosity.gt.1) then   
       CALL SYSTEM_CLOCK(count_clock, count_rate, count_max)
       write(*,*) 'SYSTEM_CLOCK',(count_clock - count_clock0)/real(count_rate) !, count_rate, count_max
-    endif     
+    endif
   endif
 
   ! Initialize arrays in com_mod
@@ -216,9 +216,9 @@ program flexpart
   ! Read the model grid specifications,
   ! both for the mother domain and eventual nests
   !**********************************************
- 
+
   if (verbosity.gt.0) then
-     write(*,*) 'call gridcheck'
+    write(*,*) 'call gridcheck'
   endif
 
   if (metdata_format.eq.GRIBFILE_CENTRE_ECMWF) then
@@ -257,7 +257,7 @@ program flexpart
   !*****************************************************************************
 
   if (verbosity.eq.1) then
-     print*,'call readreceptors'
+    print*,'call readreceptors'
   endif
   call readreceptors
 
@@ -265,7 +265,6 @@ program flexpart
   !*************************************************
   !SEC: now only needed SPECIES are read in readreleases.f
   !call readspecies
-
 
   ! Read the landuse inventory
   !***************************
@@ -328,7 +327,7 @@ program flexpart
   else
     if (verbosity.gt.0) then
       print*,'numpart=0, numparticlecount=0'
-    endif    
+    endif
     numpart=0
     numparticlecount=0
   endif

@@ -102,6 +102,8 @@ subroutine readwind_ecmwf(indj,n,uuh,vvh,wwh)
 !
 ! OPENING OF DATA FILE (GRIB CODE)
 !
+  write(*,*)   'Reading: '//path(3)(1:length(3)) &
+       //trim(wfname(indj))
 5 call grib_open_file(ifile,path(3)(1:length(3)) &
        //trim(wfname(indj)),'r',iret)
   if (iret.ne.GRIB_SUCCESS) then
@@ -385,14 +387,14 @@ subroutine readwind_ecmwf(indj,n,uuh,vvh,wwh)
     stop
   endif
 
-  if(levdiff2.eq.0) then
-    iwmax=nlev_ec+1
+!  if(levdiff2.eq.0) then
+    iwmax=iwmax+1
     do i=0,nxmin1
       do j=0,nymin1
-        wwh(i,j,nlev_ec+1)=0.
+        wwh(i,j,iwmax)=0.
       end do
     end do
-  endif
+!  endif
 
 ! For global fields, assign the leftmost data column also to the rightmost
 ! data column; if required, shift whole grid by nxshift grid points

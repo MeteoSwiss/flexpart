@@ -110,6 +110,8 @@ subroutine gridcheck_gfs
   !
   ! OPENING OF DATA FILE (GRIB CODE)
   !
+  write(*,*)     'Reading: '//path(3)(1:length(3)) &
+         //trim(wfname(ifn))
 5   call grib_open_file(ifile,path(3)(1:length(3)) &
          //trim(wfname(ifn)),'r',iret)
   if (iret.ne.GRIB_SUCCESS) then

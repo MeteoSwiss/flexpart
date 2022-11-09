@@ -1,5 +1,5 @@
 &SPECIES_PARAMS
- PSPECIES="SO4-aero",        ! Tracer name
+ PSPECIES="SO4-aero",         ! Tracer name
  PDECAY=-9.9,                 ! Species half life
  PWETA_GAS=-0.9E-9,           ! Below-cloud scavenging (gases) - A (weta_gas)
  PWETB_GAS=-9.9,              ! Below-cloud scavenging (gases) - B (wetb_gas)

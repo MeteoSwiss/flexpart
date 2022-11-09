@@ -51,7 +51,7 @@ subroutine writeheader_txt
   !*****************************
   
   write(unitheader,*) '# ibdate,ibtime, iedate, ietime, flexversion'
-  write(unitheader,*) ibdate, ibtime, iedate, ietime, trim(flexversion) !  'FLEXPART V9.0'
+  write(unitheader,*) ibdate, ibtime, iedate, ietime, trim(flexversion)
   !if (ldirect.eq.1) then
   !  write(unitheader,*) ibdate,ibtime,trim(flexversion) !  'FLEXPART V9.0'
   !else

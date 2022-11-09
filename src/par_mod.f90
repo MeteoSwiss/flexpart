@@ -130,6 +130,9 @@ module par_mod
   ! Maximum dimensions of the input mother grids
   !*********************************************
   
+  ! NOTE: dimensioning of zsec2 in gridcheck depends on nuvzmax, therefore nuvzmax
+  ! must represent all levels even if only lower levels are in the input files.
+
   ! ECMWF
 ! integer,parameter :: nxmax=361,nymax=181,nuvzmax=92,nwzmax=92,nzmax=92,nxshift=359 ! 1.0 degree 92 level
 !  integer,parameter :: nxmax=361,nymax=181,nuvzmax=138,nwzmax=138,nzmax=138,nxshift=0 ! 1.0 degree 138 level
