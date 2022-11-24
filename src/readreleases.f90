@@ -554,6 +554,9 @@ subroutine readreleases
         ireleasestart(numpoint)=int((jul1-bdate)*86400.)
         ireleaseend(numpoint)=int((jul2-bdate)*86400.)
       else
+        write(*,*) 'FLEXPART MODEL WARNING'
+        write(*,*) 'Too few particles to randomize release,'
+        write(*,*) 'release time set to mid-point of release interval'
         ireleasestart(numpoint)=int((julm-bdate)*86400.)
         ireleaseend(numpoint)=int((julm-bdate)*86400.)
       endif

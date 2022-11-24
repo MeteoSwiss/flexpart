@@ -102,6 +102,8 @@ subroutine gridcheck_ecmwf
   !
   ! OPENING OF DATA FILE (GRIB CODE)
   !
+  write(*,*)   'Reading: '//path(3)(1:length(3)) &
+       //trim(wfname(ifn))
 5 call grib_open_file(ifile,path(3)(1:length(3)) &
        //trim(wfname(ifn)),'r',iret)
   if (iret.ne.GRIB_SUCCESS) then
@@ -417,7 +419,7 @@ subroutine gridcheck_ecmwf
   endif
 
   nuvz=iumax
-  nwz =iwmax
+  nwz =iwmax + 1       ! +1 needed if input contains only lower levels
   if(nuvz.eq.nlev_ec) nwz=nlev_ec+1
 
   if (nuvz+1.gt.nuvzmax) then

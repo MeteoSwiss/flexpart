@@ -77,6 +77,9 @@ subroutine gridcheck_nests
   igrib=0
   iret=0
 
+  write(*,*) 'Reading: '//path(numpath+2*(l-1)+1) &
+         (1:length(numpath+2*(l-1)+1))//trim(wfnamen(l,ifn))
+
 5   call grib_open_file(ifile,path(numpath+2*(l-1)+1) &
          (1:length(numpath+2*(l-1)+1))//trim(wfnamen(l,ifn)),'r',iret)
   if (iret.ne.GRIB_SUCCESS) then
@@ -325,7 +328,7 @@ subroutine gridcheck_nests
   endif
 
   nuvzn=iumax
-  nwzn=iwmax
+  nwzn=iwmax + 1       ! +1 needed if input contains only lower levels
   if(nuvzn.eq.nlev_ec) nwzn=nlev_ecn+1
 
   if ((nuvzn.gt.nuvzmax).or.(nwzn.gt.nwzmax)) then

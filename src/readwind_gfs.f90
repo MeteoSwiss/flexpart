@@ -102,6 +102,8 @@ subroutine readwind_gfs(indj,n,uuh,vvh,wwh)
   ! OPENING OF DATA FILE (GRIB CODE)
 
   !HSO
+  write(*,*)   'Reading: '//path(3)(1:length(3)) &
+         //trim(wfname(indj))
   call grib_open_file(ifile,path(3)(1:length(3)) &
          //trim(wfname(indj)),'r',iret)
   if (iret.ne.GRIB_SUCCESS) then

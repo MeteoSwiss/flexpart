@@ -103,6 +103,8 @@ subroutine readspecies(id_spec,pos_spec)
 !************************************************************
   specnum(pos_spec)=id_spec
   write(aspecnumb,'(i3.3)') specnum(pos_spec)
+  write(*,*) 'Reading: '// &
+                        path(1)(1:length(1))//'SPECIES/SPECIES_'//aspecnumb
   open(unitspecies,file=path(1)(1:length(1))//'SPECIES/SPECIES_'//aspecnumb,status='old',form='formatted',err=998)
 !write(*,*) 'reading SPECIES',specnum(pos_spec)
 

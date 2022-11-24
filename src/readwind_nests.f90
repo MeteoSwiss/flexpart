@@ -78,7 +78,8 @@ subroutine readwind_nests(indj,n,uuhn,vvhn,wwhn)
   !
   ! OPENING OF DATA FILE (GRIB CODE)
   !
-
+    write(*,*)   'Reading: '//path(numpath+2*(l-1)+1) &
+         (1:length(numpath+2*(l-1)+1))//trim(wfnamen(l,indj))
 5   call grib_open_file(ifile,path(numpath+2*(l-1)+1) &
          (1:length(numpath+2*(l-1)+1))//trim(wfnamen(l,indj)),'r')
   if (iret.ne.GRIB_SUCCESS) then
@@ -364,14 +365,14 @@ subroutine readwind_nests(indj,n,uuhn,vvhn,wwhn)
     stop
   endif
 
-  if(levdiff2.eq.0) then
-    iwmax=nlev_ec+1
+!  if(levdiff2.eq.0) then
+    iwmax=iwmax+1
     do i=0,nxn(l)-1
       do j=0,nyn(l)-1
-        wwhn(i,j,nlev_ec+1,l)=0.
+        wwhn(i,j,iwmax,l)=0.
       end do
     end do
-  endif
+!  endif
 
   do i=0,nxn(l)-1
     do j=0,nyn(l)-1
