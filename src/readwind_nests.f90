@@ -78,7 +78,6 @@ subroutine readwind_nests(indj,n,uuhn,vvhn,wwhn)
   !
   ! OPENING OF DATA FILE (GRIB CODE)
   !
-
 5   call grib_open_file(ifile,path(numpath+2*(l-1)+1) &
          (1:length(numpath+2*(l-1)+1))//trim(wfnamen(l,indj)),'r')
   if (iret.ne.GRIB_SUCCESS) then
@@ -178,16 +177,17 @@ subroutine readwind_nests(indj,n,uuhn,vvhn,wwhn)
     isec1(6)=167         ! indicatorOfParameter
   elseif ((parCat.eq.0).and.(parNum.eq.6).and.(typSurf.eq.103)) then ! 2D
     isec1(6)=168         ! indicatorOfParameter
-  elseif ((parCat.eq.1).and.(parNum.eq.11).and.(typSurf.eq.1)) then ! SD
+  elseif ((parCat.eq.1).and.(parNum.eq.11).and.(typSurf.eq.1)) then ! SDE
     isec1(6)=141         ! indicatorOfParameter
-    conversion_factor=1000. !added by mc to make it consisitent with new readwind.f90
-  elseif ((parCat.eq.6).and.(parNum.eq.1) .or. parId .eq. 164) then ! CC !added by mc to make it consisitent with new readwind.f90
+    conversion_factor=0.1  ! convert snow depth to water equivalent
+  elseif ((parCat.eq.1).and.(parNum.eq.254).and.(typSurf.eq.1)) then ! SD
+    isec1(6)=141         ! indicatorOfParameter
+  elseif ((parCat.eq.6).and.(parNum.eq.1) .or. parId .eq. 164) then ! CC
     isec1(6)=164         ! indicatorOfParameter
-  elseif ((parCat.eq.1).and.(parNum.eq.9) .or. parId .eq. 142) then ! LSP !added by mc to make it consisitent with new readwind.f90
+  elseif ((parCat.eq.1).and.(parNum.eq.9) .or. parId .eq. 142) then ! LSP
     isec1(6)=142         ! indicatorOfParameter
-  elseif ((parCat.eq.1).and.(parNum.eq.10)) then ! CP
+  elseif ((parCat.eq.1).and.(parNum.eq.10)) then ! ACPCP
     isec1(6)=143         ! indicatorOfParameter
-    conversion_factor=1000. !added by mc to make it consisitent with new readwind.f90
   elseif ((parCat.eq.0).and.(parNum.eq.11).and.(typSurf.eq.1)) then ! SHF
     isec1(6)=146         ! indicatorOfParameter
   elseif ((parCat.eq.4).and.(parNum.eq.9).and.(typSurf.eq.1)) then ! SR
@@ -283,7 +283,7 @@ subroutine readwind_nests(indj,n,uuhn,vvhn,wwhn)
         if(isec1(6).eq.135) wwhn(i,j,nlev_ec-k+1,l)= &!! W VELOCITY
              zsec4(nxn(l)*(nyn(l)-j-1)+i+1)
         if(isec1(6).eq.141) sdn(i,j,1,n,l)= &!! SNOW DEPTH
-             zsec4(nxn(l)*(nyn(l)-j-1)+i+1)/conversion_factor !added by mc to make it consisitent with new readwind.f90!
+             zsec4(nxn(l)*(nyn(l)-j-1)+i+1)*conversion_factor
         if(isec1(6).eq.151) msln(i,j,1,n,l)= &!! SEA LEVEL PRESS.
              zsec4(nxn(l)*(nyn(l)-j-1)+i+1)
         if(isec1(6).eq.164) tccn(i,j,1,n,l)= &!! CLOUD COVER
@@ -301,7 +301,7 @@ subroutine readwind_nests(indj,n,uuhn,vvhn,wwhn)
           if (lsprecn(i,j,1,n,l).lt.0.) lsprecn(i,j,1,n,l)=0.
         endif
         if(isec1(6).eq.143) then                         !! CONVECTIVE PREC.
-          convprecn(i,j,1,n,l)=zsec4(nxn(l)*(nyn(l)-j-1)+i+1)/conversion_factor !added by mc to make it consisitent with new readwind.f90
+          convprecn(i,j,1,n,l)=zsec4(nxn(l)*(nyn(l)-j-1)+i+1)
           if (convprecn(i,j,1,n,l).lt.0.) convprecn(i,j,1,n,l)=0.
         endif
         if(isec1(6).eq.146) sshfn(i,j,1,n,l)= &!! SENS. HEAT FLUX
