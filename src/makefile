@@ -2,8 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 SHELL = /bin/bash
-
-##############################################################
+################################################################################
 #  DESCRIPTION
 #    Makefile for FLEXPART. 
 #    Standard (serial) and parallel (MPI) version
@@ -35,10 +34,13 @@ SHELL = /bin/bash
 #    or simply
 #      make [-j] 
 #
+#    Compile serial FLEXPART for debugging
+#      make [-j] serial-dbg
+#
 #    Compile parallel FLEXPART 
 #      make [-j] mpi
 #     
-#    Compile for debugging parallel FLEXPART
+#    Compile parallel FLEXPART for debugging
 #      make [-j] mpi-dbg
 #
 #  NETCDF OUTPUT
@@ -59,6 +61,9 @@ FLEXPART-MPI-DBG = DBG_FLEXPART_MPI
 
 # Serial processing executable
 FLEXPART-SERIAL = FLEXPART
+
+# Serial processing executable with debugging info
+FLEXPART-SERIAL-DBG = FLEXPART_DBG
 
 ncf=yes
 
@@ -258,6 +263,12 @@ endif
 serial: $(FLEXPART-SERIAL)
 serial: FC := $(F90)
 
+# serial executable with debugging info
+serial-dbg: $(FLEXPART-SERIAL-DBG)
+serial-dbg: FFLAGS := $(DBGFLAGS)
+serial-dbg: LDFLAGS:= $(LDDEBUG)
+serial-dbg: FC := $(F90)
+
 # parallel processing executable
 mpi: $(FLEXPART-MPI)
 mpi: FC := $(MPIF90)
@@ -269,6 +280,9 @@ mpi-dbg: LDFLAGS:= $(LDDEBUG)
 mpi-dbg: FC := $(MPIF90)
 
 $(FLEXPART-SERIAL): $(MODOBJS) $(OBJECTS) $(OBJECTS_SERIAL)
+	+$(FC) -o $@ $(MODOBJS) $(OBJECTS) $(OBJECTS_SERIAL) $(LDFLAGS)
+
+$(FLEXPART-SERIAL-DBG): $(MODOBJS) $(OBJECTS) $(OBJECTS_SERIAL)
 	+$(FC) -o $@ $(MODOBJS) $(OBJECTS) $(OBJECTS_SERIAL) $(LDFLAGS)
 
 $(FLEXPART-MPI): $(MODOBJS) $(MPI_MODOBJS) $(OBJECTS) $(OBJECTS_MPI)
