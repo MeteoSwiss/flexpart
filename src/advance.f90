@@ -786,18 +786,17 @@ subroutine advance(itime,nrelpoint,ldt,up,vp,wp, &
     if (xt.lt.0.) xt=xt+real(nxmin1)
     if (xt.le.eps) xt=eps
     if (abs(xt-real(nxmin1)).le.eps) xt=real(nxmin1)-eps
-  endif
 
-  ! HSO/AL: Prevent particles from disappearing at the pole
-  !******************************************************************
-
-  if ( yt.lt.0. ) then
-    xt=mod(xt+180.,360.)
-    yt=-yt
-  else if ( yt.gt.real(nymin1) ) then
-    xt=mod(xt+180.,360.)
-    yt=2*real(nymin1)-yt
-  endif
+    ! HSO/AL: Prevent particles from disappearing at the pole
+    !******************************************************************
+    if ( yt.lt.0. ) then
+       xt=modulo(xt*dx+180.,360.)/dx
+       yt=-yt
+    else if ( yt.gt.real(nymin1) ) then
+       xt=modulo(xt*dx+180.,360.)/dx
+       yt=2*real(nymin1)-yt
+    endif
+  endif ! xglobal
 
   ! Check position: If trajectory outside model domain, terminate it
   !*****************************************************************
@@ -959,18 +958,17 @@ subroutine advance(itime,nrelpoint,ldt,up,vp,wp, &
     if (xt.lt.0.) xt=xt+real(nxmin1)
     if (xt.le.eps) xt=eps
     if (abs(xt-real(nxmin1)).le.eps) xt=real(nxmin1)-eps
-  endif
 
-  ! HSO/AL: Prevent particles from disappearing at the pole
-  !******************************************************************
-
-  if ( yt.lt.0. ) then
-    xt=mod(xt+180.,360.)
-    yt=-yt
-  else if ( yt.gt.real(nymin1) ) then
-    xt=mod(xt+180.,360.)
-    yt=2*real(nymin1)-yt
-  endif
+    ! HSO/AL: Prevent particles from disappearing at the pole
+    !******************************************************************
+    if ( yt.lt.0. ) then
+       xt=modulo(xt*dx+180.,360.)/dx
+       yt=-yt
+    else if ( yt.gt.real(nymin1) ) then
+       xt=modulo(xt*dx+180.,360.)/dx
+       yt=2*real(nymin1)-yt
+    endif
+  endif ! xglobal
 
   ! Check position: If trajectory outside model domain, terminate it
   !*****************************************************************
