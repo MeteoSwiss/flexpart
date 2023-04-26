@@ -44,7 +44,7 @@ program specoverview
              '     DryDepo(particles)  Alternative| Radioact.  |     OH Reaction      |'
 
   write(*,*) '    Name      |molwght| A          B    | D    H        f0 | Crain   Csnow |  ccn    in  |'// &
-       '   rho    dquer    dsig    vd  | Halflife[s]|   C**     D[T]  N*** |'
+             '   rho    dquer    dsig       vd    | Halflife[s]|   C**     D[T]  N*** |'
 
   write(*,*) '--------------|-------|-----------------|------------------|---------------|-------------|'// &
              '------------------------------------|------------|----------------------|'
@@ -98,7 +98,7 @@ program specoverview
 45   format(i3,a1,a11,a1,f7.1,a1,e8.1,a1,f8.2,a1, &
           f4.1,a1,e8.1,a1,f4.1,a1, &
           f7.1,a1,f7.1,a1,f6.1,a1,f6.1,a1, &
-          e8.1,e9.1,f7.1,e12.2,a1,f12.1,a1,e8.1,f7.1,f7.1,a1)
+          e8.1,e9.1,f7.1,e12.3,a1,f12.1,a1,e8.1,f7.1,f7.1,a1)
 
 998  continue
   enddo
