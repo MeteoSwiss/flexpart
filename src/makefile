@@ -154,7 +154,7 @@ unc_mod.o               oh_mod.o \
 xmass_mod.o             flux_mod.o \
 point_mod.o             outg_mod.o \
 mean_mod.o	 	random_mod.o \
-class_gribfile_mod.o
+class_gribfile_mod.o fdb_mod.o
 
 MPI_MODOBJS = \
 mpi_mod.o
@@ -206,6 +206,7 @@ coordtrafo.o            psih.o \
 raerod.o 		readcommand.o 	\
 drydepokernel.o         readreceptors.o \
 erf.o                   readavailable.o \
+get_fdbtimes.o \
 ew.o			readreleases.o  \
 readdepo.o              get_vdep_prob.o   \
 get_wetscav.o		readwind_gfs.o \
@@ -349,15 +350,16 @@ conv_mod.o: par_mod.o
 convect43c.o: conv_mod.o par_mod.o
 convmix.o: com_mod.o conv_mod.o flux_mod.o par_mod.o class_gribfile_mod.o
 coordtrafo.o: com_mod.o par_mod.o point_mod.o
-detectformat.o: com_mod.o par_mod.o class_gribfile_mod.o
+detectformat.o: com_mod.o par_mod.o class_gribfile_mod.o fdb_mod.o
 distance.o: par_mod.o
 distance2.o: par_mod.o
 drydepokernel.o: com_mod.o par_mod.o unc_mod.o
 drydepokernel_nest.o: com_mod.o par_mod.o unc_mod.o
 erf.o: par_mod.o
+fdb_mod.o: com_mod.o par_mod.o class_gribfile_mod.o timer_mod.o
 ifeq ($(ncf), yes)
         FLEXPART.o: com_mod.o conv_mod.o par_mod.o point_mod.o random_mod.o netcdf_output_mod.o class_gribfile_mod.o \
-	random_mod.o
+	random_mod.o fdb_mod.o timer_mod.o
         FLEXPART_MPI.o: com_mod.o conv_mod.o mpi_mod.o netcdf_output_mod.o par_mod.o \
 	point_mod.o random_mod.o class_gribfile_mod.o
         netcdf_output_mod.o: com_mod.o mean_mod.o outg_mod.o par_mod.o point_mod.o unc_mod.o
@@ -366,7 +368,7 @@ ifeq ($(ncf), yes)
         timemanager_mpi.o: com_mod.o flux_mod.o mpi_mod.o netcdf_output_mod.o \
 	oh_mod.o outg_mod.o par_mod.o point_mod.o unc_mod.o xmass_mod.o
 else        
-        FLEXPART.o: com_mod.o conv_mod.o par_mod.o point_mod.o random_mod.o  class_gribfile_mod.o random_mod.o
+        FLEXPART.o: com_mod.o conv_mod.o par_mod.o point_mod.o random_mod.o  class_gribfile_mod.o random_mod.o fdb_mod.o timer_mod.o
         FLEXPART_MPI.o: com_mod.o conv_mod.o mpi_mod.o par_mod.o point_mod.o random_mod.o class_gribfile_mod.o
         timemanager.o: com_mod.o flux_mod.o oh_mod.o outg_mod.o \
 	par_mod.o point_mod.o unc_mod.o xmass_mod.o
@@ -374,6 +376,7 @@ else
 	oh_mod.o outg_mod.o par_mod.o point_mod.o unc_mod.o xmass_mod.o
 endif
 fluxoutput.o: com_mod.o flux_mod.o outg_mod.o par_mod.o
+get_fdbtimes.o: com_mod.o par_mod.o
 get_settling.o: com_mod.o par_mod.o
 get_vdep_prob.o: com_mod.o interpol_mod.o par_mod.o point_mod.o
 get_wetscav.o: com_mod.o par_mod.o point_mod.o
@@ -385,7 +388,7 @@ getrc.o: com_mod.o par_mod.o
 getvdep.o: com_mod.o par_mod.o
 getvdep_nests.o: com_mod.o par_mod.o
 grib2check.o: com_mod.o par_mod.o
-gridcheck_ecmwf.o: cmapf_mod.o com_mod.o conv_mod.o par_mod.o
+gridcheck_ecmwf.o: cmapf_mod.o com_mod.o conv_mod.o par_mod.o fdb_mod.o
 gridcheck_gfs.o: cmapf_mod.o com_mod.o conv_mod.o par_mod.o
 gridcheck_nests.o: com_mod.o par_mod.o
 hanna.o: com_mod.o hanna_mod.o par_mod.o
@@ -451,7 +454,7 @@ readpaths.o: com_mod.o par_mod.o
 readreceptors.o: com_mod.o par_mod.o
 readreleases.o: com_mod.o par_mod.o point_mod.o xmass_mod.o
 readspecies.o: com_mod.o par_mod.o
-readwind_ecmwf.o: com_mod.o par_mod.o
+readwind_ecmwf.o: com_mod.o par_mod.o fdb_mod.o
 readwind_ecmwf_mpi.o: com_mod.o mpi_mod.o par_mod.o
 readwind_emos.o: com_mod.o par_mod.o
 readwind_gfs.o: com_mod.o par_mod.o

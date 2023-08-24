@@ -25,6 +25,7 @@ integer function detectformat()
   use par_mod
   use com_mod
   use class_gribfile
+  use fdb_mod
 
 
   implicit none
@@ -40,10 +41,12 @@ integer function detectformat()
     return
   endif
 
-  ! construct filename
-  filename = path(3)(1:length(3)) // trim(wfname(1))
- 
-  ! get format
-  detectformat = gribfile_centre(TRIM(filename))
+  if (fdbflag.eq.0) then
+    ! construct filename and get format
+    filename = path(3)(1:length(3)) // trim(wfname(1))
+    detectformat = gribfile_centre(TRIM(filename))
+  else
+    detectformat = fdb_grib_centre(1)
+  end if
 
 end 

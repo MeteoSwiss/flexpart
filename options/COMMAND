@@ -33,5 +33,6 @@
  LINIT_COND=            0, ! Output sensitivity to initial conditions (bkw mode only) [0]off 1]conc 2]mmr 
  SURF_ONLY=             0, ! Output only for the lowest model layer, used w/ LINIT_COND=1 or 2
  CBLFLAG=               0, ! Skewed, not Gaussian turbulence in the convective ABL, need large CTL and IFINE
+ FDBFLAG=               1, ! If 1, use FDB as input, or files in AVAILABLE if 0.
  OHFIELDS_PATH= "../../flexin/", ! Default path for OH file
  /
