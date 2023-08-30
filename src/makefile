@@ -154,7 +154,8 @@ unc_mod.o               oh_mod.o \
 xmass_mod.o             flux_mod.o \
 point_mod.o             outg_mod.o \
 mean_mod.o	 	random_mod.o \
-class_gribfile_mod.o fdb_mod.o
+class_gribfile_mod.o fdb_mod.o \
+timer_mod.o
 
 MPI_MODOBJS = \
 mpi_mod.o
