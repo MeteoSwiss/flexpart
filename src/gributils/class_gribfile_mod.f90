@@ -32,7 +32,9 @@ MODULE class_gribfile
               GRIBFILE_TYPE_UNKNOWN,          &
               GRIBFILE_CENTRE_NCEP,           &
               GRIBFILE_CENTRE_ECMWF,          &
-              GRIBFILE_CENTRE_UNKNOWN
+              GRIBFILE_CENTRE_UNKNOWN,        &
+              CENTRE_NCEP,                    &
+              CENTRE_ECMWF
 
     ! These are codes for designating the type of GRIB file  
     ! being looked at

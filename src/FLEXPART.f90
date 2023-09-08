@@ -33,9 +33,13 @@ program flexpart
   use par_mod
   use com_mod
   use conv_mod
+  use fdb_mod
+  use timer_mod
 
   use random_mod, only: gasdev1
   use class_gribfile
+
+  use fdb
 
 #ifdef USE_NCF
   use netcdf_output_mod, only: writeheader_netcdf
@@ -49,7 +53,20 @@ program flexpart
   integer :: metdata_format = GRIBFILE_CENTRE_UNKNOWN
   integer :: detectformat
 
-  
+  integer(kind=c_int) :: fdb_res
+
+  timer_total  = new_timer("Total Flexpart Run")
+  timer_readwind_loop  = new_timer("Readwind_ECMWF")
+  timer_readwind_iter  = new_timer("Readwind Single Message")  
+  timer_readwind_common  = new_timer("Readwind Message Decoding")  
+
+  call start_timer(timer_total)
+
+  ! Initialize fdb for data retreival
+  !******************************************
+  fdb_res = fdb_initialise()
+  fdb_res = fdb_new_handle(fdb_handle)
+
   ! Generate a large number of random numbers
   !******************************************
 
@@ -161,6 +178,25 @@ program flexpart
     endif
   endif
 
+  if (fdbflag .eq. 1) then
+    timer_readwind_fdb_inloop  = new_timer("Readwind Get Message Length (FDB)")
+    timer_readwind_request  = new_timer("Readwind FDB Request")
+    timer_fdb_datareader_read = new_timer("fdb_datareader_read_message")
+
+    timer_fdb_request_datetime = new_timer("fdb_request_datetime")
+    timer_fdb_create_request_dr = new_timer("fdb_create_request_dr")
+    timer_fdb_datareader_open = new_timer("fdb_datareader_open")
+    timer_fdb_get_max_message_len = new_timer("fdb_get_max_message_len")
+    timer_allocate_buf = new_timer("allocate_buf")
+    timer_fdb_datareader_tell = new_timer("fdb_datareader_tell")
+
+    timer_fdb_setup_request = new_timer("fdb_setup_request")
+    timer_fdb_new_dr = new_timer("fdb_new_datareader")
+    timer_fdb_retrieve = new_timer("fdb_retrieve")
+
+    timer_fdb_inspect = new_timer("fdb_inspect")
+  endif
+
   ! Initialize arrays in com_mod
   !*****************************
   call com_mod_allocate_part(maxpart)
@@ -178,13 +214,21 @@ program flexpart
     write(*,*) 'SYSTEM_CLOCK',(count_clock - count_clock0)/real(count_rate) !, count_rate, count_max
   endif     
 
-  ! Read, which wind fields are available within the modelling period
-  !******************************************************************
-
-  if (verbosity.gt.0) then
-    write(*,*) 'call readavailable'
-  endif  
-  call readavailable
+  ! Read, which wind fields are available as files OR 
+  ! Identify which fields should be fetched from fdb 
+  ! within the modelling period
+  !***************************************************
+  
+  if (fdbflag.eq.0) then
+    if (verbosity.gt.0) then
+      write(*,*) 'call readavailable'
+    endif
+  endif
+  if (fdbflag.eq.0) then
+    call readavailable
+  else
+    call get_fdbtimes
+  end if
 
   ! Detect metdata format
   !**********************
@@ -470,5 +514,9 @@ program flexpart
   
   write(*,*) 'CONGRATULATIONS: YOU HAVE SUCCESSFULLY COMPLETED A FLE&
        &XPART MODEL RUN!'
+
+  call stop_timer(timer_total)
+
+  call print_timers()
 
 end program flexpart

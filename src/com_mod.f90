@@ -15,7 +15,8 @@ module com_mod
   use par_mod, only: dp, numpath, maxnests, maxageclass, maxspec, ni, &
        numclass, nymax, nxmax, maxcolumn, maxwf, nzmax, nxmaxn, nymaxn, &
        maxreceptor, maxpart, maxrand, nwzmax, nuvzmax, numwfmem
-
+  use iso_c_binding
+  
   implicit none
 
 
@@ -36,6 +37,16 @@ module com_mod
   ! flexversion_major       version of flexpart (major version number)
   ! arg                     input arguments from launch at command line
   ! ohfields_path           path to binary files for OH fields
+
+  !********************************************************
+  ! Variables defining the fdb instance
+  !********************************************************
+
+  type(c_ptr) :: fdb_handle
+  integer :: fdbflag  
+
+  ! fdb_handle              fdb instance
+  ! fdbflag                 defined in COMMAND file, determines whether to use fdb as input
 
   !********************************************************
   ! Variables defining the general model run specifications
@@ -274,6 +285,8 @@ module com_mod
   !******************************************************************************
 
   integer :: numbwf,wftime(maxwf),lwindinterv
+  integer :: wfstep(maxwf)
+  character(len=12) :: wfdatetime(maxwf)
   character(len=255) :: wfname(maxwf),wfspec(maxwf)
 
   ! lwindinterv [s]         Interval between wind fields currently in memory
@@ -282,6 +295,8 @@ module com_mod
   ! wfname(maxwf)           file names of wind fields
   ! wfspec(maxwf)           specifications of wind field file, e.g. if on hard
   !                         disc or on tape
+  ! wfdatetime(maxwf)       start date time of forecast of wind fields
+  ! wfstep(maxwf)           step of forecast of wind fields
 
   integer :: memtime(numwfmem),memind(3) ! eso: or memind(numwfmem) 
 
