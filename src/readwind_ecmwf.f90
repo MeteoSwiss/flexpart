@@ -151,10 +151,6 @@ subroutine readwind_ecmwf(indj,n,uuh,vvh,wwh)
 
     call stop_timer(timer_readwind_request)
 
-    call start_timer(timer_fdb_inspect)
-    res = fdb_inspect(fdb_handle, req, it2)
-    call stop_timer(timer_fdb_inspect)
-
     gotGrid=0
     ifield=0
 

@@ -31,7 +31,7 @@ MODULE timer_mod
     &          timer_fdb_datareader_open,timer_fdb_get_max_message_len, &
     &          timer_allocate_buf, timer_fdb_datareader_tell, &
     &          timer_fdb_setup_request, timer_fdb_new_dr, timer_fdb_retrieve, &
-    &          timer_fdb_datareader_read, timer_fdb_inspect
+    &          timer_fdb_datareader_read
 
     INTEGER :: timer_top = 1
 

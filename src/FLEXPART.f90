@@ -193,8 +193,6 @@ program flexpart
     timer_fdb_setup_request = new_timer("fdb_setup_request")
     timer_fdb_new_dr = new_timer("fdb_new_datareader")
     timer_fdb_retrieve = new_timer("fdb_retrieve")
-
-    timer_fdb_inspect = new_timer("fdb_inspect")
   endif
 
   ! Initialize arrays in com_mod
