@@ -105,9 +105,14 @@ subroutine get_fdbtimes
         write(wfdatetime1(numbwf)(1:8),'(I8)') ldat
       else if (MOD(ltim, 6) .eq. 0) then
         wfstep1(numbwf)=6
-        wfdate1(numbwf)=ldat-1
-        wfforecasttime1(numbwf)=18
-        write(wfdatetime1(numbwf)(1:8),'(I8)') ldat-1
+        if (ltim .eq. 0) then
+          wfdate1(numbwf)=ldat-1
+          wfforecasttime1(numbwf)=18
+        else
+          wfdate1(numbwf)=ldat
+          wfforecasttime1(numbwf)=INT(ltim/6)*6-6
+        endif
+        write(wfdatetime1(numbwf)(1:8),'(I8)') wfdate1(numbwf)
       endif
 
       write(wfdatetime1(numbwf)(9:10),'(I2.2)')  wfforecasttime1(numbwf)
