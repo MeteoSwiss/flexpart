@@ -91,18 +91,23 @@ ncf=yes
 #	LIBPATH1  = ${ROOT_DIR}/gcc-5.4.0/lib
 #endif
 
-# the following works on a Debian stretch machine
-
-	F90	  = gfortran
-	MPIF90    = mpifort
-
-	INCPATH1  = /usr/include/
-	INCPATH2  = ./
-	LIBPATH1  = /usr/lib/
-
-	INCPATH2  = /opt/eccodes/include/
-#	INCPATH2  = ./
-	LIBPATH2  = /opt/eccodes/lib/
+ifeq (,$(findstring nid,${HOST}))
+    # Settings for CSCS tsa/arolla
+    F90       = gfortran
+    MPIF90    = mpif90
+    INCPATH1  = ${ECCODESROOT}/include
+    INCPATH2  = ${CURL_INCLUDES}
+    FUSER     = -finit-local-zero -lpthread
+    NETCDF_FORTRAN_INCLUDE = ${EBROOTNETCDFMINFORTRAN}/include
+    NETCDF_LD_FLAGS = ${LIBAEC_LD_FLAGS}
+else
+    # Settings for CSCS balfrin
+    F90       = gfortran
+    MPIF90    = mpif90
+    INCPATH1  = ${ECCODES_INCLUDE}
+    INCPATH2  = .
+    FUSER     = -finit-local-zero -lpthread
+endif
 
 # the following works on a Debian buster (and probably newer) machine
 #	F90	  = gfortran
