@@ -1,0 +1,20 @@
+#!/bin/bash
+
+# Resort sequence of species to match FLEXPART-COSMO
+# Don't run this unless you have reverted to the original sequence!
+echo "Locked (comment out lock to resort species)"; exit 1 # security lock, only remove if resorting is really needed.
+
+# Make way
+mv SPECIES_008 SPECIES_041 # NO2
+mv SPECIES_031 SPECIES_041 # PCB28
+mv SPECIES_034 SPECIES_042 # G-HCH
+
+# Move
+mv SPECIES_023 SPECIES_008 # SO2
+
+# Add nuclides 31 - 39
+nn=31
+while (( $nn <= 39 )) ; do
+    cp SPECIES_016 SPECIES_0$nn
+    (( nn++ ))
+done
