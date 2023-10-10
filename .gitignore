@@ -37,8 +37,5 @@ FLEXPART_MPI
 *.out
 *.app
 
-# Flexpart MeteoSwiss specific
+# Log files
 *.log
-*.orig
-src/Makefile.default-mode
-test/job
