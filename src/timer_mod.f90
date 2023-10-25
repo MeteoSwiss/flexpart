@@ -218,4 +218,3 @@ MODULE timer_mod
     END FUNCTION time_sec_str
 
 end module timer_mod
-  
