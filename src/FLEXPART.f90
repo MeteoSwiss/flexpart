@@ -62,11 +62,6 @@ program flexpart
 
   call start_timer(timer_total)
 
-  ! Initialize fdb for data retreival
-  !******************************************
-  fdb_res = fdb_initialise()
-  fdb_res = fdb_new_handle(fdb_handle)
-
   ! Generate a large number of random numbers
   !******************************************
 
@@ -179,6 +174,14 @@ program flexpart
   endif
 
   if (fdbflag .eq. 1) then
+
+    ! Initialize fdb for data retreival
+    !******************************************
+    fdb_res = fdb_initialise()
+    fdb_res = fdb_new_handle(fdb_handle)
+
+    ! Initialize fdb timers
+    !******************************************
     timer_readwind_fdb_inloop  = new_timer("Readwind Get Message Length (FDB)")
     timer_readwind_request  = new_timer("Readwind FDB Request")
     timer_fdb_datareader_read = new_timer("fdb_datareader_read_message")
