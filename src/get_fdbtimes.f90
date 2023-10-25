@@ -218,17 +218,15 @@ subroutine get_fdbtimes
 
   do k=1,numbnests
     if (numbwfn(k).ne.numbwf) then
-      write(*,*) 'FLEXPART ERROR: THE AVAILABLE FILES FOR THE'
-      write(*,*) 'NESTED WIND FIELDS ARE NOT CONSISTENT WITH'
-      write(*,*) 'THE AVAILABLE FILE OF THE MOTHER DOMAIN.  '
+      write(*,*) 'FLEXPART ERROR: THE NESTED WIND FIELDS ARE '
+      write(*,*) 'NOT CONSISTENT WITH THE MOTHER DOMAIN.'
       write(*,*) 'ERROR AT NEST LEVEL: ',k
       stop
     endif
     do i=1,numbwf
       if (wftimen(k,i).ne.wftime(i)) then
-        write(*,*) 'FLEXPART ERROR: THE AVAILABLE FILES FOR THE'
-        write(*,*) 'NESTED WIND FIELDS ARE NOT CONSISTENT WITH'
-        write(*,*) 'THE AVAILABLE FILE OF THE MOTHER DOMAIN.  '
+        write(*,*) 'FLEXPART ERROR: THE NESTED WIND FIELDS ARE '
+        write(*,*) 'NOT CONSISTENT WITH THE MOTHER DOMAIN.'
         write(*,*) 'ERROR AT NEST LEVEL: ',k
         stop
       endif
