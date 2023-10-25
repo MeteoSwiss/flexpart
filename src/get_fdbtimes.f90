@@ -127,42 +127,6 @@ subroutine get_fdbtimes
     endif
   end do
 
-  ! Open the wind field availability file and read available wind fields
-  ! within the modelling period (nested grids)
-  !*********************************************************************
-
-!   do k=1,numbnests
-!   !print*,length(numpath+2*(k-1)+1),length(numpath+2*(k-1)+2),length(4),length(3)
-!   !print*,path(numpath+2*(k-1)+2)(1:length(numpath+2*(k-1)+2))
-!     open(unitavailab,file=path(numpath+2*(k-1)+2) &
-!          (1:length(numpath+2*(k-1)+2)),status='old',err=998)
-
-!     do i=1,3
-!       read(unitavailab,*)
-!     end do
-
-!     numbwfn(k)=0
-! 700   read(unitavailab,'(i8,1x,i6,2(6x,a255))',end=699) ldat, &
-!           !  ltim
-!       jul=juldate(ldat,ltim)
-!       if ((jul.ge.beg).and.(jul.le.end)) then
-!         numbwfn(k)=numbwfn(k)+1
-!         if (numbwfn(k).gt.maxwf) then      ! check exceedance of dimension
-!        write(*,*) 'Number of nested wind fields is too great.'
-!        write(*,*) 'Reduce modelling period (file "COMMAND") or'
-!        write(*,*) 'reduce number of wind fields (file "AVAILABLE").'
-!           stop
-!         endif
-
-!         wftime1n(k,numbwfn(k))=nint((jul-bdate)*86400._dp)
-!       endif
-!       goto 700       ! next wind field
-
-! 699   continue
-
-!     close(unitavailab)
-!   end do
-
 
   ! Check wind field times of file AVAILABLE (expected to be in temporal order)
   !****************************************************************************
@@ -175,14 +139,14 @@ subroutine get_fdbtimes
 
   do i=2,numbwf
     if (wftime1(i).le.wftime1(i-1)) then
-      write(*,*) 'FLEXPART ERROR: FILE AVAILABLE IS CORRUPT.'
+      write(*,*) 'FLEXPART MODEL ERROR!'
       write(*,*) 'THE WIND FIELDS ARE NOT IN TEMPORAL ORDER.'
       ! write(*,*) 'PLEASE CHECK FIELD ',wfname1(i)
       stop
     endif
   end do
 
-  ! Check wind field times of file AVAILABLE for the nested fields
+  ! Check wind field times for the nested fields
   ! (expected to be in temporal order)
   !***************************************************************
 
@@ -195,7 +159,7 @@ subroutine get_fdbtimes
 
     do i=2,numbwfn(k)
       if (wftime1n(k,i).le.wftime1n(k,i-1)) then
-      write(*,*) 'FLEXPART ERROR: FILE AVAILABLE IS CORRUPT. '
+      write(*,*) 'FLEXPART ERROR!                                  '
       write(*,*) 'THE NESTED WIND FIELDS ARE NOT IN TEMPORAL ORDER.'
       ! write(*,*) 'PLEASE CHECK FIELD ',wfname1n(k,i)
       write(*,*) 'AT NESTING LEVEL ',k
@@ -280,16 +244,5 @@ subroutine get_fdbtimes
   end do
 
   return
-
-998   write(*,*) ' #### FLEXPART MODEL ERROR! AVAILABLE FILE   #### '
-  write(*,'(a)') '     '//path(numpath+2*(k-1)+2) &
-        (1:length(numpath+2*(k-1)+2))
-  write(*,*) ' #### CANNOT BE OPENED             #### '
-  stop
-
-999   write(*,*) ' #### FLEXPART MODEL ERROR! AVAILABLE FILE #### '
-  write(*,'(a)') '     '//path(4)(1:length(4))
-  write(*,*) ' #### CANNOT BE OPENED           #### '
-  stop
 
 end subroutine get_fdbtimes

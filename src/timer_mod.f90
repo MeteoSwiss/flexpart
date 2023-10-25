@@ -144,7 +144,6 @@ MODULE timer_mod
 
         CALL print_timer(it, nd)
 
-        ! How many sub-timers has <it>, and which?
         n = 0
         DO k=1,timer_top
         IF (timers(k)%active_under == it) THEN
