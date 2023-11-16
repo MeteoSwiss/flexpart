@@ -3,7 +3,7 @@
 
 ### What is this repository for? ###
 
-* This repository contains the development version of the Lagrangian model FLEXPART 
+* This repository contains the Lagrangian particle dispersion model FLEXPART.
 
  ### How do I get set up? ###
 
@@ -17,6 +17,10 @@
  * NetCDF (optional)
 
 * Compilation
+
+To compile for MeteoSwiss read [README.meteoswiss.md](README.meteoswiss.md).
+
+Otherwise
 
 ```
 > cd src
