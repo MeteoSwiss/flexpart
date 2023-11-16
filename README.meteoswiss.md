@@ -51,7 +51,7 @@ To clean the object, module and executable files
 Test FLEXPART
 -------------
 
-See the [README.md](test_meteoswiss/README.md) file in that `test` directory 
+See the [README.md](test_meteoswiss/README.md) file in the `test_meteoswiss` directory 
 for testing instructions.
 
 
@@ -70,4 +70,5 @@ Run flexpart with
 
     ./FLEXPART
 or
+
     ./FLEXPART_MPI
