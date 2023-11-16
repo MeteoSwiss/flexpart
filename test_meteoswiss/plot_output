@@ -1,0 +1,277 @@
+#!/bin/bash
+#+==============================================================================
+# Use pyflexplot to produce the standard plot set for the NAZ.
+#
+# Author:      Pirmin Kaufmann
+#-==============================================================================
+
+# Settings (should be equal to settings in test-fp)
+# --------
+# File for automatic job numbering
+job_no_file=$HOME/.flexpart_job
+# Root directory for job directories (see also test-fp script)
+job_root=$SCRATCH/flexpart/job
+# File with some metadata missing in nc file (see also test-fp script)
+plot_info_file=plot_info
+# Maximum number of plot files to list
+list_max=8
+# --------
+
+# Defaults
+# --------
+# Pyflexplot presets
+#preset="opr/cosmo-1e/all_pdf???"
+preset="opr/cosmo-1e-ctrl/all_???"
+#preset="opr/ifs-hres/all_???"
+#preset="opr/ifs-hres-eu/all_???"
+# Number of parallel threads used in pyflexplot
+ncpus=5
+# --------
+
+# Function
+# --------
+function display_help {
+    # Show script usage
+    cat >&2 << EOF
+
+Use pyflexplot to produce the standard plot set for the NAZ.
+       
+Usage: $tag [OPTION]... JOBDIR
+
+  JOBDIR                 Directory in which job was run. FLEXPART output file
+                         is searched in $job_root/JOBDIR/output
+                         instead of current directory.
+
+Mandatory arguments to long options are mandatory for short options too.
+  -c, --clean            delete existing plots before invoking pyflexplot
+  -d, --debug            print out additional debug output
+  -f, --force            invoke pyflexplot even if plots already exist
+  -h, --help             display this help and exit
+  -n, --dry-run          print commands without executing them
+  -N, --ncpus=NCPUS      use NCPUS parallel threads for pyflexplot
+  -p, --preset=PRESET    use pyflexplot with preset PRESET instead of $preset
+  -w, --wait             wait for batch job completion, allows to list results.
+
+EOF
+} # function display_help
+
+# Initialization
+# --------------
+tag=$(basename $0)
+
+# Parse arguments
+# ---------------
+iarg=0
+while (( $# > 0 )) ; do
+    case "$1" in
+	-c | --clean)
+	    clean=yes
+	    ;;
+	-d | --debug)
+	    debug=yes
+	    ;;
+	-n | --dry-run)
+	    dry_run=yes
+	    ;;
+	-f | --force)
+	    force=yes
+	    ;;
+	-h | --help)
+	    display_help
+	    exit
+	    ;;
+	-N | --ncpus*)
+	    # Mandatory option argument with or without =
+	    if [[ "$1" == *=* ]] ; then
+		ncpus="${1#*=}"
+	    else
+		(( $# > 1 )) && shift && ncpus="$1"
+	    fi
+	    ;;
+	-p | --preset*)
+	    # Mandatory option argument with or without =
+	    if [[ "$1" == *=* ]] ; then
+		preset="${1#*=}"
+	    else
+		(( $# > 1 )) && shift && preset="$1"
+	    fi
+	    ;;
+	-w | --wait)
+	    wait_opt=-w
+	    ;;
+	-*)
+	    echo $tag: "Unknown option: $1"
+	    exit 1
+	    ;;
+	*)
+	    (( iarg++ ))
+	    case $iarg in
+		1)
+		    jobdir="$1"
+		    ;;
+		*)  # Additional arguments
+		    echo $tag: "Too many arguments: $1"
+		    exit 1
+		    ;;
+	    esac
+	    ;;
+    esac
+    shift
+done
+
+# Check argument: Job directory
+if [[ -z $jobdir ]] ; then
+    if [[ -f $job_no_file ]] ; then
+	jobdir=$(cat $job_no_file)
+	echo $tag: "Missing argument: Job name/number, assuming last: $jobdir"
+    else
+	echo $tag: "Missing argument: Job name/number"
+	exit 1
+    fi
+fi
+
+# Start Processing
+# ----------------
+
+# Option -n, --dry-run
+if [[ -n $dry_run ]] ; then
+    # Enable escape sequences in echo with option -e
+    exe_cmd="echo -e \e[07;32m \e[0m  "
+    echo $tag: "INFO: Option --dry-run set," \
+	"printing commands without executing them."
+    echo -n $tag: "Skipped commands are marked with: "
+    $exe_cmd
+fi
+
+# Change to job directory
+if [[ -n $jobdir ]] ; then
+    jobout=$job_root/$jobdir/output
+    plotdir=$job_root/$jobdir/plot
+    pushd $job_root/$jobdir > /dev/null
+else
+    jobout=.
+    plotdir=.
+fi
+infiles=( $jobout/*.nc )
+echo $tag: "Producing plots from: ${infiles[*]}"
+echo $tag: "Producing plots in: $plotdir"
+
+# Check if plots exist
+if ls $plotdir/*p[dn][fg] > /dev/null 2>&1 ; then
+    echo -n $tag: "Plot files already exist"
+    if [[ -n $clean ]] ; then
+	echo ", deleting."
+	rm -rf $plotdir/*{png,pdf}
+    elif [[ -z $force ]] ; then
+	echo ", use --force to overwrite."
+	exe_cmd="echo -e $tag: SKIP: Plots already present, skipping:\n\e[07;32m \e[0m  "
+	wait_opt=skipped
+    else
+	echo ", overwriting."
+    fi
+fi
+
+# Derive variables 'job' (job name or number) and 'resol' (resolution)
+# from test-fp.log
+if [[ ! -e test-fp.log ]] ; then
+    $tag: "ERROR: Cannot derive resolution due to missing logfile: $pwd/test-fp.log"
+    exit 1
+fi
+eval $(tail -n 1 test-fp.log | sed 's/.*\(resol=[a-z0-9]*\) .*/\1/')
+echo $tag: "Resolution as determined from $PWD/test-fp.log: $resol"
+
+# Supersede job name from logfile if name specified explicitly
+[[ -n $jobdir ]] && job="$jobdir"
+
+# Define preset, use pyflexplot --preset=? to obtain the list of presets
+case "$resol" in
+    i1) preset=opr/cosmo-1e-ctrl/all_pdf
+	;;
+    i2) preset=opr/cosmo-2e-ctrl/all_pdf
+	;;
+    1e) preset=opr/cosmo-1e-ctrl/all_pdf
+	;;
+    2e) preset=opr/cosmo-2e-ctrl/all_pdf
+	;;
+    f) preset=opr/ifs-hres-eu/all_pdf
+	;;
+    g) preset=opr/ifs-hres/all_pdf
+	;;
+    *) echo $tag: "Unknown resolution: $resol"
+	exit 1
+	;;
+esac
+echo $tag: "Preset used: $preset"
+
+# Derive basetime from file plot_info
+# Load plot_info if present
+if [[ -f output/$plot_info_file ]] ; then
+    basetime=$(cat output/$plot_info_file)
+    echo $tag: "Retrieved base time from output/$plot_info_file: $basetime"
+    base_time_opt="--setup base_time ${basetime}"
+else
+    echo $tag: "Plot information file not found: output/$plot_info_file"
+fi
+
+# If conda environment exists, use pyflexplot from there
+# Note: conda info --base interactively yields miniconda3 directory 
+#                         in a shell script yields environment directory
+pyflexplot=$(conda info --base)/envs/pyflexplot/bin/pyflexplot
+if [[ ! -x $pyflexplot ]] ; then
+    # or run operational pyflexplot from $OPR_BIN
+    # Load definition of OPR_BIN
+    [[ -z $OPR_SETUP_DIR ]] && source /oprusers/osm/.opr_setup_dir
+    pyflexplot=$OPR_BIN/pyflexplot
+fi
+
+# Report executable
+echo $tag: "Using pyflexplot executable:" \
+    $(ls -l --time-style=long-iso $pyflexplot | cut -d\  -f6- )
+
+# Submit job
+for infile in ${infiles[*]} ; do
+    echo $tag: "Submitting job to plot: ${infile}"
+    # Option -w: wait for job to complete
+    [[ -n $wait_opt ]] && echo $tag: "Waiting for job completion."
+    $exe_cmd batchPP -t 2 -T 5 -n pfp_$jobdir $wait_opt -- \
+	$pyflexplot --preset=$preset --merge-pdfs \
+	--setup infile $infile $base_time_opt \
+	--dest=$plotdir --num-procs=\$SLURM_CPUS_PER_TASK
+done
+
+if [[ -n $jobdir ]] ; then
+    popd > /dev/null
+fi
+
+# Check if end of job has been waited for
+if [[ -n $wait_opt ]] ; then
+    # Count results
+    # Use echo with wc -w instead of ls with wc -l to avoid error messages
+    n_png=$(echo $plotdir/*png | wc -w)
+    n_pdf=$(echo $plotdir/*pdf | wc -w)
+
+    # Report results
+    if [[ $wait_opt = skipped ]] ; then
+	echo $tag: "Plots already present:"
+    else
+	echo $tag: "Plots produced:"
+    fi
+    if (( $n_png > 1 )) ; then
+	echo $tag: "Listing png-plots produced in: $plotdir"
+	ls $plotdir/*png | head -n $list_max
+	(( $n_pdf > $list_max )) && echo "... (total $n_png)"
+    fi
+
+    if (( $n_pdf > 1 )) ; then
+	echo $tag: "Listing pdf-plots produced in: $plotdir"
+	ls $plotdir/*pdf | head -n $list_max
+	(( $n_pdf > $list_max )) && echo "... (total $n_pdf)"
+    fi
+else
+    # Job running, only report output dir
+    echo $tag: "Not waiting for job completion (see option --wait)."
+    echo $tag: "Plots will be produced in: $plotdir"
+fi
+
+# End of script
+exit

@@ -1,0 +1,1257 @@
+#!/bin/bash
+#+============================================================================
+#
+# Description:
+#
+#   Calculate dispersion using a NWP forecast
+#   -----------------------------------------
+#
+#   Checks files on disk and retrieves them from cache or store
+#   Creates input and output directories for flexpart
+#   Adapts input files for flexpart
+#   Creates numbered job directory
+#   Copies executable to job directory
+#   Submits job on appropriate queue
+#
+# Author: Pirmin Kaufmann, MeteoSwiss
+#
+# Version:
+  revision=1.9  #vincr# version number, may be incremented using vincr
+#
+# See git log for history of modifications
+#-============================================================================
+
+#=============================================================================
+# Settings
+#=============================================================================
+# Machine-dependent defaults
+case "$HOST" in
+    balfrin* | tasna*)
+        # Path to user store
+        [[ -z $STORE ]] && STORE=/store_new/mch/msopr/$LOGNAME
+        # Default partition (-p, --partition) on balfrin/tasna
+        partition_serial=postproc
+        partition_parallel=postproc
+        # Default resolution (-r, --resol)
+        resol=i1
+        ;;
+    tsa* | arolla*)
+        # Path to user store
+        [[ -z $STORE ]] && STORE=/store/mch/msopr/$LOGNAME
+        # Default partition (-p, --partition) on tsa/arolla
+        # one of postproc, pp-long, pp-serial
+        partition_serial=pp-serial
+        partition_parallel=postproc
+        # Default resolution (-r, --resol)
+        resol=1e
+        ;;
+    *)
+        echo "ERROR configuring environment, unknown host: $HOST"
+        ;;
+esac
+
+# NWP model data sources
+# ----------------------
+# Load operational definition of OPR_OPR_DIR
+[[ -z $OPR_OPR_DIR ]] && source /oprusers/osm/.opr_setup_dir
+
+# Path to NWP files depending on resolution (see --resol)
+# String is split at " in: "
+# Template:
+#   "<description> in: <file-with-path>"
+# Allowed placeholders: <yymmddhh>, <ex>, <ddhh>, <mem>
+resolutions=()
+
+# ICON-CH1
+resolutions+=( "i1: ICON-CH1 (Cent. Europe 1 km)" )
+nwp_model_i1=icon
+nwp_max_range_i1=33
+lt_inc_i1=1
+nwp_source_list_i1=(
+    "Operational LADM cache (interp) in: $OPR_OPR_DIR/cache/LADM/FLEXPART-I1E-CTRL/dispc*"
+    "Operational fcst cache (native) in: $OPR_OPR_DIR/cache/ICON-CH1-EPS/FCST_RING/<yymmddhh>_6<ex>/icon/<mem>/lfff<ddhh>0000{,c}"
+    "User cache                      in: $SCRATCH/<yymmddhh>_6<ex>/icon/<mem>/lfff<ddhh>0000"
+    "Cases in user store             in: $STORE/CASES/FLEXPART-I1E-CTRL/<yyyymmddhh>/dispc*"
+)
+t1_i1=3; t2_i1=9; species_no_i1=39; rel_mass_i1=2.16E4; rel_site_i1=bez # Default: opr settings
+
+# ICON-CH2-EPS
+resolutions+=( "i2: ICON-CH2 (Cent. Europe 2 km)" )
+nwp_model_i2=icon
+nwp_max_range_i2=33
+lt_inc_i2=1
+nwp_source_list_i2=(
+    "Operational LADM cache (interp) in: $OPR_OPR_DIR/cache/LADM/FLEXPART-I2E-CTRL/dispc*"
+    "Operational fcst cache (native) in: $OPR_OPR_DIR/cache/ICON-CH2-EPS/FCST_RING/<yymmddhh>_7<ex>/icon/<mem>/lfff<ddhh>0000{,c}"
+    "User cache                      in: $SCRATCH/<yymmddhh>_7<ex>/icon/<mem>/lfff<ddhh>0000"
+    "Cases in user store             in: $STORE/CASES/FLEXPART-I2E-CTRL/<yyyymmddhh>/dispc*"
+)
+t1_i2=3; t2_i2=9; species_no_i2=39; rel_mass_i2=2.16E4; rel_site_i2=bez # Default: opr settings
+
+# COSMO-1E
+resolutions+=( "1e: COSMO-1E (Cent. Europe 1 km)" )
+nwp_model_1e=cosmo
+nwp_max_range_1e=33
+lt_inc_1e=1
+nwp_source_list_1e=(
+    "Operational LADM cache     in: $OPR_OPR_DIR/cache/LADM/FLEXPART-C1E-CTRL/dispc*"
+    "Operational fcst cache     in: arolla:$OPR_OPR_DIR/cache/COSMO-1E/FCST_RING/<yymmddhh>_4<ex>/cosmo/<mem>/lfff<ddhh>0000{,c}"
+    "User cache                 in: $SCRATCH/<yymmddhh>_4<ex>/cosmo/<mem>/lfff<ddhh>0000"
+    "Cases in user store        in: $STORE/CASES/FLEXPART-C1E-CTRL/<yyyymmddhh>/dispc*"
+)
+t1_1e=3; t2_1e=9; species_no_1e=39; rel_mass_1e=2.16E4; rel_site_1e=bez # Default: opr settings
+
+# COSMO-2E
+resolutions+=( "2e: COSMO-2E (Cent. Europe 2 km)" )
+nwp_model_2e=cosmo
+nwp_max_range_2e=120
+lt_inc_2e=1
+nwp_source_list_2e=(
+    "Operational LADM cache     in: $OPR_OPR_DIR/cache/LADM/FLEXPART-C2E/<yymmddhh>/dispc*_<mem>"
+    "Operational fcst cache     in: arolla:$OPR_OPR_DIR/cache/COSMO-2E/FCST_RING/<yymmddhh>_5<ex>/cosmo/<mem>lfff<ddhh>0000{,c}"
+    "User cache                 in: $SCRATCH/<yymmddhh>_5<ex>/cosmo/<mem>/lfff<ddhh>0000"
+    "Cases in user store        in: $STORE/CASES/FLEXPART-C2E/<yyyymmddhh>/dispc*_<mem>"
+)
+t1_2e=3; t2_2e=9; species_no_2e=39; rel_mass_2e=2.16E4; rel_site_2e=bez # Default: opr settings
+
+# ECMWF IFS-HRES Europe
+resolutions+=( "f: IFS-HRES-EUROPE (Europe 0.1°)" )
+nwp_model_f=ifs
+nwp_max_range_f=90
+lt_inc_f=1
+nwp_source_list_f=(
+    "Operational LADM cache     in: $OPR_OPR_DIR/cache/LADM/FLEXPART-IFS-EUROPE/dispf*"
+    "Cases in operational store in: /store/mch/msopr/flexpart_data/test-input/ifs-europe/<yyyymmddhh>/dispf*"
+    "User cache                 in: $SCRATCH/FLEXPART-IFS-EUROPE/disp*"
+    "Cases in user store        in: $STORE/CASES/FLEXPART-IFS-EUROPE/<yyyymmddhh>/dispf*"
+)
+t1_f=6; t2_f=12; species_no_f=39; rel_mass_f=21.6E10; rel_site_f=cherno # Default: opr settings
+
+# ECMWF IFS-HRES global
+resolutions+=( "g: IFS-HRES-GLOBAL (global 0.5°)" )
+nwp_model_g=ifs
+nwp_max_range_g=144
+lt_inc_g=3
+nwp_source_list_g=(
+    "Operational LADM cache     in: $OPR_OPR_DIR/cache/LADM/FLEXPART-IFS-GLOBAL/disp*"
+    "User cache                 in: $SCRATCH/FLEXPART-IFS-GLOBAL/disp*"
+    "Cases in user store        in: $STORE/CASES/FLEXPART-IFS-GLOBAL/<yyyymmddhh>/disp*"
+)
+t1_g=6; t2_g=12; species_no_g=39; rel_mass_g=21.6E10; rel_site_g=punggye # Default: opr settings
+
+# COSMO-1 (until 2020-09)
+resolutions+=( "1: COSMO-1 (Cent. Europe 1 km until 2020-09)" )
+nwp_model_1=cosmo
+nwp_max_range_1=33
+lt_inc_1=1
+nwp_source_list_1=(
+    "Operational LADM cache     in: *** no longer available ***"
+    "Operational fcst ring      in: *** no longer available ***"
+    "User cache                 in: $SCRATCH/<yymmddhh>_1<ex>/lm_coarse/lfff<ddhh>0000{,c}"
+    "Cases in user store        in: $STORE/CASES/COSMO-1/<yymmddhh>_1<ex>/lm_coarse/lfff<ddhh>0000{,c}"
+)
+t1_1=3; t2_1=9; species_no_1=39; rel_mass_1=2.16E4; rel_site_1=bez # Default: opr settings
+
+# COSMO-E (until 2020-09)
+resolutions+=( "e: COSMO-E (Cent. Europe 2 km until 2020-09)" )
+nwp_model_e=cosmo
+nwp_max_range_e=120
+lt_inc_e=1
+nwp_source_list_e=(
+    "Operational LADM cache     in: *** no longer available ***"
+    "Operational fcst ring      in: *** no longer available ***"
+    "User cache                 in: $SCRATCH/<yymmddhh>_2<ex>/lm_coarse/<mem>/lfff<ddhh>0000{,c}"
+    "Cases in user store        in: $STORE/CASES/COSMO-E/<yymmddhh>_2<ex>/lm_coarse/<mem>/lfff<ddhh>0000{,c}"
+)
+t1_e=3; t2_e=9; species_no_e=39; rel_mass_e=2.16E4; rel_site_e=bez # Default: opr settings
+
+# Command used to launch an executable for your particular scheduler, 
+# e.g. srun, mpirun, etc
+[[ -z ${srun_cmd} ]] && srun_cmd="srun --kill-on-bad-exit"
+# Command used to submit a job to your particular scheduler, e.g. sbatch, qsub, etc
+[[ -z ${sbatch_cmd} ]] && sbatch_cmd="sbatch"
+
+# Path to ICON/COSMO landuse file GLC_EU_V2.bil
+landuse_source_icon="$STORE/../flexpart_data/GLC2000"
+landuse_source_cosmo="$STORE/../flexpart_data/GLC2000"
+# Path to IFS-HRES landuse file
+landuse_source_ifs="$STORE/../flexpart_data/IGBP_int1.dat"
+
+# Flexpart input file templates
+input_templates=$(dirname $PWD)/options # original options directory
+
+# File for automatic job numbering
+job_no_file=$HOME/.flexpart_job
+# Root directory for job directories
+job_root=$SCRATCH/flexpart/job
+# File with additional metadata not in nc file (see also pyflexplot_jobout script)
+plot_info_file=plot_info
+# Job file name
+job_file=job
+# Job logfile
+job_out=job.log
+
+# Defaults for arguments
+# ----------------------
+# Base time
+basetime=$(date --utc --date="12 yesterday" +%Y%m%d%H)           # Yesterday 12 UTC
+# Forecast range (automatically reduced if > max_range)
+fc_range=48
+# Simulation mode
+mode=1
+
+# Defaults for options
+# --------------------
+# Release site (-R, --rel-tag)
+rel_lon_bez=8.2284 ; rel_lat_bez=47.5519 ; rel_height_bez=100 ; rel_name_bez=Beznau
+rel_lon_bug=5.2700 ; rel_lat_bug=45.7992 ; rel_height_bug=100 ; rel_name_bug=Bugey
+rel_lon_fes=7.5625 ; rel_lat_fes=47.9036 ; rel_height_fes=100 ; rel_name_fes=Fessenheim
+rel_lon_goe=7.9668 ; rel_lat_goe=47.3659 ; rel_height_goe=100 ; rel_name_goe=Goesgen
+rel_lon_lei=8.1824 ; rel_lat_lei=47.6013 ; rel_height_lei=100 ; rel_name_lei=Leibstadt
+rel_lon_mub=7.2685 ; rel_lat_mub=46.9690 ; rel_height_mub=100 ; rel_name_mub=Muehleberg
+rel_lon_bushehr=50.8872 ; rel_lat_bushehr=28.8289 ; rel_height_bushehr=100 ; rel_name_bushehr=Bushehr
+rel_lon_cherno=30.0997   ; rel_lat_cherno=51.3897  ; rel_height_cherno=100  ; rel_name_cherno=Chernobyl
+rel_lon_punggye=129.0900 ; rel_lat_punggye=41.2800 ; rel_height_punggye=100 ; rel_name_punggye=Punggye-ri
+rel_lon_segula=178.1400  ; rel_lat_segula=52.0200  ; rel_height_segula=100  ; rel_name_segula=Segula
+# Ensemble members (-m, --member)
+member=000
+# Flexpart executable path (-E, --exe-dir)
+# should agree with Makefile variable EXEDIR
+exe_dir_icon=$(dirname $PWD)/bin
+exe_dir_cosmo=$(dirname $PWD)/bin
+exe_dir_ifs=$(dirname $PWD)/src
+# Flexpart executable name (-e, --exe-name)
+# should agree with Makefile variable EXECUTABLE
+exe_name_serial_icon=FLEXPART_GNUdebugncdfout
+exe_name_parallel_icon=FLEXPART_GNUompoptncdfout
+exe_name_serial_cosmo=FLEXPART_GNUdebugncdfout
+exe_name_parallel_cosmo=FLEXPART_GNUompoptncdfout
+exe_name_serial_ifs=FLEXPART
+exe_name_parallel_ifs=FLEXPART_MPI
+# Flexpart option (-o, --fp-opt)
+# one of -v, -v2, -i, -i2, and argument (name of pathfile)
+fp_opt=
+# Run mode serial or parallel (--run-mode)
+run_mode_icon=parallel
+run_mode_cosmo=parallel
+run_mode_ifs=serial
+# Averaging interval and output frequency (-a, --average)
+avg_h=3
+# Number of cpus for parallel exection,
+# see https://slurm.schedmd.com/mc_support.html for definitions
+ncpus=10
+# Stacksize for OMP execution
+stacksize=32M
+# Output format (-I, --iout)
+iout=9
+#=============================================================================
+
+#=============================================================================
+# Functions
+#=============================================================================
+function version {
+    # Print script name and revision number on stderr
+    cat >&2 << EOF
+
+$tag $revision
+
+EOF
+} # function version
+#=============================================================================
+function usage {
+    # Show script usage
+    cat >&2 << EOF
+
+Script to prepare and run Flexpart
+
+Usage: $tag [OPTION]... [BASETIME]
+
+Arguments:
+
+  BASETIME      forecast base time (format YYYYMMDDHH, def.: $basetime)
+  FC_RANGE      maximum lead time / forecast range (def.: $fc_range)
+  MODE          simulation mode: 1 = forward, -1 = backward (def.: $mode)
+
+Options:
+  Mandatory arguments to long options are mandatory for short options too.
+  -a, --average=H      averaging interval and output freqency of H [hours]
+                       (Default: $avg_h)
+  -n, --dry-run        print commands without executing them
+  -E, --exe-dir=DIR    Flexpart executable file path, default for
+                       - ICON: $exe_dir_icon
+                       - COSMO: $exe_dir_cosmo
+                       - IFS: $exe_dir_ifs
+  -e, --exe-name=NAME  executable file name, default: newest in DIR
+  -o, --fp-opt=OPT     add option OPT to command line when starting FLEXPART
+                       (Default: $fp_opt)
+  -h, --help           show this help and exit
+  -I, --iout=I         Set IOUT to I (1 binary, 9 NetCDF output)
+  -j, --job=NAME       manually set job name (default: consecutive number)
+  -N, --ncpus=N        numbers of cpus to allocate to OpenMP parallel run
+  -p, --partition=PART partition, one of postproc (may be abbreviated as pp),
+                       pp-serial, debug, normal, dev
+  -r, --resol=RESOL    resolution, one of: 1e, 2e, 1, e, f, g
+  -M, --rel-lon=LON    longitude of release
+  -M, --rel-lat=LAT    latitude of release
+  -M, --rel-mass=MASS  released mass [Bq] (default: $rel_mass)
+  -M, --rel-name=NAME  name of release site
+  -R, --rel-tag=TAG    release tag, selects file RELEASES.TAG
+  -R, --rel-site=SITE  release site, selects SITE from predefined sites
+  -t, --rel-time=T1,T2 release from T1 to T2 (lead times [hours]).
+                       (Default: $t1,$t2)
+      --run-mode=MODE  run code in MODE, one of serial or parallel
+  -S, --source-no=N    select source no N from list of NWP data sources
+  -N, --species-no=N   select species no N according to definition
+                       in SPECIES directory
+  -s, --stop           stop script before starting job (do not submit job)
+  -V, --version        output version information and exit
+
+EOF
+} # function usage
+
+#=============================================================================
+# Initialization
+#=============================================================================
+tag=$(basename $0)
+args="$*"
+
+#=============================================================================
+# Parse options and arguments
+#=============================================================================
+iarg=0
+while (( $# > 0 )) ; do
+    case "$1" in
+        -a | --average*)
+            # Mandatory option argument with or without =
+            if [[ "$1" == *=* ]] ; then
+                avg_h="${1#*=}"
+            else
+                (( $# > 1 )) && shift && avg_h="$1"
+            fi
+            ;;
+        -E | --exe-dir*)
+            # Mandatory option argument with or without =
+            if [[ "$1" == *=* ]] ; then
+                exe_dir="${1#*=}"
+            else
+                (( $# > 1 )) && shift && exe_dir="$1"
+            fi
+            ;;
+        -e | --exe-name*)
+            # Mandatory option argument with or without =
+            if [[ "$1" == *=* ]] ; then
+                exe_name="${1#*=}"
+            else
+                (( $# > 1 )) && shift && exe_name="$1"
+            fi
+            ;;
+        -h | --help)
+            usage
+            exit 0
+            ;;
+        -I | --iout*)
+            # Mandatory option argument with or without =
+            if [[ "$1" == *=* ]] ; then
+                iout="${1#*=}"
+            else
+                (( $# > 1 )) && shift && iout="$1"
+            fi
+            ;;
+        -j | --job*)
+            # Mandatory option argument with or without =
+            if [[ "$1" == *=* ]] ; then
+                job_name="${1#*=}"
+            else
+                (( $# > 1 )) && shift && job_name="$1"
+            fi
+            ;;
+        --rel-lon*)
+            # Mandatory option argument with or without =
+            if [[ "$1" == *=* ]] ; then
+                rel_lon="${1#*=}"
+            else
+                (( $# > 1 )) && shift && rel_lon="$1"
+            fi
+            ;;
+        --rel-lat*)
+            # Mandatory option argument with or without =
+            if [[ "$1" == *=* ]] ; then
+                rel_lat="${1#*=}"
+            else
+                (( $# > 1 )) && shift && rel_lat="$1"
+            fi
+            ;;
+        -M | --rel-mass*)
+            # Mandatory option argument with or without =
+            if [[ "$1" == *=* ]] ; then
+                rel_mass="${1#*=}"
+            else
+                (( $# > 1 )) && shift && rel_mass="$1"
+            fi
+            ;;
+        --rel-name*)
+            # Mandatory option argument with or without =
+            if [[ "$1" == *=* ]] ; then
+                rel_name="${1#*=}"
+            else
+                (( $# > 1 )) && shift && rel_name="$1"
+            fi
+            ;;
+        -n | --dry-run)
+            dry_run=yes
+            ;;
+        -N | --ncpus*)
+            # Mandatory option argument with or without =
+            if [[ "$1" == *=* ]] ; then
+                ncpus="${1#*=}"
+            else
+                if (( $# > 1 )) ; then
+                    shift
+                    ncpus="$1"
+                else
+                    echo $tag: "Missing value for option: --ncpus"
+                    exit 1
+                fi
+            fi
+            ;;
+        -o | --fp-opt*)
+            # Mandatory option argument with or without =
+            if [[ "$1" == *=* ]] ; then
+                fp_opt="${1#*=}"
+            else
+                (( $# > 1 )) && shift && fp_opt="$1"
+            fi
+            ;;
+        -p | --partition*)
+            # Mandatory option argument with or without =
+            if [[ "$1" == *=* ]] ; then
+                partition="${1#*=}"
+            else
+                (( $# > 1 )) && shift && partition="$1"
+            fi
+            [[ $partition == pp ]] && partition=postproc
+            ;;
+        -r | --resol*)
+            # Mandatory option argument with or without =
+            if [[ "$1" == *=* ]] ; then
+                resol="${1#*=}"
+            else
+                (( $# > 1 )) && shift && resol="$1"
+            fi
+            ;;
+        --run-mode*)
+            # Mandatory option argument with or without =
+            if [[ "$1" == *=* ]] ; then
+                run_mode="${1#*=}"
+            else
+                (( $# > 1 )) && shift && run_mode="$1"
+            fi
+            ;;
+        -R | --rel-tag*)
+            # Mandatory option argument with or without =
+            if [[ "$1" == *=* ]] ; then
+                rel_tag="${1#*=}"
+            else
+                (( $# > 1 )) && shift && rel_tag="$1"
+            fi
+            ;;
+        --rel-site*)
+            # Mandatory option argument with or without =
+            if [[ "$1" == *=* ]] ; then
+                rel_site="${1#*=}"
+            else
+                (( $# > 1 )) && shift && rel_site="$1"
+            fi
+            ;;
+        -s | --stop)
+            no_submit=yes
+            ;;
+        -N | --species-no*)
+            # Mandatory option argument with or without =
+            if [[ "$1" == *=* ]] ; then
+                species_no="${1#*=}"
+            else
+                (( $# > 1 )) && shift && species_no="$1"
+            fi
+            ;;
+        -t | --rel-time*)
+            # Mandatory option argument with or without =
+            if [[ "$1" == *=* ]] ; then
+                relt="${1#*=}"
+                t1="${relt%,*}"
+                t2="${relt#*,}"
+            else
+                (( $# > 1 )) && shift && t1="$1"
+                (( $# > 1 )) && shift && t2="$1"
+            fi
+            ;;
+        -S | --source-no*)
+            # Mandatory option argument with or without =
+            if [[ "$1" == *=* ]] ; then
+                source_no="${1#*=}"
+            else
+                if (( $# > 1 )) ; then
+                    shift
+                    source_no="$1"
+                else
+                    echo $tag: "Missing value for option: --source-no"
+                    exit 1
+                fi
+            fi
+            ;;
+        -V | --version)
+            version
+            exit
+            ;;
+        -[A-Za-z-]*)
+            # Unknown option (some arguments might be negative numbers)
+            echo $tag: "Unknown option $1"
+            exit 2
+            ;;
+        *)
+            # Positional arguments
+            (( iarg++ ))
+            case $iarg in
+                1)  # BASETIME
+                    basetime="$1"
+                    # Y2K compatibility for 2000 - 2099
+                    [[ ${#basetime} == 8 ]] && basetime=20$basetime
+                    ;;
+                2)  # FC_RANGE
+                    fc_range="$1"
+                    ;;
+                3)  # MODE
+                    mode="$1"
+                    ;;
+                *)
+                    echo $tag: "Too many arguments: $1"
+                    exit 3
+                    ;;
+            esac
+            ;;
+    esac
+    shift
+done
+
+# Check time format
+if [[ -n $t1 && ! $t1 =~ ^[0-9]+$ ]] ; then
+    echo $tag: "Release time 1 not valid: >$t1<"
+    exit 4
+fi
+if [[ -n $t2 && ! $t2 =~ ^[0-9]+$ ]] ; then
+    echo $tag: "Release time 2 not valid: $t2"
+    exit 5
+fi
+
+#===============================================================================
+# Initialize environment
+#===============================================================================
+
+if [[ -z $OPR_OPR_DIR ]] ; then
+    echo $tag: "ERROR: Environment variable OPR_OPR_DIR not defined and" \
+        "unable to source /oprusers/osm/.opr_setup_dir"
+    exit 1
+fi
+
+#=============================================================================
+# Start processing
+#=============================================================================
+# Option -n, --dry-run
+if [[ -n $dry_run ]] ; then
+    # Enable escape sequences in echo with option -e
+    exe_cmd="echo -e \e[07;32m \e[0m  "
+    echo    $tag: "INFO: Option --dry-run set, printing commands without executing them."
+    echo -n $tag: "Skipped commands are marked with: "
+    $exe_cmd
+fi
+
+# Report arguments
+echo $tag: "NWP input base time, range, and simulation mode:" \
+    "$basetime, $fc_range, $mode"
+
+# Select resolution and NWP data source
+# -------------------------------------
+# Select resolution
+if [[ -z $resol ]] ; then
+    echo "Select resolution (option --resol)"
+    select answer in "${resolutions[@]#*:}" ; do
+        # Note: Press return for default not possible
+        # as select repeats prompt until REPLY is not empty
+        [[ $REPLY == quit || $REPLY == exit ]] && exit
+        # answer is only set if REPLY was valid
+        [[ -n $answer ]] && break
+    done
+    (( i_resol = $REPLY - 1 ))
+    resol=${resolutions[$i_resol]%%:*}
+    echo "You selected: --resol=$resol # ${resolutions[$i_resol]#*:}"
+fi
+
+# Select NWP data source
+eval nwp_source_list=( \"\${nwp_source_list_${resol}[@]}\" )
+if [[ -z $source_no ]] ; then
+    echo "Select NWP data source (option --source-no)"
+    select answer in "${nwp_source_list[@]}" ; do
+        # Note: Press return for default not possible
+        # as select repeats prompt until REPLY is not empty
+        [[ $REPLY == quit || $REPLY == exit ]] && exit
+        # answer is only set if REPLY was valid
+        [[ -n $answer ]] && break
+    done
+    source_no=$REPLY
+else
+    (( i_source = $source_no - 1 ))
+    answer=${nwp_source_list[$i_source]}
+fi
+# Extract description and file path from nwp_source_list entry, splitting at "in:"
+source_desc="${answer%in:*}"
+nwp_source="${answer#*in:}"
+# Trim trailing space in source_desc
+source_desc="${source_desc%"${source_desc##*[![:space:]]}"}"
+# Trim leading space in nwp_source
+nwp_source="${nwp_source#"${nwp_source%%[![:space:]]*}"}"
+# Report data source
+echo $tag: "Selected NWP data source: --source-no=$source_no # $source_desc"
+echo $tag: "Search pattern for NWP files: $nwp_source"
+
+# Resolution-dependent settings
+# Check time arguments (depends on resolution)
+eval nwp_max_range=\$nwp_max_range_$resol
+eval lt_inc=\$lt_inc_$resol
+[[ -z $t1 ]] && eval t1=\$t1_$resol
+[[ -z $t2 ]] && eval t2=\$t2_$resol
+[[ -z $species_no ]] && eval species_no=\$species_no_$resol
+[[ -z $rel_mass ]] && eval rel_mass=\$rel_mass_$resol
+[[ -z $rel_site ]] && eval rel_site=\$rel_site_$resol
+(( $fc_range > $nwp_max_range )) && fc_range=$nwp_max_range
+(( $t1 < 0 )) && t1=0
+(( $t1 > $fc_range )) && t1=$fc_range
+(( $t2 <= $t1 )) && echo $tag: "Error: Release end before release start: $t2 < $t1"
+(( $t2 > $fc_range )) && t2=$fc_range
+
+eval nwp_model=\$nwp_model_$resol
+
+# Model-dependent settings
+if [[ -z $exe_dir ]] ; then # option --exe-dir
+    eval exe_dir=\$exe_dir_$nwp_model
+fi
+if [[ -z $run_mode ]] ; then # option --run-mode
+    eval run_mode=\$run_mode_$nwp_model
+fi
+
+# Site-dependent settings
+[[ -z $rel_lon ]]    && eval rel_lon=\$rel_lon_$rel_site
+[[ -z $rel_lat ]]    && eval rel_lat=\$rel_lat_$rel_site
+[[ -z $rel_height ]] && eval rel_height=\$rel_height_$rel_site
+[[ -z $rel_name ]]   && eval rel_name=\$rel_name_$rel_site
+# Check if defined
+if [[ -z $rel_lon || -z $rel_lat || -z $rel_height || -z $rel_name ]] ; then
+    echo $tag: "Not all required release parameters defined for site: $rel_site"
+    [[ -z $rel_lon ]]    && echo tag: "Longitude (--rel-lon) not defined."
+    [[ -z $rel_lat ]]    && echo tag: "Latitude (--rel-lat) not defined."
+    [[ -z $rel_height ]] && echo tag: "Height (--rel-height) not defined."
+    [[ -z $rel_name ]]   && echo tag: "Nametude (--rel-name) not defined."
+    exit 1
+fi
+
+# Executable name (options --exe-dir and --exe-name)
+if [[ -z $exe_name ]] ; then
+    # Select newest from exe_dir
+    echo $tag: "Looking for newest FLEXPART executable in: $exe_dir"
+    exe_list=( $(ls -t $exe_dir/FLEXPART*) )
+    exe_name=$(basename ${exe_list[0]%.env})
+    echo -n $tag: "Found: "
+    ls -l $exe_dir/$exe_name
+    if [[ $exe_name == *omp* || $exe_name == $exe_name_parallel_ifs ]] ; then
+        if [[ $run_mode == serial ]] ; then
+            echo $tag: "Requested run-mode serial with OMP-enabled executable: Setting OMP_NUM_THREADS=1"
+            ncpus=1
+        fi
+        run_mode=parallel
+    else
+        run_mode=serial
+    fi
+    echo $tag: "Run mode determined from exe-name: $run_mode"
+fi
+if [ ! -x $exe_dir/$exe_name ] ; then
+    echo $tag: "Executable not found: $exe_dir/$exe_name"
+    exit 6
+fi
+
+# Option --partition
+if [[ -z $partition ]] ; then
+    # Default depends on run_mode
+    eval partition=\$partition_$run_mode
+    # Currently no serial partition on balfrin
+    [[ $HOST == nid* ]] && partition=$partition_parallel
+fi
+
+# Prepare job
+# -----------
+# Link root dir for jobs into test dir
+$exe_cmd ln -sf $job_root .
+
+# Job number
+if [ -f $job_no_file ] ; then
+    job_no=`cat $job_no_file`
+else 
+    job_no=0
+fi
+if [[ -z $job_name ]] ; then
+    (( job_no++ ))
+    if [[ -z $dry_run ]] ; then
+        echo $job_no > $job_no_file
+    fi
+    job_name=$job_no
+fi
+echo $tag: "Preparing job, job name (option --job) : $job_name"
+
+# Job directory
+start_location=$job_root/$job_name
+if [ -d $start_location ] ; then
+    echo $tag: "Using existing job directory: $start_location"
+else
+    echo $tag: "Creating job directory: $start_location"
+    $exe_cmd mkdir -p $start_location
+fi
+
+# Copy executable
+$exe_cmd cp -pv  $exe_dir/$exe_name $start_location/.
+$exe_cmd ln -sf $exe_dir $start_location/.
+# Copy environment file
+if [[ -e $exe_dir/$exe_name.env ]] ; then
+    $exe_cmd cp -p  $exe_dir/$exe_name.env $start_location/.
+elif [[  -e $exe_dir/FLEXPART.env ]] ; then
+    echo $tag: "Specific environment file not found, using generic: $exe_dir/FLEXPART.env"
+    $exe_cmd cp -p  $exe_dir/FLEXPART.env $start_location/$exe_name.env
+else
+    echo $tag: "Environment file not found: $exe_dir/$exe_name.env"
+    exit 1
+fi
+
+# Input and output directories
+flex_input=$start_location/input
+flex_output=$start_location/output
+
+# Create pathnames file
+echo $tag: "Creating input file: $start_location/pathnames"
+# pathnames: directories must have slash at end!
+# file must contain empty line at end!
+if [[ -z $dry_run ]] ; then
+    cat > $start_location/pathnames <<EOF
+$flex_input/
+$flex_output/
+EOF
+fi
+
+# Ajust release time and duration
+if ! [[ $t1 =~ ^[0-9]+$ ]] ; then
+    echo $tag: "Release time 1 not valid: >$t1<"
+    exit 7
+fi
+if ! [[ $t2 =~ ^[0-9]+$ ]] ; then
+    echo $tag: "Release time 2 not valid: $t2"
+    exit 8
+fi
+
+(( $t1 < 0 )) && (( t1 = 0 ))
+(( $t1 > $fc_range )) && (( t1 = $fc_range ))
+(( $t2 <= $t1 )) && echo $tag: "Error: Release end before release start: $t2 < $t1"
+(( $t2 > $fc_range )) && (( t2 = $fc_range ))
+
+# Release start and end date/times
+release_start=( $(date --utc +"%Y%m%d %H%M%S" \
+                       --date="${basetime:0:8} ${basetime:8:2} $t1 hours") )
+  release_end=( $(date --utc +"%Y%m%d %H%M%S" \
+                       --date="${basetime:0:8} ${basetime:8:2} $t2 hours") )
+
+
+
+# Retrieve NWP input data
+# -----------------------
+
+# Nests
+# Define start of grib file name of mother and nested domains
+case $resol in
+    i1 | i2 | 1e | 2e | 1 | e)
+        # Operational configuration ICON and COSMO models, no nest
+        nests=( dispc )
+        ;;
+    f)
+        # Operational configuration since summer 2020, mother domain 0.1° Europe, no nest
+        nests=( dispf )
+        ;;
+    g)
+        # Operational configuration since summer 2020, IFS-HRES 0.5° global, 0.1° Europe
+        nests=( dispc dispf )
+        ;;
+    h1)
+        # Obsolete configuration, IFS-HRES 1° global, 0.1° Europe
+        nests=( dispc dispf )
+        ;;
+    h05)
+        # Operational configuration, IFS-HRES 0.5° global, 0.1° Europe
+        nests=( dispc dispf )
+        ;;
+    h01)
+        # Test configuration, mother domain 0.1° Europe, no nest
+        nests=( dispf )
+        ;;
+    *)
+        echo $tag: "Unknown resolution: $resol"
+        exit 4
+        ;;
+esac
+
+# NWP data source: Replace placeholders
+nwp_search=$(echo "$nwp_source" \
+    | sed "s/<yyyymmddhh>/${basetime}/g" \
+    | sed "s/<yymmddhh>/${basetime:2:8}/g" \
+    | sed "s/<ex>/??/g" \
+    | sed "s/<ddhh>/[0-9][0-9][0-9][0-9]/g" \
+    | sed "s/<mem>/$member/g")
+# Check if NWP data is available
+nwp_files=( $nwp_search )
+nwp_dir=$(dirname $nwp_files)
+if [ ! -f $nwp_files ] ; then
+    echo $tag: "%ERROR: No matching files found: $nwp_files"
+    if [[ $nwp_files == /opr/* && $HOSTNAME != arolla* ]] ; then
+        echo $tag: "For current data on /opr try on arolla"
+    fi
+    exit 7
+fi
+if [[ $nwp_files == *tgz ]] ; then
+    echo $tag: "Unzipping zipped file: $nwp_files"
+    gunzip $nwp_files
+    nwp_files=( ${nwp_files%.tgz} )
+    nwp_dir=$(dirname $nwp_files)
+fi
+
+# Check if GRIB constant data available
+if [[ $nwp_files != *disp* ]] ; then
+    # Forecast files, assuming COSMO forecasts
+    grib_const_file=lfff00000000c
+    if [ ! -f $nwp_dir/$grib_const_file ] ; then
+        echo $tag: "Constant GRIB data not available in: $nwp_dir"
+        exit 1
+    fi
+fi
+
+# Report NWP GRIB data source
+echo $tag: "NWP data source: $nwp_dir contains ${#nwp_files[*]} files"
+
+# NWP input data location for flexpart
+grib_input=$start_location/grib
+if [ -d $grib_input ] ; then
+    echo $tag: "Using existing NWP data directory: $grib_input"
+else
+    echo $tag: "Creating NWP data directory: $grib_input"
+    $exe_cmd mkdir $grib_input
+fi
+echo $tag: "Supplying NWP input data for FLEXPART in: $grib_input"
+
+# Provide NWP data for flexpart
+if (( ${#nwp_files[*]} > $fc_range - $t1 )) ; then
+    # Link NWP data from nwp_files to grib_input
+    if [[ -z $exe_cmd ]] ; then
+        cp -sf ${nwp_files[@]} $grib_input
+    else
+        # Abbreviated output for command above, show
+        # only first [0] and last [-1] array element
+        $exe_cmd cp -sf ${nwp_files[0]}...${nwp_files[-1]} $grib_input
+    fi
+    [[ -n $grib_const_file ]] && $exe_cmd cp -sf $nwp_dir/$grib_const_file $grib_input
+else
+    echo $tag: "ERROR(4): Insufficient number of files: ${#nwp_files[*]}"
+    exit 8
+fi
+
+# Create FLEXPART control input directory with SPECIES subdirectory
+echo $tag: "Creating input directory: $flex_input"
+$exe_cmd mkdir -p $flex_input/SPECIES
+
+# Create AVAILABLE files
+# Loop over nests
+i_nest=0
+while (( $i_nest < ${#nests[*]} )) ; do
+    nest=${nests[$i_nest]}
+    if (( $i_nest < 1 )) ; then
+        available_filename=AVAILABLE
+    elif (( $i_nest < 2 )) ; then
+        available_filename=AVAILABLE_NEST
+    else
+        available_filename=AVAILABLE_NEST$i_nest
+    fi
+    if [[ -n $dry_run ]] ; then
+        available_file=$(tty)
+    else
+        available_file=$flex_input/$available_filename
+    fi
+    # Write file header
+    echo $tag: "Creating AVAILABLE file with $nest* files for nest $i_nest: $available_file"
+    cat > $available_file << EOF
+DATE     TIME        FILENAME
+YYYYMMDD HHMISS 
+________ ______      __________________
+EOF
+
+    # Find grib files
+    if [ -d $grib_input ] ; then
+        pushd $grib_input > /dev/null
+        gribfiles=( $nest* )
+        if (( ${#gribfiles[*]} < 2)) ; then
+            echo $tag: "No $nest* files found in: $grib_input"
+            unset gribfiles
+        fi
+        popd > /dev/null
+    else
+        echo $tag: "No such directory: $grib_input"
+        unset gribfiles
+    fi
+    # Loop over existing files
+    for grib_file in ${gribfiles[*]} ; do
+        if [[ ! -f $grib_input/$grib_file && -h $grib_input/$grib_file ]] ; then
+            echo $tag: "WARNING: Broken link found and removed in NWP input data direcory: $grib_input/$grib_file"
+            rm $grib_input/$grib_file
+        else
+            printf "%s %s0000      %s\n" \
+                ${grib_file:5:8} ${grib_file:13:2} $grib_file >> \
+                $available_file
+        fi
+    done
+
+    # Create pathnames file, entry for each nest
+    # pathnames: directories must have slash at end!
+    if [[ -z $dry_run ]] ; then
+        cat >> $start_location/pathnames <<EOF
+$grib_input/
+$available_file
+EOF
+
+        (( i_nest++ ))
+    fi
+done # Loop over nests
+
+# Write end of pathnames
+if [[ -z $dry_run ]] ; then
+    cat >> $start_location/pathnames <<EOF
+============================================
+
+EOF
+fi
+
+# Copy input files
+echo $tag: "Copying input files from: ${input_templates}"
+echo -n $tag: "Copying:"
+for f in AGECLASSES INPUT_PHY RECEPTORS \
+            surfdata.t surfdepo.t ; do
+    echo -n " $f,"
+    if [[ $f == INPUT_PHY && $nwp_model != icon && $nwp_model != cosmo ]] ; then
+        echo
+        echo $tag: "Model $nwp_model is not icon nor cosmo, skipping file: $f"
+        continue
+    fi
+    if [[ ! -f $input_templates/$f ]] ; then
+        echo
+        echo $tag: "Cannot find template file:" \
+            $input_templates/$f
+        exit 10	
+    fi
+    $exe_cmd cp $input_templates/$f $flex_input
+done
+echo    " SPECIES (directory)"
+echo -n $tag: "Copying:"
+if [[ ! -d $input_templates/SPECIES ]] ; then
+    echo
+    echo $tag: "Required SPECIES directory not found: $input_templates/SPECIES"
+    exit 11
+fi
+$exe_cmd cp $input_templates/SPECIES/* $flex_input/SPECIES
+
+# Namelist template files
+command=COMMAND
+outgrid=OUTGRID.$resol
+
+# Link landuse source
+eval landuse_source=\$landuse_source_$nwp_model
+$exe_cmd ln -fs $landuse_source $flex_input
+
+# Release file, eventually with tag
+if [[ -n $rel_tag ]] ; then
+    rel_source=$input_templates/RELEASES.$rel_tag
+else
+    rel_source=$input_templates/RELEASES
+fi
+if [[ ! -f $rel_source ]] ; then
+    echo
+    echo $tag: "Required RELEASES file not found: $rel_source"
+    exit 12
+fi
+[[ -z $exe_cmd ]] && echo -n " $(basename $rel_source) --> RELEASES,"
+$exe_cmd cp $rel_source $flex_input/RELEASES
+if (( $? != 0 )) ; then
+    echo $tag: "Error copying RELEASES file, exiting."
+    exit 13
+fi
+
+# Command
+[[ -z $exe_cmd ]] && echo -n " $command --> COMMAND,"
+if [ -f $input_templates/$command ] ; then
+    $exe_cmd cp $input_templates/$command $flex_input/COMMAND
+else
+    echo
+    echo $tag: "Cannot find template:" \
+        $input_templates/$command
+    exit 14
+fi
+
+# Outgrid
+[[ -z $exe_cmd ]] && echo -n " $outgrid --> OUTGRID"
+if [ -f $input_templates/$outgrid ] ; then
+    $exe_cmd cp $input_templates/$outgrid $flex_input/OUTGRID
+else
+    echo
+    echo $tag: "Cannot find template file for specified model resolution:" \
+        $input_templates/$outgrid
+    exit 15
+fi
+echo
+
+# Output directory
+if [ -d $flex_output ] ; then
+    # Clean up output
+    echo $tag: "Cleaning up output files in: $flex_output"
+    $exe_cmd rm -f $flex_output/*
+else
+    # Create output directory
+    echo $tag: "Creating output directory: $flex_output"
+    $exe_cmd mkdir -p $flex_output
+fi
+
+# Adapt COMMAND
+# -------------
+echo $tag: "Adapting COMMAND input file: $flex_input/COMMAND"
+
+# COMMAND namelist input
+# Forward/backward mode
+echo $tag: "  Forward/backward mode: $mode"
+$exe_cmd gres "^ *LDIRECT *=.*!" \
+        "$(printf   " LDIRECT =%15s" $mode), !" $flex_input/COMMAND
+# Beginning date/time
+echo $tag: "  Model basetime: ${basetime:0:8} ${basetime:8:2}0000"
+# Simulation doesn't need to start before release
+echo $tag: "  Beginning date/time of release: ${release_start[*]}"
+echo $tag: "  Beginning date/time of simulation: ${release_start[*]}"
+$exe_cmd gres "^ *IBDATE *=.*!" \
+    "$(printf   " IBDATE =%16s" ${release_start[0]}), !" $flex_input/COMMAND
+$exe_cmd gres "^ *IBTIME *=.*!" \
+    "$(printf   " IBTIME =%16s" ${release_start[1]}), !" $flex_input/COMMAND
+# Ending date/time
+vt_str=( $(date +"%Y%m%d %H%M%S" --utc \
+    --date="${basetime:0:8} ${basetime:8:2} ${fc_range} hours") )
+echo $tag: "  Ending date/time: ${vt_str[*]}"
+$exe_cmd gres "^ *IEDATE *=.*!" \
+    "$(printf   " IEDATE =%16s" ${vt_str[0]}), !" $flex_input/COMMAND
+$exe_cmd gres "^ *IETIME *=.*!" \
+    "$(printf   " IETIME =%16s" ${vt_str[1]}), !" $flex_input/COMMAND
+# Averaging and output interval
+(( avg_s = $avg_h * 3600 ))
+echo $tag: "  Averaging and output interval: $avg_s"
+$exe_cmd gres "^ *LOUTSTEP *=.*!" \
+    "$(printf   " LOUTSTEP =%14s" $avg_s), !"     $flex_input/COMMAND
+$exe_cmd gres "^ *LOUTAVER *=.*!" \
+    "$(printf   " LOUTAVER =%14s" $avg_s), !"     $flex_input/COMMAND
+# Output format (-I, --iout)
+$exe_cmd gres "^ *IOUT *=.*!" \
+    "$(printf   " IOUT =%18s" $iout), !"          $flex_input/COMMAND
+
+# Adapt RELEASES
+# --------------
+echo $tag: Adapting RELEASES input file: $flex_input/RELEASES
+
+# RELEASES namelist input
+# Replace species number (option --species-no)
+echo $tag: "  Species number: $species_no"
+$exe_cmd gres "^ *SPECNUM_REL *=.*!" \
+"$(printf   "  SPECNUM_REL = %9d" $species_no), !" $flex_input/RELEASES
+# Beginning date/time of release
+echo $tag: "  Beginning date/time of release: ${release_start[*]}"
+$exe_cmd gres "^ *IDATE1 *=.*!" \
+"$(printf   " IDATE1  = %14s" ${release_start[0]}), !"  $flex_input/RELEASES
+$exe_cmd gres "^ *ITIME1 *=.*!" \
+"$(printf   " ITIME1  = %14s" ${release_start[1]}), !"  $flex_input/RELEASES
+# Ending date/time of release
+echo $tag: "  Ending date/time of release: ${release_end[*]}"
+$exe_cmd gres "^ *IDATE2 *=.*!" \
+"$(printf   " IDATE2  = %14s" ${release_end[0]}), !"    $flex_input/RELEASES
+$exe_cmd gres "^ *ITIME2 *=.*!" \
+"$(printf   " ITIME2  = %14s" ${release_end[1]}), !"    $flex_input/RELEASES
+# Longitude of release
+if [[ -n $rel_lon ]] ; then
+    echo $tag: "  Longitude of release: $rel_lon"
+    $exe_cmd gres "^ *LON1 *=.*!" \
+        "$(printf   " LON1    = %14s" $rel_lon), !" \
+        $flex_input/RELEASES
+    $exe_cmd gres "^ *LON2 *=.*!" \
+        "$(printf   " LON2    = %14s" $rel_lon), !" \
+        $flex_input/RELEASES
+fi
+# Latitude of release
+if [[ -n $rel_lat ]] ; then
+    echo $tag: "  Latitude of release: $rel_lat"
+    $exe_cmd gres "^ *LAT1 *=.*!" \
+        "$(printf   " LAT1    = %14s" $rel_lat), !" \
+        $flex_input/RELEASES
+    $exe_cmd gres "^ *LAT2 *=.*!" \
+        "$(printf   " LAT2    = %14s" $rel_lat), !" \
+        $flex_input/RELEASES
+fi
+# Height above ground of release
+if [[ -n $rel_height ]] ; then
+    echo $tag: "  Height above ground: $rel_height"
+    $exe_cmd gres "^ *Z1 *=.*!" \
+        "$(printf   " Z1      = %14s" $rel_height), !" \
+        $flex_input/RELEASES
+    $exe_cmd gres "^ *Z2 *=.*!" \
+        "$(printf   " Z2      = %14s" $rel_height), !" \
+        $flex_input/RELEASES
+fi
+# Replace total mass emitted (option --rel-mass)
+if [[ -n $rel_mass ]] ; then
+    echo $tag: "  Total mass emitted: $rel_mass"
+    $exe_cmd gres "^ *MASS *=.*!" \
+        "$(printf   " MASS    = %14s" $rel_mass), !" $flex_input/RELEASES
+fi
+# Comment
+if [[ -n $rel_name ]] ; then
+    echo $tag: "  Comment: $rel_name"
+    $exe_cmd gres "^ *COMMENT *=.*!" \
+        "$(printf   " COMMENT = %14s" '"'$rel_name'"'), !" $flex_input/RELEASES
+fi
+
+# Adapt INPUT_PHY
+# ---------------
+if [[ -e $flex_input/INPUT_PHY ]] ; then
+    echo $tag: "Adapting INPUT_PHY input file: $flex_input/INPUT_PHY"
+    # Replace institution name
+    user_record=$(getent passwd $USER | cut -d: -f5)
+    author=$(echo $user_record | cut -d, -f1)
+    institution=$(echo $user_record | cut -d, -f2)
+    [[ institution =~ \ *MCH\ * ]] && institution=MeteoSwiss
+    echo $tag: " Institution: $institution"
+    $exe_cmd gres "^ *INSTITUTION *=.*!" \
+        "$(printf  "  INSTITUTION = %s" '"'$institution'"'), !" $flex_input/INPUT_PHY
+    echo $tag: " Author: $author"
+    $exe_cmd gres "^ *AUTHOR *=.*!" \
+        "$(printf  "  AUTHOR = %s" '"'$author'"'), !" $flex_input/INPUT_PHY
+    echo $tag: " Login name: $USER"
+    $exe_cmd gres "^ *LOGIN_NAME *=.*!" \
+        "$(printf  "  LOGIN_NAME = %s" '"'$USER'"'), !" $flex_input/INPUT_PHY
+    echo $tag: " Host name: $HOST"
+    $exe_cmd gres "^ *HOST_NAME *=.*!" \
+        "$(printf  "  HOST_NAME = %s" '"'$HOST'"'), !" $flex_input/INPUT_PHY
+fi
+
+
+# Parallel execution
+if [[ $run_mode == parallel ]] ; then
+    # Use echo -e to enable interpretation of backslash escapes
+    parallel_opt=$(echo -e "#SBATCH --nodes=1\n#SBATCH --ntasks-per-node=1\n#SBATCH --cpus-per-task=$ncpus")
+    echo $tag: "Running parallel with ncpus=$ncpus"
+fi
+
+# Write plot info
+# ---------------
+if [[ -z $dry_run ]] ; then
+    cat > $flex_output/$plot_info_file <<EOF
+${basetime}
+EOF
+# Note: plot_info file for Lagranto as written by lagranto_[cf] namelist:
+# (would need $(date --utc --date=${basetime:0:8}T${basetime:8:2} +"%F %R %Z") as time string)
+#    cat > plot_info <<EOF
+#
+#Model base time:                            ${LM_YYYY}-${LM_MM}-${LM_DD} ${LM_ZZ}:00 UTC
+#Model name:                                 $LM_NL_F_TTAG
+#North pole longitude:                       $LM_NL_POLLONLM_F
+#North pole latitude:                        $LM_NL_POLLATLM_F
+#Start longitude:                            $LM_NL_STARTLON_TOT_F
+#Start latitude:                             $LM_NL_STARTLAT_TOT_F
+#Increment in longitudinal direction:        $LM_NL_DLONLM_F
+#Increment in latitudinal direction:         $LM_NL_DLATLM_F
+#Number of points in longitudinal direction: $LM_NL_IELM_F
+#Number of points in latitudinal direction:  $LM_NL_JELM_F
+#
+#EOF
+fi
+
+# Write job file
+# --------------
+if [[ -z $dry_run ]] ; then
+    # Job head
+    cat > $start_location/$job_file <<EOF
+#!/bin/bash
+#SBATCH --job-name=FLEXP.$job_name
+#SBATCH --output=$start_location/$job_out
+#SBATCH --error=$start_location/$job_out
+#SBATCH --partition=$partition
+#SBATCH --time=4:00:00
+$parallel_opt
+
+# Initialization
+ulimit -s unlimited
+
+# Number of OMP threads and stacksize, for OMP parallel execution only
+export OMP_NUM_THREADS=$ncpus
+export OMP_STACKSIZE=$stacksize         # to be increased if necessary!
+
+# Change to case directory
+cd $start_location
+
+# echo date and current limits
+date
+ulimit -a
+
+# Run flexpart
+# ------------
+# Load needed environment
+source $exe_name.env
+
+# Run FLEXPART in case directory
+${srun_cmd} ./$exe_name $fp_opt
+EOF
+
+fi
+
+# Add full command to logfile
+logline="$0 $args # $tag $basetime $fc_range $mode"
+logline+=" --average=$avg_h --exe-dir=$exe_dir --exe-name=$exe_name"
+logline+=" --job=$job_name"
+[[ $run_mode == parallel ]] && logline+=" --ncpus=$ncpus"
+logline+=" --partition=$partition"
+logline+=" --rel-mass=$rel_mass --rel-tag=$rel_tag --rel-time=$t1,$t2 --rel-site=$rel_site"
+logline+=" --resol=$resol --run-mode=$run_mode"
+logline+=" --species-no=$species_no"
+logline+=" --source-no=$source_no # (${source_desc% })"
+logline+=" # $(date +%F\ %R)"
+if [[ -z $dry_run ]] ; then
+    echo "$logline" > $start_location/$tag.log
+fi
+
+# Submit job
+# ----------
+if [[ -n $no_submit ]] ; then
+    echo $tag: "Option -s set, job not submitted: $start_location/$job_file"
+    exe_cmd="echo -e \033[07;32m \033[0m "
+else
+    echo $tag: "Submitting job: $start_location/$job_file"
+    echo $tag: "  to partition: $partition"
+    echo $tag: "Job output: $start_location/$job_out"
+fi
+
+$exe_cmd ${sbatch_cmd} $start_location/$job_file
+
+# Report full command
+echo $tag: "Completed command:"
+echo "# $job_name"
+echo "$logline"
+
+exit
