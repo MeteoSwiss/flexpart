@@ -80,8 +80,8 @@ endif
 ifndef NETCDF_FORTRAN_INCLUDE
   $(error NETCDF_FORTRAN_INCLUDE undefined)
 endif
-ifndef NETCDF_LD_FLAGS
-  $(error NETCDF_LD_FLAGS undefined)
+ifndef NETCDF_FORTRAN_LD_FLAGS
+  $(error NETCDF_FORTRAN_LD_FLAGS undefined)
 endif
 
 F90    = gfortran
@@ -115,8 +115,8 @@ DBGFLAGS = -I$(ECCODES_INCLUDE) $(NETCDF_FORTRAN_INCLUDE) -O$(O_LEV_DBG) -g -ggd
            -fmessage-length=0 -flto=jobserver -O$(O_LEV_DBG) $(NCOPT) \
            -fbacktrace   -Wall  -fdump-core $(FUSER)  #  -ffpe-trap=invalid,overflow,denormal,underflow,zero  -Warray-bounds -fcheck=all
 
-LDFLAGS  = $(FFLAGS) $(ECCODES_LD_FLAGS) $(JASPER_LD_FLAGS)  ${LIBAEC_LD_FLAGS} $(NETCDF_LD_FLAGS) $(LIBS)
-LDDEBUG  = $(DBGFLAGS) $(ECCODES_LD_FLAGS) $(JASPER_LD_FLAGS) ${LIBAEC_LD_FLAGS} $(NETCDF_LD_FLAGS) $(LIBS)
+LDFLAGS  = $(FFLAGS) $(ECCODES_LD_FLAGS) $(JASPER_LD_FLAGS)  ${LIBAEC_LD_FLAGS} $(NETCDF_FORTRAN_LD_FLAGS) $(LIBS)
+LDDEBUG  = $(DBGFLAGS) $(ECCODES_LD_FLAGS) $(JASPER_LD_FLAGS) ${LIBAEC_LD_FLAGS} $(NETCDF_FORTRAN_LD_FLAGS) $(LIBS)
 
 MODOBJS = \
 par_mod_meteoswiss.o    		com_mod.o \
