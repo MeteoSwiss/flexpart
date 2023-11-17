@@ -10,7 +10,7 @@ Installation
 
 ### Using the `spack` package
 
-This requires at lease spack-c2sm v0.20.1.2.
+This requires at least spack-c2sm v0.20.1.2.
 Activate [spack-c2sm](https://github.com/C2SM/spack-c2sm/blob/main/README.md)
 and build flexpart with `spack`: 
 

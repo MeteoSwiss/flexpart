@@ -216,13 +216,19 @@ fi
 # If conda environment exists, use pyflexplot from there
 # Note: conda info --base interactively yields miniconda3 directory 
 #                         in a shell script yields environment directory
-pyflexplot=$(conda info --base)/envs/pyflexplot/bin/pyflexplot
+pyflexplot=$(conda info --base)/bin/pyflexplot
 if [[ ! -x $pyflexplot ]] ; then
     # or run operational pyflexplot from $OPR_BIN
     # Load definition of OPR_BIN
     [[ -z $OPR_SETUP_DIR ]] && source /oprusers/osm/.opr_setup_dir
     pyflexplot=$OPR_BIN/pyflexplot
+    if [[ ! -x $pyflexplot ]] ; then
+        echo $tag: "ERROR: No active environment and no operational pyflexplot found: $pyflexplot"
+        exit 1
+    fi
 fi
+echo $tag: "Found pyflexplot: $pyflexplot"
+
 
 # Report executable
 echo $tag: "Using pyflexplot executable:" \
