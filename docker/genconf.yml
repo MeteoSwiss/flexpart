@@ -1,0 +1,8 @@
+loc: bez
+data: /data/dispf*
+landuse_data: /data/IGBP_int1.dat
+IBDATE: 20230918
+IBTIME: 000006
+IEDATE: 20230918 
+IETIME: 000010
+FDBFLAG: 1
