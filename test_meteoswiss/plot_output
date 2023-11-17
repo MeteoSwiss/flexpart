@@ -19,11 +19,6 @@ list_max=8
 
 # Defaults
 # --------
-# Pyflexplot presets
-#preset="opr/cosmo-1e/all_pdf???"
-preset="opr/cosmo-1e-ctrl/all_???"
-#preset="opr/ifs-hres/all_???"
-#preset="opr/ifs-hres-eu/all_???"
 # Number of parallel threads used in pyflexplot
 ncpus=5
 # --------
@@ -49,7 +44,7 @@ Mandatory arguments to long options are mandatory for short options too.
   -h, --help             display this help and exit
   -n, --dry-run          print commands without executing them
   -N, --ncpus=NCPUS      use NCPUS parallel threads for pyflexplot
-  -p, --preset=PRESET    use pyflexplot with preset PRESET instead of $preset
+  -p, --preset=PRESET    use pyflexplot with preset PRESET
   -w, --wait             wait for batch job completion, allows to list results.
 
 EOF

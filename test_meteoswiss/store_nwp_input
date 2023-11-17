@@ -7,6 +7,16 @@
 
 # Settings (should be equal to settings in test-fp)
 # --------
+tag=$(basename $0)
+# Machine-dependent defaults
+if [[ -z $STORE ]] ; then
+    case "$HOST" in
+        balfrin* | tasna*) STORE=/store_new/mch/msopr/$LOGNAME ;;
+        tsa* | arolla*) STORE=/store/mch/msopr/$LOGNAME ;;
+        *)  echo $tag: "ERROR configuring environment, unknown host: $HOST"
+            exit 1 ;;
+    esac
+fi
 # File for automatic job numbering
 job_no_file=$HOME/.flexpart_job
 # Root directory for job directories (see also test-fp script)
@@ -135,11 +145,22 @@ else
     echo $tag: "Plot information file not found: output/$plot_info_file"
 fi
 
-echo $case_store/$basetime
-$exe_cmd mkdir $case_store/$basetime
-ls $case_store/$basetime
-grep 'INFO.*/disp' job.log | sed 's|.*\(/scratch.*\)|\1|' | sort -u | xargs $exe_cmd cp -vt $case_store/$basetime
+if [[ ! -d $case_store ]] ; then
+    echo $tag: "Creating user storage for cases: $case_store"
+    $exe_cmd mkdir -p $case_store
+fi
+if [[ ! -d $case_store/$basetime ]] ; then
+    echo $tag: "Creating case: $basetime"
+    $exe_cmd mkdir $case_store/$basetime
+fi
 
+job_no=$(cat $job_no_file)
+job_log=$job_root/$job_no/job.log
+# flexpart-ifs
+grep 'Reading: .*grib' $job_log | sed 's|.*\(/scratch.*\)|\1|' | sort -u | \
+    xargs -I{} $exe_cmd cp -v {} $case_store/$basetime
+# flexpart-cosmo
+grep 'INFO.*/disp' $job_log | sed 's|.*\(/scratch.*\)|\1|' | sort -u | \
+    xargs -I{} $exe_cmd cp -v {} $case_store/$basetime
 
-# End of script
 exit
