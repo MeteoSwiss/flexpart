@@ -71,18 +71,18 @@ FLEXPART-SERIAL-DBG = FLEXPART_DBG
 ncf=yes
 
 # Check environment
-ifndef ECCODES_INCLUDE
-  $(error ECCODES_INCLUDE undefined)
-endif
-ifndef ECCODES_LD_FLAGS
-  $(error ECCODES_LD_FLAGS undefined)
-endif
-ifndef NETCDF_FORTRAN_INCLUDE
-  $(error NETCDF_FORTRAN_INCLUDE undefined)
-endif
-ifndef NETCDF_FORTRAN_LD_FLAGS
-  $(error NETCDF_FORTRAN_LD_FLAGS undefined)
-endif
+# ifndef ECCODES_INCLUDE
+# $(error ECCODES_INCLUDE undefined)
+# endif
+# ifndef ECCODES_LD_FLAGS
+# $(error ECCODES_LD_FLAGS undefined)
+# endif
+# ifndef NETCDF_FORTRAN_INCLUDE
+# $(error NETCDF_FORTRAN_INCLUDE undefined)
+# endif
+# ifndef NETCDF_FORTRAN_LD_FLAGS
+# $(error NETCDF_FORTRAN_LD_FLAGS undefined)
+# endif
 
 F90    = gfortran
 MPIF90 = mpif90
@@ -106,11 +106,11 @@ O_LEV_DBG = 0 # [0,g] # use g only for debugging
 ## LIBRARIES
 LIBS = -lm $(NCOPT)
 
-FFLAGS   = -I$(ECCODES_INCLUDE) $(NETCDF_FORTRAN_INCLUDE) -O$(O_LEV) -g -cpp -m64 -mcmodel=large -fPIC \
+FFLAGS   = -I$(ECCODES_INCLUDE) -I$(NETCDF_FORTRAN_INCLUDE) -O$(O_LEV) -g -cpp -m64 -mcmodel=large -fPIC \
            -fconvert=little-endian -frecord-marker=4 -fmessage-length=0 \
            -O$(O_LEV) $(NCOPT) $(FUSER)
 
-DBGFLAGS = -I$(ECCODES_INCLUDE) $(NETCDF_FORTRAN_INCLUDE) -O$(O_LEV_DBG) -g -ggdb -cpp \
+DBGFLAGS = -I$(ECCODES_INCLUDE) -I$(NETCDF_FORTRAN_INCLUDE) -O$(O_LEV_DBG) -g -ggdb -cpp \
            -m64 -mcmodel=large -fPIC -fconvert=little-endian -frecord-marker=4 \
            -fmessage-length=0 -flto=jobserver -O$(O_LEV_DBG) $(NCOPT) \
            -fbacktrace   -Wall  -fdump-core $(FUSER)  #  -ffpe-trap=invalid,overflow,denormal,underflow,zero  -Warray-bounds -fcheck=all
