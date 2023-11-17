@@ -24,6 +24,8 @@
 #=============================================================================
 # Settings
 #=============================================================================
+# Name of file defining environment
+flexpart_env=CSCS.env
 # Machine-dependent defaults
 case "$HOST" in
     balfrin* | tasna*)
@@ -178,7 +180,7 @@ landuse_source_cosmo="$STORE/../flexpart_data/GLC2000"
 landuse_source_ifs="$STORE/../flexpart_data/IGBP_int1.dat"
 
 # Flexpart input file templates
-input_templates=$(dirname $PWD)/options # original options directory
+input_templates=$(dirname $PWD)/options.meteoswiss
 
 # File for automatic job numbering
 job_no_file=$HOME/.flexpart_job
@@ -719,14 +721,13 @@ $exe_cmd cp -pv  $exe_dir/$exe_name $start_location/.
 $exe_cmd ln -sf $exe_dir $start_location/.
 # Copy environment file
 if [[ -e $exe_dir/$exe_name.env ]] ; then
-    $exe_cmd cp -p  $exe_dir/$exe_name.env $start_location/.
-elif [[  -e $exe_dir/FLEXPART.env ]] ; then
-    echo $tag: "Specific environment file not found, using generic: $exe_dir/FLEXPART.env"
-    $exe_cmd cp -p  $exe_dir/FLEXPART.env $start_location/$exe_name.env
-else
-    echo $tag: "Environment file not found: $exe_dir/$exe_name.env"
+    flexpart_env=$exe_name.env
+    echo $tag: "Specific environment file found, using: $exe_dir/$flexpart_env"
+elif [[ ! -e $exe_dir/$flexpart_env ]] ; then
+    echo $tag: "Environment file not found: $exe_dir/$flexpart_env"
     exit 1
 fi
+$exe_cmd cp -p  $exe_dir/$flexpart_env $start_location/.
 
 # Input and output directories
 flex_input=$start_location/input
@@ -1213,7 +1214,7 @@ ulimit -a
 # Run flexpart
 # ------------
 # Load needed environment
-source $exe_name.env
+source $flexpart_env
 
 # Run FLEXPART in case directory
 ${srun_cmd} ./$exe_name $fp_opt
