@@ -70,34 +70,23 @@ FLEXPART-SERIAL-DBG = FLEXPART_DBG
 
 ncf=yes
 
-# Check which programming environment is loaded
-ifneq (,$(findstring gnu,$(LOADEDMODULES)))
-    # Settings for GNU on tsa/arolla at CSCS
-    PE_ENV = GNU
-    F90       = gfortran
-    MPIF90    = mpif90
-    INCPATH1  = ${ECCODESROOT}/include
-    INCPATH2  = ${CURL_INCLUDES}
-    FUSER     = -finit-local-zero -lpthread
-    NETCDF_FORTRAN_INCLUDE = -I${EBROOTNETCDFMINFORTRAN}/include
-    NETCDF_LD_FLAGS = -lnetcdff
+# Check environment
+ifndef ECCODES_INCLUDE
+  $(error ECCODES_INCLUDE undefined)
 endif
-ifneq (,$(findstring gcc,$(LOADEDMODULES)))
-    # Settings for GCC on balfrin/tasna at CSCS
-    PE_ENV = GCC
-    F90       = gfortran
-    MPIF90    = mpif90
-    INCPATH1  = $(ECCODES_DIR)/include
-    INCPATH2  = .
-    ECCODES_LD_FLAGS = -L$(ECCODES_DIR)/lib64 -leccodes_f90
-    NETCDF_FORTRAN_INCLUDE = $(shell pkg-config netcdf-fortran --cflags) $(shell pkg-config netcdf --cflags)
-    NETCDF_LD_FLAGS = $(shell pkg-config netcdf-fortran --libs) $(shell pkg-config netcdf --libs)
-    FUSER     = -finit-local-zero -lpthread
+ifndef ECCODES_LD_FLAGS
+  $(error ECCODES_LD_FLAGS undefined)
 endif
-# Check if environment is loaded
-ifndef PE_ENV
-  $(error No programming environment loaded, use 'source CSCS.env' to load)
+ifndef NETCDF_FORTRAN_INCLUDE
+  $(error NETCDF_FORTRAN_INCLUDE undefined)
 endif
+ifndef NETCDF_LD_FLAGS
+  $(error NETCDF_LD_FLAGS undefined)
+endif
+
+F90    = gfortran
+MPIF90 = mpif90
+FUSER  = -finit-local-zero -lpthread
 
 ### Enable netCDF output?
 ifeq ($(ncf), yes)
@@ -117,11 +106,11 @@ O_LEV_DBG = 0 # [0,g] # use g only for debugging
 ## LIBRARIES
 LIBS = -lm $(NCOPT)
 
-FFLAGS   = -I$(INCPATH1) -I$(INCPATH2) $(NETCDF_FORTRAN_INCLUDE) -O$(O_LEV) -g -cpp -m64 -mcmodel=large -fPIC \
+FFLAGS   = -I$(ECCODES_INCLUDE) $(NETCDF_FORTRAN_INCLUDE) -O$(O_LEV) -g -cpp -m64 -mcmodel=large -fPIC \
            -fconvert=little-endian -frecord-marker=4 -fmessage-length=0 \
            -O$(O_LEV) $(NCOPT) $(FUSER)
 
-DBGFLAGS = -I$(INCPATH1) -I$(INCPATH2) $(NETCDF_FORTRAN_INCLUDE) -O$(O_LEV_DBG) -g -ggdb -cpp \
+DBGFLAGS = -I$(ECCODES_INCLUDE) $(NETCDF_FORTRAN_INCLUDE) -O$(O_LEV_DBG) -g -ggdb -cpp \
            -m64 -mcmodel=large -fPIC -fconvert=little-endian -frecord-marker=4 \
            -fmessage-length=0 -flto=jobserver -O$(O_LEV_DBG) $(NCOPT) \
            -fbacktrace   -Wall  -fdump-core $(FUSER)  #  -ffpe-trap=invalid,overflow,denormal,underflow,zero  -Warray-bounds -fcheck=all
