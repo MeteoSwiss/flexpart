@@ -19,7 +19,7 @@ and build flexpart with `spack`:
 ### Using `make` (without `spack`)
 
 `makefile_meteoswiss` requires four environment variables:
-- ECCODES_DIR: The directory where eccodes is installe.
+- ECCODES_DIR: The directory where eccodes is installed.
 - ECCODES_LD_FLAGS: The ld flags of eccodes.
 - NETCDF_FORTRAN_INCLUDE: The include flag to include netcdf.
 - NETCDF_FORTRAN_LD_FLAGS The ld flags of netcdf.
