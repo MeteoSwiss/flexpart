@@ -14,9 +14,17 @@ This requires at least spack-c2sm v0.20.1.2.
 Activate [spack-c2sm](https://github.com/C2SM/spack-c2sm/blob/main/README.md)
 and build flexpart with `spack`: 
 
-    spack dev-build -u build flexpart-ifs @develop
+    spack dev-build -u build flexpart-ifs @main
 
 ### Using `make` (without `spack`)
+
+`makefile_meteoswiss` requires four environment variables:
+- ECCODES_DIR: The directory where eccodes is installe.
+- ECCODES_LD_FLAGS: The ld flags of eccodes.
+- NETCDF_FORTRAN_INCLUDE: The include flag to include netcdf.
+- NETCDF_FORTRAN_LD_FLAGS The ld flags of netcdf.
+
+They are curated by `CSCS.env` for CSCS machines through module interfaces.
 
 Change to the `scr` directory 
 and load the appropriate modules for the GCC programming environment:
