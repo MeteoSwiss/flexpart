@@ -14,7 +14,7 @@ This requires at least spack-c2sm v0.20.1.2.
 Activate [spack-c2sm](https://github.com/C2SM/spack-c2sm/blob/main/README.md)
 and build flexpart with `spack`: 
 
-    spack dev-build -u build flexpart-ifs @develop %gcc
+    spack dev-build -u build flexpart-ifs @develop
 
 ### Using `make` (without `spack`)
 
