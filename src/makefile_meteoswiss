@@ -83,6 +83,12 @@ endif
 ifndef NETCDF_FORTRAN_LD_FLAGS
 $(error NETCDF_FORTRAN_LD_FLAGS undefined)
 endif
+ifndef FDB_DIR
+$(error FDB_DIR undefined)
+endif
+ifndef FDB_LD_FLAGS
+$(error FDB_LD_FLAGS undefined)
+endif
 ifndef FDB_FORTRAN_DIR
 $(error FDB_FORTRAN_DIR undefined)
 endif
@@ -112,17 +118,17 @@ O_LEV_DBG = 0 # [0,g] # use g only for debugging
 ## LIBRARIES
 LIBS = -lm $(NCOPT)
 
-FFLAGS   = -I$(ECCODES_DIR)/include -I$(FDB_FORTRAN_DIR)/include/fortran/fdb/modules $(NETCDF_FORTRAN_INCLUDE) -O$(O_LEV) -g -cpp -m64 -mcmodel=large -fPIC \
-           -fconvert=little-endian -frecord-marker=4 -fmessage-length=0 \
+FFLAGS   = -I$(ECCODES_DIR)/include -I$(FDB_FORTRAN_DIR)/include/fortran/fdb/modules -I$(FDB_DIR)/include $(NETCDF_FORTRAN_INCLUDE) -O$(O_LEV) -g -cpp -m64 -mcmodel=large -fPIC \
+           -fopenmp -fconvert=little-endian -frecord-marker=4 -fmessage-length=0 \
            -O$(O_LEV) $(NCOPT) $(FUSER)
 
-DBGFLAGS = -I$(ECCODES_DIR)/include -I$(FDB_FORTRAN_DIR)/include/fortran/fdb/modules $(NETCDF_FORTRAN_INCLUDE) -O$(O_LEV_DBG) -g -ggdb -cpp \
-           -m64 -mcmodel=large -fPIC -fconvert=little-endian -frecord-marker=4 \
+DBGFLAGS = -I$(ECCODES_DIR)/include -I$(FDB_FORTRAN_DIR)/include/fortran/fdb/modules -I$(FDB_DIR)/include $(NETCDF_FORTRAN_INCLUDE) -O$(O_LEV_DBG) -g -ggdb -cpp \
+           -m64 -mcmodel=large -fPIC -fopenmp -fconvert=little-endian -frecord-marker=4 \
            -fmessage-length=0 -flto=jobserver -O$(O_LEV_DBG) $(NCOPT) \
            -fbacktrace   -Wall  -fdump-core $(FUSER)  #  -ffpe-trap=invalid,overflow,denormal,underflow,zero  -Warray-bounds -fcheck=all
 
-LDFLAGS  = $(FFLAGS) $(ECCODES_LD_FLAGS) $(FDB_FORTRAN_LD_FLAGS) $(JASPER_LD_FLAGS) ${LIBAEC_LD_FLAGS} $(NETCDF_FORTRAN_LD_FLAGS) $(LIBS)
-LDDEBUG  = $(DBGFLAGS) $(ECCODES_LD_FLAGS) $(FDB_FORTRAN_LD_FLAGS) $(JASPER_LD_FLAGS) ${LIBAEC_LD_FLAGS} $(NETCDF_FORTRAN_LD_FLAGS) $(LIBS)
+LDFLAGS  = $(FFLAGS) $(ECCODES_LD_FLAGS) $(FDB_FORTRAN_LD_FLAGS) $(FDB_LD_FLAGS) $(JASPER_LD_FLAGS) ${LIBAEC_LD_FLAGS} $(NETCDF_FORTRAN_LD_FLAGS) $(LIBS)
+LDDEBUG  = $(DBGFLAGS) $(ECCODES_LD_FLAGS) $(FDB_FORTRAN_LD_FLAGS) $(FDB_LD_FLAGS) $(JASPER_LD_FLAGS) ${LIBAEC_LD_FLAGS} $(NETCDF_FORTRAN_LD_FLAGS) $(LIBS)
 
 MODOBJS = \
 par_mod_meteoswiss.o    		com_mod.o \
@@ -185,6 +191,7 @@ coordtrafo.o            psih.o \
 raerod.o 		readcommand.o 	\
 drydepokernel.o         readreceptors.o \
 erf.o                   readavailable.o \
+get_fdbtimes.o \
 ew.o			readreleases.o  \
 readdepo.o              get_vdep_prob.o   \
 get_wetscav.o		readwind_gfs.o \
@@ -230,7 +237,7 @@ ohreaction.o            getvdep_nests.o \
 initial_cond_calc.o     initial_cond_output.o initial_cond_output_inversion.o \
 dynamic_viscosity.o     get_settling.o	\
 initialize_cbl_vel.o	re_initialize_particle.o \
-cbl.o 					get_fdbtimes.o
+cbl.o 
 
 ifeq ($(ncf), yes)
 	OBJECTS	:= $(OBJECTS) $(OBJECTS_NCF)
