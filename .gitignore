@@ -39,3 +39,6 @@ FLEXPART_MPI
 
 # Log files
 *.log
+
+# Test artefacts
+test_meteoswiss/job
