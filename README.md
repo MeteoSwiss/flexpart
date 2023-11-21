@@ -1,47 +1,29 @@
 # README #
 
+This repository contains the Lagrangian particle dispersion model FLEXPART.
 
-### What is this repository for? ###
-
-* This repository contains the development version of the Lagrangian model FLEXPART 
-
- ### How do I get set up? ###
-
-* Configuration
-
-  Edit the makefile with the paths to libraries and include files
-
-* Dependencies
+### Dependencies
 
  * Jasper and grib_api or ECCodes
  * NetCDF (optional)
 
-* Compilation
+### Compilation
+
+To compile for MeteoSwiss read [README.meteoswiss.md](README.meteoswiss.md).
+
+Otherwise edit the `makefile` to adapt the paths to the libraries and the include files, then:
 
 ```
 > cd src
-
-change the appropriate paths to libraries in the makefile
-
 > make 
 ```
 
-* Deployment instructions 
+### Deployment instructions 
 
-   FLEXPART is a standalone executable  
-   The necessary ECMWF wind fields can be obtained testing flex_ecmwf
-   The AVAILABLE file works with the default ERA 5 retrieved winds
-   In the winds are available in flex_ecmwf/work it should suffice to execute 
-   ./src/FLEXPART in the main directory  
+FLEXPART is a standalone executable. Run it with
 
-### Contribution guidelines ###
+    ./src/FLEXPART
+    
+in the main directory.
 
-* The version contributed should compile on a reference version of the system and compiler. The current reference is gfortran 5.4 on Ubuntu 16.04
-* Code contribution including new features and bug fixes should be complemented with appropriate tests
-   An essential test consists of a set of input files and directories that allow FLEXPART to run.
-   A test can be accompanied by output files for verification
-* Code review
-
-[comment]: # "### Who do I talk to? ###"
-
-ignacio.pisso@nilu.no
+For more information about FLEXPART version 10, see [www.flexpart.eu](https://www.flexpart.eu)
