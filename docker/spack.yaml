@@ -4,10 +4,17 @@
 # configuration settings.
 spack:
   # add package specs to the `specs` list
-  specs: [flexpart-fdb +mch ^eckit@1.20.2 ~mpi ^eccodes@2.19.0 +aec jp2k=none +fortran ^hdf5 ~mpi] 
+  specs: 
+    - flexpart-ifs@fdb 
+    - eckit@1.20.2 ~mpi
+    - eccodes@2.19.0 +aec jp2k=none +fortran 
+    - hdf5 ~mpi
   view: false
   concretizer:
     unify: true
   config:
     install_tree:
       root: /opt/spack
+  packages:
+    all:
+      target: [x86_64]
