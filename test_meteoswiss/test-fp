@@ -139,7 +139,7 @@ nwp_source_list_g=(
     "User cache                 in: $SCRATCH/FLEXPART-IFS-GLOBAL/disp*"
     "Cases in user store        in: $STORE/CASES/FLEXPART-IFS-GLOBAL/<yyyymmddhh>/disp*"
 )
-t1_g=6; t2_g=12; species_no_g=39; rel_mass_g=21.6E10; rel_site_g=punggye # Default: opr settings
+t1_g=0; t2_g=0; species_no_g=39; rel_mass_g=4.32E10; rel_site_g=punggye # Default: opr settings
 
 # COSMO-1 (until 2020-09)
 resolutions+=( "1: COSMO-1 (Cent. Europe 1 km until 2020-09)" )
