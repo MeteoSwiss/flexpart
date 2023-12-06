@@ -1,8 +1,10 @@
 ARG container_registry
-FROM ${container_registry}/flexpart-poc/spack-dependencies:v0.0.0 as intermediate
+ARG base_tag=v0.2.0
+
+FROM ${container_registry}/flexpart-poc/spack-dependencies:${base_tag} as intermediate
 
 ARG TOKEN_FLEXPART
-ARG SPACK_TAG=v0.18.1.12
+ARG SPACK_TAG=v0.20.1.3
 
 # Prevent docker to cache git clones if the are changes in repo
 ADD https://x-access-token:${TOKEN_FLEXPART}@api.github.com/repos/MeteoSwiss-APN/flexpart-fdb/git/refs/heads/fdb version_flexpart.json
@@ -19,7 +21,7 @@ RUN apt-get -yqq update \
 
 RUN spack env activate -p spack-env && spack concretize && spack install
 
-FROM ${container_registry}/flexpart-poc/spack-dependencies:v0.0.0
+FROM ${container_registry}/flexpart-poc/spack-dependencies:${base_tag}
 
 RUN mkdir -p \
     /opt/spack/ \
