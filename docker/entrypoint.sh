@@ -96,7 +96,7 @@ done
 
 fi
 
-flexpart_prefix=`spack location -i flexpart`
+flexpart_prefix=`spack location -i flexpart-ifs`
 
 ./sandbox_generator.py --flexpart_dir ${flexpart_prefix} --sandbox_dir ${workdir}/sandbox ${fdb_flag} ${s3_flag}; 
 
