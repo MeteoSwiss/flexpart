@@ -59,57 +59,57 @@ tag=$(basename $0)
 iarg=0
 while (( $# > 0 )) ; do
     case "$1" in
-	-c | --clean)
-	    clean=yes
-	    ;;
-	-d | --debug)
-	    debug=yes
-	    ;;
-	-n | --dry-run)
-	    dry_run=yes
-	    ;;
-	-f | --force)
-	    force=yes
-	    ;;
-	-h | --help)
-	    display_help
-	    exit
-	    ;;
-	-N | --ncpus*)
-	    # Mandatory option argument with or without =
-	    if [[ "$1" == *=* ]] ; then
-		ncpus="${1#*=}"
-	    else
-		(( $# > 1 )) && shift && ncpus="$1"
-	    fi
-	    ;;
-	-p | --preset*)
-	    # Mandatory option argument with or without =
-	    if [[ "$1" == *=* ]] ; then
-		preset="${1#*=}"
-	    else
-		(( $# > 1 )) && shift && preset="$1"
-	    fi
-	    ;;
-	-w | --wait)
-	    wait_opt=-w
-	    ;;
-	-*)
-	    echo $tag: "Unknown option: $1"
-	    exit 1
-	    ;;
-	*)
-	    (( iarg++ ))
-	    case $iarg in
-		1)
-		    jobdir="$1"
-		    ;;
-		*)  # Additional arguments
-		    echo $tag: "Too many arguments: $1"
-		    exit 1
-		    ;;
-	    esac
-	    ;;
+        -c | --clean)
+            clean=yes
+            ;;
+        -d | --debug)
+            debug=yes
+            ;;
+        -n | --dry-run)
+            dry_run=yes
+            ;;
+        -f | --force)
+            force=yes
+            ;;
+        -h | --help)
+            display_help
+            exit
+            ;;
+        -N | --ncpus*)
+            # Mandatory option argument with or without =
+            if [[ "$1" == *=* ]] ; then
+                ncpus="${1#*=}"
+            else
+                (( $# > 1 )) && shift && ncpus="$1"
+            fi
+            ;;
+        -p | --preset*)
+            # Mandatory option argument with or without =
+            if [[ "$1" == *=* ]] ; then
+                preset="${1#*=}"
+            else
+                (( $# > 1 )) && shift && preset="$1"
+            fi
+            ;;
+        -w | --wait)
+            wait_opt=-w
+            ;;
+        -*)
+            echo $tag: "Unknown option: $1"
+            exit 1
+            ;;
+        *)
+            (( iarg++ ))
+            case $iarg in
+                1)
+                    jobdir="$1"
+                    ;;
+                *)  # Additional arguments
+                    echo $tag: "Too many arguments: $1"
+                    exit 1
+                    ;;
+            esac
+            ;;
     esac
     shift
 done
@@ -117,11 +117,11 @@ done
 # Check argument: Job directory
 if [[ -z $jobdir ]] ; then
     if [[ -f $job_no_file ]] ; then
-	jobdir=$(cat $job_no_file)
-	echo $tag: "Missing argument: Job name/number, assuming last: $jobdir"
+        jobdir=$(cat $job_no_file)
+        echo $tag: "Missing argument: Job name/number, assuming last: $jobdir"
     else
-	echo $tag: "Missing argument: Job name/number"
-	exit 1
+        echo $tag: "Missing argument: Job name/number"
+        exit 1
     fi
 fi
 
@@ -133,7 +133,7 @@ if [[ -n $dry_run ]] ; then
     # Enable escape sequences in echo with option -e
     exe_cmd="echo -e \e[07;32m \e[0m  "
     echo $tag: "INFO: Option --dry-run set," \
-	"printing commands without executing them."
+        "printing commands without executing them."
     echo -n $tag: "Skipped commands are marked with: "
     $exe_cmd
 fi
@@ -155,14 +155,14 @@ echo $tag: "Producing plots in: $plotdir"
 if ls $plotdir/*p[dn][fg] > /dev/null 2>&1 ; then
     echo -n $tag: "Plot files already exist"
     if [[ -n $clean ]] ; then
-	echo ", deleting."
-	rm -rf $plotdir/*{png,pdf}
+        echo ", deleting."
+        rm -rf $plotdir/*{png,pdf}
     elif [[ -z $force ]] ; then
-	echo ", use --force to overwrite."
-	exe_cmd="echo -e $tag: SKIP: Plots already present, skipping:\n\e[07;32m \e[0m  "
-	wait_opt=skipped
+        echo ", use --force to overwrite."
+        exe_cmd="echo -e $tag: SKIP: Plots already present, skipping:\n\e[07;32m \e[0m  "
+        wait_opt=skipped
     else
-	echo ", overwriting."
+        echo ", overwriting."
     fi
 fi
 
@@ -181,20 +181,20 @@ echo $tag: "Resolution as determined from $PWD/test-fp.log: $resol"
 # Define preset, use pyflexplot --preset=? to obtain the list of presets
 case "$resol" in
     i1) preset=opr/cosmo-1e-ctrl/all_pdf
-	;;
+        ;;
     i2) preset=opr/cosmo-2e-ctrl/all_pdf
-	;;
+        ;;
     1e) preset=opr/cosmo-1e-ctrl/all_pdf
-	;;
+        ;;
     2e) preset=opr/cosmo-2e-ctrl/all_pdf
-	;;
+        ;;
     f) preset=opr/ifs-hres-eu/all_pdf
-	;;
+        ;;
     g) preset=opr/ifs-hres/all_pdf
-	;;
+        ;;
     *) echo $tag: "Unknown resolution: $resol"
-	exit 1
-	;;
+        exit 1
+        ;;
 esac
 echo $tag: "Preset used: $preset"
 
@@ -211,8 +211,15 @@ fi
 # If conda environment exists, use pyflexplot from there
 # Note: conda info --base interactively yields miniconda3 directory 
 #                         in a shell script yields environment directory
-pyflexplot=$(conda info --base)/bin/pyflexplot
+echo $tag: "INFO: conda info --base yields:" $(conda info --base)
+pyflexplot=$(conda info --base)/envs/pyflexplot/bin/pyflexplot
 if [[ ! -x $pyflexplot ]] ; then
+    # Executable relative to miniconda3 directory fails,
+    # try relative to environment
+    pyflexplot=$(conda info --base)/bin/pyflexplot
+fi
+if [[ ! -x $pyflexplot ]] ; then
+    echo $tag: "WARNING: No Conda environment found: $pyflexplot"
     # or run operational pyflexplot from $OPR_BIN
     # Load definition of OPR_BIN
     [[ -z $OPR_SETUP_DIR ]] && source /oprusers/osm/.opr_setup_dir
@@ -221,6 +228,7 @@ if [[ ! -x $pyflexplot ]] ; then
         echo $tag: "ERROR: No active environment and no operational pyflexplot found: $pyflexplot"
         exit 1
     fi
+    echo $tag: "INFO: Using operational environment: $pyflexplot"
 fi
 echo $tag: "Found pyflexplot: $pyflexplot"
 
@@ -235,9 +243,9 @@ for infile in ${infiles[*]} ; do
     # Option -w: wait for job to complete
     [[ -n $wait_opt ]] && echo $tag: "Waiting for job completion."
     $exe_cmd batchPP -t 2 -T 5 -n pfp_$jobdir $wait_opt -- \
-	$pyflexplot --preset=$preset --merge-pdfs \
-	--setup infile $infile $base_time_opt \
-	--dest=$plotdir --num-procs=\$SLURM_CPUS_PER_TASK
+        $pyflexplot --preset=$preset --merge-pdfs \
+        --setup infile $infile $base_time_opt \
+        --dest=$plotdir --num-procs=\$SLURM_CPUS_PER_TASK
 done
 
 if [[ -n $jobdir ]] ; then
@@ -253,20 +261,20 @@ if [[ -n $wait_opt ]] ; then
 
     # Report results
     if [[ $wait_opt = skipped ]] ; then
-	echo $tag: "Plots already present:"
+        echo $tag: "Plots already present:"
     else
-	echo $tag: "Plots produced:"
+        echo $tag: "Plots produced:"
     fi
     if (( $n_png > 1 )) ; then
-	echo $tag: "Listing png-plots produced in: $plotdir"
-	ls $plotdir/*png | head -n $list_max
-	(( $n_pdf > $list_max )) && echo "... (total $n_png)"
+        echo $tag: "Listing png-plots produced in: $plotdir"
+        ls $plotdir/*png | head -n $list_max
+        (( $n_pdf > $list_max )) && echo "... (total $n_png)"
     fi
 
     if (( $n_pdf > 1 )) ; then
-	echo $tag: "Listing pdf-plots produced in: $plotdir"
-	ls $plotdir/*pdf | head -n $list_max
-	(( $n_pdf > $list_max )) && echo "... (total $n_pdf)"
+        echo $tag: "Listing pdf-plots produced in: $plotdir"
+        ls $plotdir/*pdf | head -n $list_max
+        (( $n_pdf > $list_max )) && echo "... (total $n_pdf)"
     fi
 else
     # Job running, only report output dir
