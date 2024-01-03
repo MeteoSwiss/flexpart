@@ -1,5 +1,5 @@
 ARG container_registry
-ARG base_tag=v0.2.0
+ARG base_tag=v0.2.1
 
 FROM ${container_registry}/flexpart-poc/spack-dependencies:${base_tag} as intermediate
 

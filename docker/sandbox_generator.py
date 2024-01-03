@@ -97,7 +97,8 @@ filedata = re.sub('IBTIME'+r'= *\d*, .*',
 filedata = re.sub('IETIME'+r'= *\d*, .*',
                     'IETIME'+'={date}0000,'.format(date=f"{int(conf['IETIME']):02}"), filedata)
 # Add new key-value pair FDBFLAG
-filedata = re.sub(r'\\\s*\n?', fr'\1\n FDBFLAG={int(conf.get("FDBFLAG", 0))}, \n /', filedata)
+filedata = re.sub('FDBFLAG'+r'= *\d*, .*',
+                    'FDBFLAG'+'={flag},'.format(flag=f"{conf['FDBFLAG']}"), filedata)
 
 
 with open(conf['sandbox_dir']+'/input/COMMAND', 'w') as file:
