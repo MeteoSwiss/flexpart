@@ -85,7 +85,7 @@ shutil.copy(conf['flexpart_prefix']+'/share/options/COMMAND',
 # Generate COMMAND
 
 with open(conf['flexpart_prefix']+'/share/options/COMMAND', 'r') as file:
-    filedata = file.readlines()
+    filedata = file.read()
     
 # Replace IBDATE, IEDATE, IBTIME, IETIME with new values
 filedata = re.sub('IBDATE'+r'= *\d*, .*',
@@ -101,7 +101,7 @@ filedata = re.sub(r'\\\s*\n?', fr'\1\n FDBFLAG={int(conf.get("FDBFLAG", 0))}, \n
 
 
 with open(conf['sandbox_dir']+'/input/COMMAND', 'w') as file:
-    file.writelines(filedata)
+    file.write(filedata)
 
 # Generate AVAILABLE
 if args.fdb is not True:
