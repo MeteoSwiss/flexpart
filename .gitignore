@@ -4,6 +4,9 @@ output
 FLEXPART
 FLEXPART_MPI
 
+# Spack packaging manager output
+spack-*
+
 # Prerequisites
 *.d
 
