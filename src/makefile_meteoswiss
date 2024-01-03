@@ -341,7 +341,7 @@ distance2.o: par_mod_meteoswiss.o
 drydepokernel.o: com_mod.o par_mod_meteoswiss.o unc_mod.o
 drydepokernel_nest.o: com_mod.o par_mod_meteoswiss.o unc_mod.o
 erf.o: par_mod_meteoswiss.o
-fdb_mod.o: com_mod.o par_mod.o class_gribfile_mod.o timer_mod.o
+fdb_mod.o: com_mod.o par_mod_meteoswiss.o class_gribfile_mod.o timer_mod.o
 ifeq ($(ncf), yes)
         FLEXPART.o: com_mod.o conv_mod.o par_mod_meteoswiss.o point_mod.o random_mod.o netcdf_output_mod.o class_gribfile_mod.o \
 	random_mod.o fdb_mod.o timer_mod.o
@@ -362,7 +362,7 @@ else
 	oh_mod.o outg_mod.o par_mod_meteoswiss.o point_mod.o unc_mod.o xmass_mod.o
 endif
 fluxoutput.o: com_mod.o flux_mod.o outg_mod.o par_mod_meteoswiss.o
-get_fdbtimes.o: com_mod.o par_mod.o
+get_fdbtimes.o: com_mod.o par_mod_meteoswiss.o
 get_settling.o: com_mod.o par_mod_meteoswiss.o
 get_vdep_prob.o: com_mod.o interpol_mod.o par_mod_meteoswiss.o point_mod.o
 get_wetscav.o: com_mod.o par_mod_meteoswiss.o point_mod.o
