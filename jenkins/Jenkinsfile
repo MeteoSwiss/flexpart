@@ -14,7 +14,11 @@ pipeline {
         TAG = "flexpart-poc/flexpart"
         VERSION = sh(
             returnStdout: true, 
-            script: 'if [ "$BRANCH_NAME" = "main" ]; then echo -n latest; else echo -n dev_${BRANCH_NAME}; fi'
+            script: 'if [ "$BRANCH_NAME" = "main" ]; then echo -n latest; elif [ -n "${TAG_NAME+1}" ]; then echo -n ${TAG_NAME}; else echo -n ${BRANCH_NAME}; fi'
+            )
+        PUBLIC_RELEASE = sh(
+            returnStdout: true, 
+            script: 'if [ "$BRANCH_NAME" = "main" ]; then echo -n 1; elif [ -n "${TAG_NAME+1}" ]; then echo -n 1; else echo -n 0; fi'
             )
         IMAGE_INTERN = "docker-intern-nexus.meteoswiss.ch/$TAG:$VERSION"
         IMAGE_PUBLIC = "docker-public-nexus.meteoswiss.ch/$TAG:$VERSION"
@@ -43,7 +47,7 @@ pipeline {
                         podman build --format docker --pull --build-arg TOKEN_FLEXPART=$GITHUB_ACCESS_TOKEN --build-arg container_registry=\$CR_ALL --build-arg spack_tag=\$SPACK_TAG -t \$IMAGE_INTERN ctx
                         podman push \$IMAGE_INTERN
                         podman tag \$IMAGE_INTERN \$IMAGE_PUBLIC
-                        if [ "$VERSION" = "latest" ]; then podman push \$IMAGE_PUBLIC; fi
+                        if [ "${PUBLIC_RELEASE}" = 1 ]; then podman push \$IMAGE_PUBLIC; fi
                     '''
                 }
             }
