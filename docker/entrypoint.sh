@@ -79,8 +79,8 @@ EOF
 
 export FDB5_CONFIG_FILE=$workdir/fdb_config.yml
 
-export PATH=$PATH:`spack location -i fdb-fortran`
-export PATH=$PATH:`spack location -i fdb`/bin
+export PATH=`spack location -i fdb-fortran`:$PATH
+export PATH=`spack location -i fdb`/bin:$PATH
 
 fdb-info --all
 fi
@@ -96,7 +96,10 @@ done
 
 fi
 
-flexpart_prefix=`spack location -i flexpart-fdb`
+flexpart_prefix=`spack location -i flexpart-ifs`
+
+# Copy the contents of MCH options into to the shared options directory.
+cp -r ${flexpart_prefix}/share/options.meteoswiss/* ${flexpart_prefix}/share/options
 
 ./sandbox_generator.py --flexpart_dir ${flexpart_prefix} --sandbox_dir ${workdir}/sandbox ${fdb_flag} ${s3_flag}; 
 

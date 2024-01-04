@@ -27,7 +27,7 @@ def download_file(obj, file):
     
 
 with open('genconf.yml') as f:
-    conf = yaml.load(f, Loader=Loader)
+    conf: dict = yaml.load(f, Loader=Loader)
 
 # Overwrite conf with env variable date/times
 ibdate=os.getenv('IBDATE')
@@ -81,30 +81,28 @@ shutil.copy(conf['flexpart_prefix']+'/share/options/AGECLASSES',
 shutil.copy(conf['flexpart_prefix']+'/share/options/COMMAND',
             conf['sandbox_dir']+'/input/COMMAND')
 
-with open(conf['flexpart_prefix']+'/share/options/COMMAND', 'r') as file:
-    filedata = file.readlines()
 
 # Generate COMMAND
-outdata = []
-for line in filedata:
-    # Replace the target string
 
-    for key in ['IBDATE', 'IEDATE']:
-        line = re.sub(key+r'= *\d*, .*',
-                      key+'={date},'.format(date=f"{conf[key]}"), line)
+with open(conf['flexpart_prefix']+'/share/options/COMMAND', 'r') as file:
+    filedata = file.read()
+    
+# Replace IBDATE, IEDATE, IBTIME, IETIME with new values
+filedata = re.sub('IBDATE'+r'= *\d*, .*',
+                      'IBDATE'+'={date},'.format(date=f"{conf['IBDATE']}"), filedata)
+filedata = re.sub('IEDATE'+r'= *\d*, .*',
+                      'IEDATE'+'={date},'.format(date=f"{conf['IEDATE']}"), filedata)
+filedata = re.sub('IBTIME'+r'= *\d*, .*',
+                    'IBTIME'+'={date}0000,'.format(date=f"{int(conf['IBTIME']):02}"), filedata)
+filedata = re.sub('IETIME'+r'= *\d*, .*',
+                    'IETIME'+'={date}0000,'.format(date=f"{int(conf['IETIME']):02}"), filedata)
+# Add new key-value pair FDBFLAG
+filedata = re.sub('FDBFLAG'+r'= *\d*, .*',
+                    'FDBFLAG'+'={flag},'.format(flag=f"{conf['FDBFLAG']}"), filedata)
 
-    for key in ['IBTIME', 'IETIME']:
-        line = re.sub(key+r'= *\d*, .*',
-                      key+'={date}0000,'.format(date=f"{int(conf[key]):02}"), line)
-
-    for key in ['FDBFLAG']:
-        line = re.sub(key+r'= *\d*, .*',
-                      key+'={fdbflag},'.format(fdbflag=f"{conf[key]}"), line)
-
-    outdata.append(line)
 
 with open(conf['sandbox_dir']+'/input/COMMAND', 'w') as file:
-    file.writelines(outdata)
+    file.write(filedata)
 
 # Generate AVAILABLE
 if args.fdb is not True:

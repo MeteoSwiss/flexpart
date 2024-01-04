@@ -1,13 +1,7 @@
 ARG container_registry
-FROM ${container_registry}/flexpart-poc/spack-dependencies:v0.0.0 as intermediate
+ARG base_tag=v0.2.1
 
-ARG TOKEN_FLEXPART
-ARG SPACK_TAG=v0.18.1.12
-
-# Prevent docker to cache git clones if the are changes in repo
-ADD https://x-access-token:${TOKEN_FLEXPART}@api.github.com/repos/MeteoSwiss-APN/flexpart-fdb/git/refs/heads/fdb version_flexpart.json
-ADD https://api.github.com/repos/C2SM/spack-c2sm/git/refs/tags/${SPACK_TAG} version_c2sm.json
-RUN git config --global url."https://x-access-token:${TOKEN_FLEXPART}@github.com/MeteoSwiss-APN/".insteadOf "ssh://git@github.com/MeteoSwiss-APN/"
+FROM ${container_registry}/flexpart-poc/spack-dependencies:${base_tag} as intermediate
 
 RUN mkdir -p /scratch/spack-env/ 
 COPY spack.yaml /scratch/spack-env/spack.yaml
@@ -19,7 +13,7 @@ RUN apt-get -yqq update \
 
 RUN spack env activate -p spack-env && spack concretize && spack install
 
-FROM ${container_registry}/flexpart-poc/spack-dependencies:v0.0.0
+FROM ${container_registry}/flexpart-poc/spack-dependencies:${base_tag}
 
 RUN mkdir -p \
     /opt/spack/ \
@@ -45,7 +39,7 @@ COPY IGBP_int1.dat /data/IGBP_int1.dat
 
 RUN pip3 install pyyaml boto3
 
-# Unset proxy
+# Unset proxy for use outside MCH
 ENV HTTP_PROXY= \
    http_proxy= \
    HTTPS_PROXY= \
