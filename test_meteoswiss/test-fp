@@ -34,8 +34,6 @@ case "$HOST" in
         # Default partition (-p, --partition) on balfrin/tasna
         partition_serial=postproc
         partition_parallel=postproc
-        # Default resolution (-r, --resol)
-        resol=i1
         ;;
     tsa* | arolla*)
         # Path to user store
@@ -44,12 +42,17 @@ case "$HOST" in
         # one of postproc, pp-long, pp-serial
         partition_serial=pp-serial
         partition_parallel=postproc
-        # Default resolution (-r, --resol)
-        resol=1e
         ;;
     *)
         echo "ERROR configuring environment, unknown host: $HOST"
         ;;
+esac
+# Directory-name-dependent defaults
+# Default resolution (-r, --resol)
+case "$PWD" in
+    *ifs*)   resol=g ;;
+    *cosmo*) resol=1e ;;
+    *icon*)  resol=i1 ;;
 esac
 
 # NWP model data sources
@@ -586,6 +589,8 @@ if [[ -z $resol ]] ; then
     (( i_resol = $REPLY - 1 ))
     resol=${resolutions[$i_resol]%%:*}
     echo "You selected: --resol=$resol # ${resolutions[$i_resol]#*:}"
+else
+    echo $tag: "NWP resolution: $resol"
 fi
 
 # Select NWP data source
