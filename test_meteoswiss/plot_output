@@ -44,6 +44,7 @@ Mandatory arguments to long options are mandatory for short options too.
   -h, --help             display this help and exit
   -n, --dry-run          print commands without executing them
   -N, --ncpus=NCPUS      use NCPUS parallel threads for pyflexplot
+  -O, --operational      use operational pyflexplot from osm
   -p, --preset=PRESET    use pyflexplot with preset PRESET
   -w, --wait             wait for batch job completion, allows to list results.
 
@@ -82,6 +83,9 @@ while (( $# > 0 )) ; do
             else
                 (( $# > 1 )) && shift && ncpus="$1"
             fi
+            ;;
+        -O | --operational)
+            operational=yes
             ;;
         -p | --preset*)
             # Mandatory option argument with or without =
@@ -208,27 +212,31 @@ else
     echo $tag: "Plot information file not found: output/$plot_info_file"
 fi
 
-# If conda environment exists, use pyflexplot from there
-# Note: conda info --base interactively yields miniconda3 directory 
-#                         in a shell script yields environment directory
-echo $tag: "INFO: conda info --base yields:" $(conda info --base)
-pyflexplot=$(conda info --base)/envs/pyflexplot/bin/pyflexplot
-if [[ ! -x $pyflexplot ]] ; then
-    # Executable relative to miniconda3 directory fails,
-    # try relative to environment
-    pyflexplot=$(conda info --base)/bin/pyflexplot
-fi
-if [[ ! -x $pyflexplot ]] ; then
-    echo $tag: "WARNING: No Conda environment found: $pyflexplot"
-    # or run operational pyflexplot from $OPR_BIN
-    # Load definition of OPR_BIN
-    [[ -z $OPR_SETUP_DIR ]] && source /oprusers/osm/.opr_setup_dir
-    pyflexplot=$OPR_BIN/pyflexplot
+if [[ -z $operational ]] ; then
+    # If conda environment exists, use pyflexplot from there
+    # Note: conda info --base interactively yields miniconda3 directory 
+    #                         in a shell script yields environment directory
+    echo $tag: "INFO: conda info --base yields:" $(conda info --base)
+    pyflexplot=$(conda info --base)/envs/pyflexplot/bin/pyflexplot
     if [[ ! -x $pyflexplot ]] ; then
-        echo $tag: "ERROR: No active environment and no operational pyflexplot found: $pyflexplot"
-        exit 1
+        # Executable not found in pyflexplot environment,
+        # try base environment
+        pyflexplot=$(conda info --base)/bin/pyflexplot
     fi
-    echo $tag: "INFO: Using operational environment: $pyflexplot"
+    if [[ ! -x $pyflexplot ]] ; then
+        echo $tag: "WARNING: No Conda environment found: $pyflexplot"
+    fi
+fi
+if [[ -n $operational || ! -x $pyflexplot ]] ; then
+        # Run operational pyflexplot from $OPR_BIN
+        # Load definition of OPR_BIN
+        [[ -z $OPR_SETUP_DIR ]] && source /oprusers/osm/.opr_setup_dir
+        pyflexplot=$OPR_BIN/pyflexplot
+        if [[ ! -x $pyflexplot ]] ; then
+            echo $tag: "ERROR: No operational pyflexplot found: $pyflexplot"
+            exit 1
+        fi
+        echo $tag: "INFO: Using operational environment: $pyflexplot"
 fi
 echo $tag: "Found pyflexplot: $pyflexplot"
 
