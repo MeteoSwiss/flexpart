@@ -66,6 +66,9 @@ while (( $# > 0 )) ; do
         -d | --debug)
             debug=yes
             ;;
+        -e | --ensemble)
+            ensemble=yes
+            ;;
         -n | --dry-run)
             dry_run=yes
             ;;
@@ -183,23 +186,29 @@ echo $tag: "Resolution as determined from $PWD/test-fp.log: $resol"
 [[ -n $jobdir ]] && job="$jobdir"
 
 # Define preset, use pyflexplot --preset=? to obtain the list of presets
-case "$resol" in
-    i1) preset=opr/cosmo-1e-ctrl/all_pdf
-        ;;
-    i2) preset=opr/cosmo-2e-ctrl/all_pdf
-        ;;
-    1e) preset=opr/cosmo-1e-ctrl/all_pdf
-        ;;
-    2e) preset=opr/cosmo-2e-ctrl/all_pdf
-        ;;
-    f) preset=opr/ifs-hres-eu/all_pdf
-        ;;
-    g) preset=opr/ifs-hres/all_pdf
-        ;;
-    *) echo $tag: "Unknown resolution: $resol"
-        exit 1
-        ;;
-esac
+if [[ -z $preset ]] ; then
+    if [[ -z $sensemble ]] ; then
+        case "$resol" in
+            i1) preset=opr/icon-ch1-ctrl/all_pdf ;;
+            i2) preset=opr/icon-ch2-ctrl/all_pdf ;;
+            1e) preset=opr/cosmo-1e-ctrl/all_pdf ;;
+            2e) preset=opr/cosmo-2e-ctrl/all_pdf ;;
+            f)  preset=opr/ifs-hres-eu/all_pdf   ;;
+            g)  preset=opr/ifs-hres/all_pdf      ;;
+            *)  echo $tag: "Unknown resolution: $resol"
+                exit 1 ;;
+        esac
+    else
+        case "$resol" in
+            i1) preset=opr/icon-ch1-eps/all_pdf ;;
+            i2) preset=opr/icon-ch2-eps/all_pdf ;;
+            1e) preset=opr/cosmo-1e/all_pdf ;;
+            2e) preset=opr/cosmo-2e/all_pdf ;;
+            *)  echo $tag: "Unknown ensemble resolution: $resol"
+                exit 1 ;;
+        esac
+    fi
+fi
 echo $tag: "Preset used: $preset"
 
 # Derive basetime from file plot_info

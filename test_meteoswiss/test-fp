@@ -67,8 +67,8 @@ esac
 # Allowed placeholders: <yymmddhh>, <ex>, <ddhh>, <mem>
 resolutions=()
 
-# ICON-CH1
-resolutions+=( "i1: ICON-CH1 (Cent. Europe 1 km)" )
+# ICON-CH1-EPS
+resolutions+=( "i1: ICON-CH1-EPS (Cent. Europe 1 km)" )
 nwp_model_i1=icon
 nwp_max_range_i1=33
 lt_inc_i1=1
@@ -81,7 +81,7 @@ nwp_source_list_i1=(
 t1_i1=3; t2_i1=9; species_no_i1=39; rel_mass_i1=2.16E4; rel_site_i1=bez # Default: opr settings
 
 # ICON-CH2-EPS
-resolutions+=( "i2: ICON-CH2 (Cent. Europe 2 km)" )
+resolutions+=( "i2: ICON-CH2-EPS (Cent. Europe 2 km)" )
 nwp_model_i2=icon
 nwp_max_range_i2=33
 lt_inc_i2=1
@@ -295,7 +295,7 @@ Options:
   -N, --ncpus=N        numbers of cpus to allocate to OpenMP parallel run
   -p, --partition=PART partition, one of postproc (may be abbreviated as pp),
                        pp-serial, debug, normal, dev
-  -r, --resol=RESOL    resolution, one of: 1e, 2e, 1, e, f, g
+  -r, --resol=RESOL    resolution, one of: i1, i2, 1e, 2e, 1, e, f, g
   -M, --rel-lon=LON    longitude of release
   -M, --rel-lat=LAT    latitude of release
   -M, --rel-mass=MASS  released mass [Bq] (default: $rel_mass)
