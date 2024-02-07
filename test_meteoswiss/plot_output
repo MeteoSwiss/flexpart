@@ -187,7 +187,7 @@ echo $tag: "Resolution as determined from $PWD/test-fp.log: $resol"
 
 # Define preset, use pyflexplot --preset=? to obtain the list of presets
 if [[ -z $preset ]] ; then
-    if [[ -z $sensemble ]] ; then
+    if [[ -z $ensemble ]] ; then
         case "$resol" in
             i1) preset=opr/icon-ch1-ctrl/all_pdf ;;
             i2) preset=opr/icon-ch2-ctrl/all_pdf ;;
