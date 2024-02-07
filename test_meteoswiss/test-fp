@@ -67,8 +67,8 @@ esac
 # Allowed placeholders: <yymmddhh>, <ex>, <ddhh>, <mem>
 resolutions=()
 
-# ICON-CH1
-resolutions+=( "i1: ICON-CH1 (Cent. Europe 1 km)" )
+# ICON-CH1-EPS
+resolutions+=( "i1: ICON-CH1-EPS (Cent. Europe 1 km)" )
 nwp_model_i1=icon
 nwp_max_range_i1=33
 lt_inc_i1=1
@@ -81,7 +81,7 @@ nwp_source_list_i1=(
 t1_i1=3; t2_i1=9; species_no_i1=39; rel_mass_i1=2.16E4; rel_site_i1=bez # Default: opr settings
 
 # ICON-CH2-EPS
-resolutions+=( "i2: ICON-CH2 (Cent. Europe 2 km)" )
+resolutions+=( "i2: ICON-CH2-EPS (Cent. Europe 2 km)" )
 nwp_model_i2=icon
 nwp_max_range_i2=33
 lt_inc_i2=1
@@ -183,7 +183,9 @@ landuse_source_cosmo="$STORE/../flexpart_data/GLC2000"
 landuse_source_ifs="$STORE/../flexpart_data/IGBP_int1.dat"
 
 # Flexpart input file templates
-input_templates=$(dirname $PWD)/options.meteoswiss
+input_templates_icon=$(dirname $PWD)/options
+input_templates_cosmo=$(dirname $PWD)/options
+input_templates_ifs=$(dirname $PWD)/options.meteoswiss
 
 # File for automatic job numbering
 job_no_file=$HOME/.flexpart_job
@@ -295,7 +297,7 @@ Options:
   -N, --ncpus=N        numbers of cpus to allocate to OpenMP parallel run
   -p, --partition=PART partition, one of postproc (may be abbreviated as pp),
                        pp-serial, debug, normal, dev
-  -r, --resol=RESOL    resolution, one of: 1e, 2e, 1, e, f, g
+  -r, --resol=RESOL    resolution, one of: i1, i2, 1e, 2e, 1, e, f, g
   -M, --rel-lon=LON    longitude of release
   -M, --rel-lat=LAT    latitude of release
   -M, --rel-mass=MASS  released mass [Bq] (default: $rel_mass)
@@ -730,9 +732,12 @@ if [[ -e $exe_dir/$exe_name.env ]] ; then
     echo $tag: "Specific environment file found, using: $exe_dir/$flexpart_env"
 elif [[ ! -e $exe_dir/$flexpart_env ]] ; then
     echo $tag: "Environment file not found: $exe_dir/$flexpart_env"
-    exit 1
+    echo $tag: "This is not a problem if FLEXPART has been compiled with spack"
+    unset flexpart_env
 fi
-$exe_cmd cp -p  $exe_dir/$flexpart_env $start_location/.
+if [[ -n $flexpart_env ]] ; then
+    $exe_cmd cp -p  $exe_dir/$flexpart_env $start_location/.
+fi
 
 # Input and output directories
 flex_input=$start_location/input
@@ -946,6 +951,7 @@ EOF
 fi
 
 # Copy input files
+eval input_templates=\$input_templates_$nwp_model
 echo $tag: "Copying input files from: ${input_templates}"
 echo -n $tag: "Copying:"
 for f in AGECLASSES INPUT_PHY RECEPTORS \
@@ -1218,9 +1224,13 @@ ulimit -a
 
 # Run flexpart
 # ------------
+EOF
+    [[ -n $flexpart_env ]] && cat >> $start_location/$job_file <<EOF
 # Load needed environment
 source $flexpart_env
 
+EOF
+    cat >> $start_location/$job_file <<EOF
 # Run FLEXPART in case directory
 ${srun_cmd} ./$exe_name $fp_opt
 EOF

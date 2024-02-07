@@ -1,12 +1,13 @@
-FLEXPART for MeteoSwiss
-=======================
+FLEXPART for IFS and GFS
+========================
 
-FLEXPART for IFS (and GFS) adapted source code
-for operational MeteoSwiss production.
+Installation at CSCS for MeteoSwiss
+-----------------------------------
 
-
-Installation
-------------
+Note: These are the instructions to install
+FLEXPART for IFS and GFS 
+at the CSCS for MeteoSwiss. 
+For all other installations, see the [README.md](README.md) file.
 
 ### Using the `spack` package
 
@@ -32,27 +33,28 @@ and load the appropriate modules for the GCC programming environment:
     cd src
     . CSCS.env
 
-Use `make` with the makefile `makefile_meteoswiss` to build the application. 
+Use `make` with the makefile `makefile_meteoswiss` to build the executable.
+The `serial` target is the default:
 
     make -f makefile_meteoswiss
 
-For compilation of serial FLEXPART (see header of makefile)
+This builds a serial version of FLEXPART (see header of makefile) and is the same as:
 
     make -f makefile_meteoswiss serial
 
-For compilation of serial FLEXPART for debugging (see header of makefile)
+To build a serial FLEXPART for debugging:
 
     make -f makefile_meteoswiss serial-dbg
 
-For compilation of parallel FLEXPART (see header of makefile)
+To build a  parallel FLEXPART:
 
     make -f makefile_meteoswiss mpi
 
-For compilation of parallel FLEXPART for debugging (see header of makefile)
+To build a  parallel FLEXPART for debugging:
 
     make -f makefile_meteoswiss mpi-dbg
     
-To clean the object, module and executable files
+To clean up all object, module, and executable files
 
     make -f makefile_meteoswiss clean
 
@@ -71,13 +73,14 @@ To run flexpart, it may be necessary to unlimit the stacksize:
 
     ulimit -s unlimited
 
-To run without spack, load modules as provided in CSCS.env
+To run without spack, load modules as provided in `CSCS.env`.
 
     . CSCS.env
 
 Run flexpart with
 
     ./FLEXPART
+
 or
 
     ./FLEXPART_MPI
