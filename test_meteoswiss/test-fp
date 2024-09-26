@@ -60,16 +60,16 @@ esac
 # Load operational definition of OPR_OPR_DIR
 [[ -z $OPR_OPR_DIR ]] && source /oprusers/osm/.opr_setup_dir
 
-# Path to NWP files depending on resolution (see --resol)
-# The constant-fields file is searched by adding a 'c' at the end
-# of the first filename. If not found, constant fields are assumed
-# to be contained in at least the first windfield file.
+# NWP data source depending on resolution (see --resol)
 # The source-list string is split at " in: "
 # Template:
 #   "<description> in: <file-with-path>"
 # Allowed placeholders: <yymmddhh>, <ex>, <ddhh>, <mem>,
 # shell wildcards * and []
-# CAUTION: shell wildcard {} is not resolved, do not use!
+# CAUTION: shell wildcards {} are not resolved, do not use!
+# The constant-fields file can be added, separated by a comma.
+# If not found, constant fields are assumed
+# to be contained in at least the first windfield file.
 resolutions=()
 
 # ICON-CH1-EPS
@@ -79,9 +79,10 @@ nwp_max_range_i1=33
 lt_inc_i1=1
 nwp_source_list_i1=(
     "Operational LADM cache (interp) in: $OPR_OPR_DIR/cache/LADM/FLEXPART-I1E-CTRL/dispc*"
-    "Operational fcst cache (native) in: $OPR_OPR_DIR/cache/ICON-CH1-EPS/FCST_RING/<yymmddhh>_6<ex>/icon/<mem>/lfff<ddhh>0000"
-    "Operational fcst wd    (interp) in: $OPR_OPR_DIR/wd/<yymmddhh>_6<ex>/_FXINP_lfrf<ddhh>0000_<mem>"
-    "User cache on scratch  (interp) in: $SCRATCH/flexpart/icon/<yymmddhh>_6<ex>/fxshare/_FXINP_lfrf<ddhh>0000_<mem>"
+    "Operational fcst wd    (interp) in: $OPR_OPR_DIR/wd/<yymmddhh>_6<ex>/_FXINP_lfrf<ddhh>0000_<mem>,_FXINP_lfrf00000000_000c"
+    "Operational fcst cache (native) in: $OPR_OPR_DIR/cache/ICON-CH1-EPS/FCST_RING/<yymmddhh>_6<ex>/icon/<mem>/lfff<ddhh>0000,lfff00000000c"
+    "User cache on scratch  (interp) in: $SCRATCH/flexpart/icon/<yymmddhh>_6<ex>/fxshare/_FXINP_lfrf<ddhh>0000_<mem>,_FXINP_lfrf00000000_000c"
+    "User cache on scratch  (native) in: $SCRATCH/<yymmddhh>_7<ex>/icon/<mem>/lfff<ddhh>0000,lfff00000000c"
     "User cases on store    (interp) in: $STORE/CASES/FLEXPART-I1E-CTRL/<yyyymmddhh>/dispc*"
 )
 t1_i1=3; t2_i1=9; species_no_i1=39; rel_mass_i1=2.16E4; rel_site_i1=bez # Default: opr settings
@@ -89,13 +90,15 @@ t1_i1=3; t2_i1=9; species_no_i1=39; rel_mass_i1=2.16E4; rel_site_i1=bez # Defaul
 # ICON-CH2-EPS
 resolutions+=( "i2: ICON-CH2-EPS (Cent. Europe 2 km)" )
 nwp_model_i2=icon
-nwp_max_range_i2=33
+nwp_max_range_i2=120
 lt_inc_i2=1
 nwp_source_list_i2=(
     "Operational LADM cache (interp) in: $OPR_OPR_DIR/cache/LADM/FLEXPART-I2E-CTRL/dispc*"
-    "Operational fcst cache (native) in: $OPR_OPR_DIR/cache/ICON-CH2-EPS/FCST_RING/<yymmddhh>_7<ex>/icon/<mem>/lfff<ddhh>0000{,c}"
-    "User cache on scratch           in: $SCRATCH/<yymmddhh>_7<ex>/icon/<mem>/lfff<ddhh>0000"
-    "Cases in user store             in: $STORE/CASES/FLEXPART-I2E-CTRL/<yyyymmddhh>/dispc*"
+    "Operational fcst wd    (interp) in: $OPR_OPR_DIR/wd/<yymmddhh>_7<ex>/_FXINP_lfrf<ddhh>0000_<mem>,_FXINP_lfrf00000000_000c"
+    "Operational fcst cache (native) in: $OPR_OPR_DIR/cache/ICON-CH2-EPS/FCST_RING/<yymmddhh>_7<ex>/icon/<mem>/lfff<ddhh>0000,lfff00000000c"
+    "User cache on scratch  (interp) in: $SCRATCH/flexpart/icon/<yymmddhh>_7<ex>/fxshare/_FXINP_lfrf<ddhh>0000_<mem>,_FXINP_lfrf00000000_000c"
+    "User cache on scratch  (native) in: $SCRATCH/<yymmddhh>_7<ex>/icon/<mem>/lfff<ddhh>0000,lfff00000000c"
+    "Cases in user store    (interp) in: $STORE/CASES/FLEXPART-I2E-CTRL/<yyyymmddhh>/dispc*"
 )
 t1_i2=3; t2_i2=9; species_no_i2=39; rel_mass_i2=2.16E4; rel_site_i2=bez # Default: opr settings
 
@@ -208,8 +211,6 @@ job_out=job.log
 # ----------------------
 # Base time
 basetime=$(date --utc --date="12 yesterday" +%Y%m%d%H)           # Yesterday 12 UTC
-# Forecast range (automatically reduced if > max_range)
-fc_range=48
 # Simulation mode
 mode=1
 
@@ -226,7 +227,7 @@ rel_lon_bushehr=50.8872 ; rel_lat_bushehr=28.8289 ; rel_height_bushehr=100 ; rel
 rel_lon_cherno=30.0997   ; rel_lat_cherno=51.3897  ; rel_height_cherno=100  ; rel_name_cherno=Chernobyl
 rel_lon_punggye=129.0900 ; rel_lat_punggye=41.2800 ; rel_height_punggye=100 ; rel_name_punggye=Punggye-ri
 rel_lon_segula=178.1400  ; rel_lat_segula=52.0200  ; rel_height_segula=100  ; rel_name_segula=Segula
-# Ensemble members (-m, --member)
+# Default ensemble member (-m, --member)
 member=000
 # Output gid (-O, --outgrid-tag), default: resolution (-r, --resol)
 outgrid_tag=
@@ -284,13 +285,14 @@ Usage: $tag [OPTION]... [BASETIME]
 Arguments:
 
   BASETIME      forecast base time (format YYYYMMDDHH, def.: $basetime)
-  FC_RANGE      maximum lead time / forecast range (def.: $fc_range)
+  FC_RANGE      maximum lead time / forecast range (def. depends on resol.)
   MODE          simulation mode: 1 = forward, -1 = backward (def.: $mode)
 
 Options:
   Mandatory arguments to long options are mandatory for short options too.
   -a, --average=H       averaging interval and output freqency of H [hours]
                         (Default: $avg_h)
+      --debug           display additional debug information
   -n, --dry-run         print commands without executing them
   -E, --exe-dir=DIR     Flexpart executable file path, default for
                         - ICON: $exe_dir_icon
@@ -345,6 +347,9 @@ while (( $# > 0 )) ; do
                 (( $# > 1 )) && shift && avg_h="$1"
             fi
             ;;
+	    --debug)
+	        debug=yes
+	        ;;
         -E | --exe-dir*)
             # Mandatory option argument with or without =
             if [[ "$1" == *=* ]] ; then
@@ -379,6 +384,14 @@ while (( $# > 0 )) ; do
                 job_name="${1#*=}"
             else
                 (( $# > 1 )) && shift && job_name="$1"
+            fi
+            ;;
+        -m | --member*)
+            # Mandatory option argument with or without =
+            if [[ "$1" == *=* ]] ; then
+                member="${1#*=}"
+            else
+                (( $# > 1 )) && shift && member="$1"
             fi
             ;;
         --rel-lon*)
@@ -630,7 +643,13 @@ else
 fi
 # Extract description and file path from nwp_source_list entry, splitting at "in:"
 source_desc="${answer%in:*}"
-nwp_source="${answer#*in:}"
+nwp_source_full="${answer#*in:}"
+nwp_source=${nwp_source_full%,*}
+grib_const_file=${nwp_source_full#*,}
+if [[ -n $debug ]] ; then
+    echo DBG nwp_source=$nwp_source
+    echo DBG grib_const_file=$grib_const_file
+fi
 # Trim trailing space in source_desc
 source_desc="${source_desc%"${source_desc##*[![:space:]]}"}"
 # Trim leading space in nwp_source
@@ -648,11 +667,22 @@ eval lt_inc=\$lt_inc_$resol
 [[ -z $species_no ]] && eval species_no=\$species_no_$resol
 [[ -z $rel_mass ]] && eval rel_mass=\$rel_mass_$resol
 [[ -z $rel_site ]] && eval rel_site=\$rel_site_$resol
-(( $fc_range > $nwp_max_range )) && fc_range=$nwp_max_range
+[[ -z $fc_range ]] && fc_range=$(( $nwp_max_range > 48 ? 48 : $nwp_max_range ))
+if (( $fc_range > $nwp_max_range )) ; then
+    echo $tag: "Warning: Forecast range greater than maximum available:" \
+        "$fc_range > $nwp_max_range, shortened"
+    fc_range=$nwp_max_range
+fi
 (( $t1 < 0 )) && t1=0
 (( $t1 > $fc_range )) && t1=$fc_range
-(( $t2 <= $t1 )) && echo $tag: "Error: Release end before release start: $t2 < $t1"
-(( $t2 > $fc_range )) && t2=$fc_range
+if (( $t2 <= $t1 )) ; then
+    echo $tag: "Error: Release end before release start: $t2 < $t1"
+    exit 1
+fi
+if (( $t2 > $fc_range )) ; then
+    echo $tag: "Warning: Release end after maximum lead time: $t2 > $fc_range, shortened"
+    t2=$fc_range
+fi
 
 eval nwp_model=\$nwp_model_$resol
 
@@ -689,9 +719,11 @@ if [[ -z $exe_name ]] ; then
         exit 6
     fi
     exe_name=$(basename ${exe_list[0]%.env})
-    echo -n $tag: "Found: "
-    ls -l $exe_dir/$exe_name
-    if [[ $exe_name == *omp* || $exe_name == $exe_name_parallel_ifs ]] ; then
+    # Run mode sequential or parallel:
+    # Check if name (eventually of linked file) contains omp
+    exe_listing=$(ls -l $exe_dir/$exe_name)
+    echo $tag: "Found: $exe_listing"
+    if [[ $exe_listing == *omp* || $exe_name == $exe_name_parallel_ifs ]] ; then
         if [[ $run_mode == serial ]] ; then
             echo $tag: "Requested run-mode serial with OMP-enabled executable: Setting OMP_NUM_THREADS=1"
             ncpus=1
@@ -835,6 +867,7 @@ case $resol in
 esac
 
 # NWP data source: Replace placeholders
+member=$(printf %03d $member)
 nwp_search=$(echo "$nwp_source" \
     | sed "s/<yyyymmddhh>/${basetime}/g" \
     | sed "s/<yymmddhh>/${basetime:2:8}/g" \
@@ -842,10 +875,11 @@ nwp_search=$(echo "$nwp_source" \
     | sed "s/<ddhh>/[0-9][0-9][0-9][0-9]/g" \
     | sed "s/<mem>/$member/g")
 # Check if NWP data is available
+# Note: Braces {} as wildcards in $nwp_search are not expanded!
 nwp_files=( $nwp_search )
 nwp_dir=$(dirname $nwp_files)
 if [[ ! -f $nwp_files ]] ; then
-    echo $tag: "%ERROR: No matching files found: $nwp_files"
+    echo $tag: "%ERROR: No matching files found: $nwp_search"
     if [[ $nwp_files == /opr/* && $HOSTNAME != arolla* ]] ; then
         echo $tag: "For current data on /opr try on arolla"
     fi
@@ -861,9 +895,8 @@ fi
 # Check if GRIB constant data available
 if [[ $nwp_files != *disp* ]] ; then
     # Forecast files, file with constant fields needed
-    grib_const_file=${nwp_files}c
-    if [[ ! -f $grib_const_file ]] ; then
-        echo $tag: "WARNING: Constant GRIB data file not found: $grib_const_file"
+    if [[ ! -f $nwp_dir/$grib_const_file ]] ; then
+        echo $tag: "WARNING: Constant GRIB data file not found: $nwp_dir/$grib_const_file"
         unset grib_const_file
     fi
 fi
@@ -891,7 +924,7 @@ if (( ${#nwp_files[*]} > $fc_range - $t1 )) ; then
         # only first [0] and last [-1] array element
         $exe_cmd cp -sf ${nwp_files[0]}...${nwp_files[-1]} $grib_input
     fi
-    [[ -n $grib_const_file ]] && $exe_cmd cp -sf $grib_const_file $grib_input
+    [[ -n $grib_const_file ]] && $exe_cmd cp -sf $nwp_dir/$grib_const_file $grib_input
 else
     echo $tag: "ERROR(4): Insufficient number of files: ${#nwp_files[*]}"
     exit 8
@@ -930,7 +963,7 @@ EOF
     # Format see readavailable.f90 line read(unitavailab,...)
     # '(i8,1x,i6,2(6x,a32))'
     avail_fmt='%8s %6s      %s\n'
-    if [[ -n grib_const_file ]] ; then
+    if [[ -n $grib_const_file ]] ; then
         printf "$avail_fmt" \
             0 999999 $(basename $grib_const_file) >> \
             $available_file
