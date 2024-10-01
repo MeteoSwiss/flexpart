@@ -51,19 +51,10 @@ parser.add_argument(
     "--flexpart_dir", help="installation directory of flexpart", type=str)
 parser.add_argument(
     "--sandbox_dir", help="directory where to generate the sandbox", type=str)
-parser.add_argument(
-    "--fdb", help="use fdb flag if using fdb instead of GRIB files as input", action='store_true')
-parser.add_argument(
-    "--s3", help="fetch data from S3 on AWS", action='store_true')
 args = parser.parse_args()
 
 conf['sandbox_dir'] = args.sandbox_dir
 conf['flexpart_prefix'] = args.flexpart_dir
-
-if args.fdb is True:
-    conf['FDBFLAG'] = 1
-else:
-    conf['FDBFLAG'] = 0
 
 os.makedirs(conf['sandbox_dir'], exist_ok=True)
 os.symlink(conf['flexpart_prefix']+'/bin/FLEXPART',
@@ -96,30 +87,27 @@ filedata = re.sub('IBTIME'+r'= *\d*, .*',
                     'IBTIME'+'={date}0000,'.format(date=f"{int(conf['IBTIME']):02}"), filedata)
 filedata = re.sub('IETIME'+r'= *\d*, .*',
                     'IETIME'+'={date}0000,'.format(date=f"{int(conf['IETIME']):02}"), filedata)
-# Add new key-value pair FDBFLAG
-filedata = re.sub('FDBFLAG'+r'= *\d*, .*',
-                    'FDBFLAG'+'={flag},'.format(flag=f"{conf['FDBFLAG']}"), filedata)
+
 
 
 with open(conf['sandbox_dir']+'/input/COMMAND', 'w') as file:
     file.write(filedata)
 
 # Generate AVAILABLE
-if args.fdb is not True:
-    lines = ["DATE     TIME        FILENAME\n", "YYYYMMDD HHMISS\n",
-            "________ ______      __________________\n"]
-    for adate in range(int(conf['IBDATE']), int(conf['IEDATE'])+1):
-        for atime in range(int(conf['IBTIME']), int(conf['IETIME'])+1):
-            filename = 'dispf'+str(adate)+f"{atime:02}"
-            filepath = conf['sandbox_dir']+'/grib/'+filename
-            if not os.path.exists(filepath) and args.s3 is True:
-                download_file(filename, filepath)
-            if not os.path.exists(filepath):
-                raise RuntimeError("input grib file not found",
-                                filepath)
-            lines.append(str(adate)+' '+f"{atime:02}0000"+'      '+filename+'\n')
-    with open(conf['sandbox_dir']+'/input/AVAILABLE', 'w') as file:
-        file.writelines(lines)    
+lines = ["DATE     TIME        FILENAME\n", "YYYYMMDD HHMISS\n",
+        "________ ______      __________________\n"]
+for adate in range(int(conf['IBDATE']), int(conf['IEDATE'])+1):
+    for atime in range(int(conf['IBTIME']), int(conf['IETIME'])+1):
+        filename = 'dispf'+str(adate)+f"{atime:02}"
+        filepath = conf['sandbox_dir']+'/grib/'+filename
+        if not os.path.exists(filepath):
+            download_file(filename, filepath)
+        if not os.path.exists(filepath):
+            raise RuntimeError("input grib file not found",
+                            filepath)
+        lines.append(str(adate)+' '+f"{atime:02}0000"+'      '+filename+'\n')
+with open(conf['sandbox_dir']+'/input/AVAILABLE', 'w') as file:
+    file.writelines(lines)    
 
 # Copy IGBP_int1.dat
 shutil.copy(conf['landuse_data'], conf['sandbox_dir']+'/input/')

@@ -1,4 +1,4 @@
-ARG container_registry
+ARG container_registry=dockerhub.apps.cp.meteoswiss.ch
 ARG base_tag=v0.2.1
 
 FROM ${container_registry}/flexpart-poc/spack-dependencies:${base_tag} as intermediate
@@ -19,7 +19,6 @@ RUN mkdir -p \
     /opt/spack/ \
     /root/c2sm-spack/ \
     /scratch/flexpart_output \
-    /fdb_root/fdb_root \
     /data
 
 COPY --from=intermediate /opt/spack/ /opt/spack/
