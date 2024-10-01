@@ -14,9 +14,10 @@ except ImportError:
 
 
 def download_file(obj, file):
-    s3 = boto3.client('s3')
+    bucket = os.getenv('INPUT_S3_NAME')
+    endpoint_url = os.getenv('INPUT_S3_URL')
 
-    bucket = os.getenv('BUCKET_NAME')
+    s3 = boto3.client('s3', endpoint_url=endpoint_url)
 
     try: 
         with open(file, 'wb') as f:
