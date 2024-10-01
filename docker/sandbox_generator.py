@@ -14,9 +14,11 @@ except ImportError:
 
 
 def download_file(obj, file):
-    s3 = boto3.client('s3')
+    bucket = os.getenv('FLEXPART_S3_BUCKETS__INPUT__NAME')
+    endpoint_url = os.getenv('FLEXPART_S3_BUCKETS__INPUT__ENDPOINT_URL')
 
-    bucket = os.getenv('BUCKET_NAME')
+    s3 = boto3.client('s3', endpoint_url=endpoint_url, aws_access_key_id=os.getenv('S3_ACCESS_KEY'),
+            aws_secret_access_key=os.getenv('S3_SECRET_KEY'),)
 
     try: 
         with open(file, 'wb') as f:
@@ -107,7 +109,7 @@ for adate in range(int(conf['IBDATE']), int(conf['IEDATE'])+1):
                             filepath)
         lines.append(str(adate)+' '+f"{atime:02}0000"+'      '+filename+'\n')
 with open(conf['sandbox_dir']+'/input/AVAILABLE', 'w') as file:
-    file.writelines(lines)    
+    file.writelines(lines)
 
 # Copy IGBP_int1.dat
 shutil.copy(conf['landuse_data'], conf['sandbox_dir']+'/input/')
