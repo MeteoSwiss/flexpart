@@ -33,7 +33,6 @@ COPY upload_s3.py /scratch/upload_s3.py
 RUN ["chmod", "+x", "/scratch/sandbox_generator.py"]
 RUN ["chmod", "+x", "/scratch/upload_s3.py"]
 COPY genconf.yml /scratch/genconf.yml
-COPY fdb_schema /scratch/fdb_schema
 COPY IGBP_int1.dat /data/IGBP_int1.dat
 
 RUN pip3 install pyyaml boto3
