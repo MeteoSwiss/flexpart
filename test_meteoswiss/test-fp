@@ -64,8 +64,8 @@ esac
 # The source-list string is split at " in: "
 # Template:
 #   "<description> in: <file-with-path>"
-# Allowed placeholders: <yymmddhh>, <ex>, <ddhh>, <mem>,
-# shell wildcards * and []
+# Allowed placeholders: <yymmddhh>, <ex>, <ddhh>, <hhh>, <mem>,
+# and shell wildcards * and []
 # CAUTION: shell wildcards {} are not resolved, do not use!
 # The constant-fields file can be added, separated by a comma.
 # If not found, constant fields are assumed
@@ -318,6 +318,7 @@ Options:
   -t, --rel-time=T1,T2  release from T1 to T2 (lead times [hours]).
                         (Default: $t1,$t2)
       --run-mode=MODE   run code in MODE, one of serial or parallel
+  -s, --source=PATTERN  search pattern for NWP data files
   -S, --source-no=N     select source no N from list of NWP data sources
   -N, --species-no=N    select species no N according to definition
                         in SPECIES directory
@@ -522,7 +523,7 @@ while (( $# > 0 )) ; do
                 (( $# > 1 )) && shift && t2="$1"
             fi
             ;;
-        -S | --source-no*)
+        -S | --source-no*) # Note: position above --source*
             # Mandatory option argument with or without =
             if [[ "$1" == *=* ]] ; then
                 source_no="${1#*=}"
@@ -532,6 +533,20 @@ while (( $# > 0 )) ; do
                     source_no="$1"
                 else
                     echo $tag: "Missing value for option: --source-no"
+                    exit 1
+                fi
+            fi
+            ;;
+        -s | --source*) # Note: pattern includes --source-no, position below that
+            # Mandatory option argument with or without =
+            if [[ "$1" == *=* ]] ; then
+                source="${1#*=}"
+            else
+                if (( $# > 1 )) ; then
+                    shift
+                    source="$1"
+                else
+                    echo $tag: "Missing value for option: --source"
                     exit 1
                 fi
             fi
@@ -627,28 +642,42 @@ fi
 
 # Select NWP data source
 eval nwp_source_list=( \"\${nwp_source_list_${resol}[@]}\" )
-if [[ -z $source_no ]] ; then
-    echo "Select NWP data source (option --source-no)"
-    select answer in "${nwp_source_list[@]}" ; do
-        # Note: Press return for default not possible
-        # as select repeats prompt until REPLY is not empty
-        [[ $REPLY == quit || $REPLY == exit ]] && exit
-        # answer is only set if REPLY was valid
-        [[ -n $answer ]] && break
-    done
-    source_no=$REPLY
+if [[ -n $source ]] ; then
+    # NWP data source specified, format as in source list
+    nwp_source_full="$source"
+    if [[ -n $source_no ]] ; then
+        echo $tag: "Duplicate specification of NWP source with --source and --source-no option," \
+            "these are mutually exclusive"
+        exit 1
+    fi
 else
-    (( i_source = $source_no - 1 ))
-    answer="${nwp_source_list[$i_source]}"
+    if [[ -z $source_no ]] ; then
+        echo "Select NWP data source (option --source-no)"
+        select answer in "${nwp_source_list[@]}" ; do
+            # Note: Press return for default not possible
+            # as select repeats prompt until REPLY is not empty
+            [[ $REPLY == quit || $REPLY == exit ]] && exit
+            # answer is only set if REPLY was valid
+            [[ -n $answer ]] && break
+        done
+        source_no=$REPLY
+    else
+        (( i_source = $source_no - 1 ))
+        answer="${nwp_source_list[$i_source]}"
+    fi
+    # Extract description and file path from nwp_source_list entry, splitting at "in:"
+    source_desc="${answer%in:*}"
+    nwp_source_full="${answer#*in:}"
 fi
-# Extract description and file path from nwp_source_list entry, splitting at "in:"
-source_desc="${answer%in:*}"
-nwp_source_full="${answer#*in:}"
 nwp_source=${nwp_source_full%,*}
 grib_const_file=${nwp_source_full#*,}
+if [[ $nwp_source == $grib_const_file ]] ; then
+    # no separate constant fields file specified, unset
+    unset grib_const_file
+fi
 if [[ -n $debug ]] ; then
-    echo DBG nwp_source=$nwp_source
-    echo DBG grib_const_file=$grib_const_file
+    echo "DBG nwp_source=$nwp_source"
+    echo "DBG grib_const_file=$grib_const_file"
 fi
 # Trim trailing space in source_desc
 source_desc="${source_desc%"${source_desc##*[![:space:]]}"}"
@@ -873,11 +902,17 @@ nwp_search=$(echo "$nwp_source" \
     | sed "s/<yymmddhh>/${basetime:2:8}/g" \
     | sed "s/<ex>/??/g" \
     | sed "s/<ddhh>/[0-9][0-9][0-9][0-9]/g" \
+    | sed "s/<hhh>/[0-9][0-9][0-9]/g" \
     | sed "s/<mem>/$member/g")
 # Check if NWP data is available
 # Note: Braces {} as wildcards in $nwp_search are not expanded!
 nwp_files=( $nwp_search )
 nwp_dir=$(dirname $nwp_files)
+if [[ -n $debug ]] ; then
+    echo "DBG #nwp_files, nwp_files[0]=${#nwp_files[*]}, ${nwp_files[0]}"
+    echo "DBG nwp_dir=$nwp_dir"
+fi
+
 if [[ ! -f $nwp_files ]] ; then
     echo $tag: "%ERROR: No matching files found: $nwp_search"
     if [[ $nwp_files == /opr/* && $HOSTNAME != arolla* ]] ; then
@@ -895,6 +930,7 @@ fi
 # Check if GRIB constant data available
 if [[ $nwp_files != *disp* ]] ; then
     # Forecast files, file with constant fields needed
+    [[ -n $debug ]] && echo "DBG looking for \$nwp_dir/\$grib_const_file=$nwp_dir/$grib_const_file"
     if [[ ! -f $nwp_dir/$grib_const_file ]] ; then
         echo $tag: "WARNING: Constant GRIB data file not found: $nwp_dir/$grib_const_file"
         unset grib_const_file

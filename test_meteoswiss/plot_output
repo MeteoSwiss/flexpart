@@ -23,8 +23,8 @@ list_max=8
 ncpus=5
 # --------
 
-# Function
-# --------
+# Functions
+# ---------
 function display_help {
     # Show script usage
     cat >&2 << EOF
@@ -43,13 +43,32 @@ Mandatory arguments to long options are mandatory for short options too.
   -f, --force            invoke pyflexplot even if plots already exist
   -h, --help             display this help and exit
   -n, --dry-run          print commands without executing them
+  -W, --dry-wet          additonally plot dry and wet deposition separately
   -N, --ncpus=NCPUS      use NCPUS parallel threads for pyflexplot
   -O, --operational      use operational pyflexplot from osm
   -p, --preset=PRESET    use pyflexplot with preset PRESET
-  -w, --wait             wait for batch job completion, allows to list results.
+  -s, --steps            plot step values rather than accumulated values
+  -w, --wait             wait for batch job completion, allows to list results
 
 EOF
 } # function display_help
+
+function cleanup_plot_dir {
+    # Check if plots exist
+    if ls $1/*p[dn][fg] > /dev/null 2>&1 ; then
+        echo -n $tag: "Plot files already exist in $1"
+        if [[ -n $clean ]] ; then
+            echo ", deleting."
+            rm -rf $1/*{png,pdf}
+        elif [[ -z $force ]] ; then
+            echo ", use --force to overwrite."
+            exe_cmd="echo -e $tag: SKIP: Plots already present, skipping:\n\e[07;32m \e[0m  "
+            wait_opt=skipped
+        else
+            echo ", overwriting."
+        fi
+    fi
+} # function cleanup_plot_dir
 
 # Initialization
 # --------------
@@ -66,11 +85,14 @@ while (( $# > 0 )) ; do
         -d | --debug)
             debug=yes
             ;;
-        -e | --ensemble)
-            ensemble=yes
-            ;;
         -n | --dry-run)
             dry_run=yes
+            ;;
+        -D | --dry-wet)
+            dry_wet=yes
+            ;;
+        -e | --ensemble)
+            ensemble=yes
             ;;
         -f | --force)
             force=yes
@@ -97,6 +119,9 @@ while (( $# > 0 )) ; do
             else
                 (( $# > 1 )) && shift && preset="$1"
             fi
+            ;;
+        -s | --steps)
+            steps=yes
             ;;
         -w | --wait)
             wait_opt=-w
@@ -157,21 +182,6 @@ fi
 infiles=( $jobout/*.nc )
 echo $tag: "Producing plots from: ${infiles[*]}"
 echo $tag: "Producing plots in: $plotdir"
-
-# Check if plots exist
-if ls $plotdir/*p[dn][fg] > /dev/null 2>&1 ; then
-    echo -n $tag: "Plot files already exist"
-    if [[ -n $clean ]] ; then
-        echo ", deleting."
-        rm -rf $plotdir/*{png,pdf}
-    elif [[ -z $force ]] ; then
-        echo ", use --force to overwrite."
-        exe_cmd="echo -e $tag: SKIP: Plots already present, skipping:\n\e[07;32m \e[0m  "
-        wait_opt=skipped
-    else
-        echo ", overwriting."
-    fi
-fi
 
 # Derive variables 'job' (job name or number) and 'resol' (resolution)
 # from test-fp.log
@@ -249,20 +259,43 @@ if [[ -n $operational || ! -x $pyflexplot ]] ; then
 fi
 echo $tag: "Found pyflexplot: $pyflexplot"
 
-
 # Report executable
 echo $tag: "Using pyflexplot executable:" \
     $(ls -l --time-style=long-iso $pyflexplot | cut -d\  -f6- )
 
+# Steps option
+if [[ -n $steps ]] ; then
+    plotdir=${plotdir}_steps
+    echo $tag: "Steps option--steps set, new plot directory: $plotdir"
+    integrate_opt="--setup integrate false"
+fi
+
 # Submit job
 for infile in ${infiles[*]} ; do
     echo $tag: "Submitting job to plot: ${infile}"
+    cleanup_plot_dir $plot_dir
     # Option -w: wait for job to complete
     [[ -n $wait_opt ]] && echo $tag: "Waiting for job completion."
     $exe_cmd batchPP -t 2 -T 5 -n pfp_$jobdir $wait_opt -- \
-        $pyflexplot --preset=$preset --merge-pdfs \
+        $pyflexplot --preset=$preset --merge-pdfs $integrate_opt \
         --setup infile $infile $base_time_opt \
-        --dest=$plotdir --num-procs=\$SLURM_CPUS_PER_TASK
+        --dest=$plotdir \
+        --num-procs=\$SLURM_CPUS_PER_TASK
+    # Separate deposition option
+    if [[ -n $dry_wet ]] ; then
+        for depotype in dry wet ; do
+            echo $tag: "Dry/wet deposition option --dry-wet set," \
+                "additional plot directory: ${plotdir}_${depotype}"
+            cleanup_plot_dir ${plotdir}_${depotype}
+
+            $exe_cmd batchPP -t 2 -T 5 -n pfp_$jobdir${depotype} $wait_opt -- \
+                $pyflexplot --preset=$preset --merge-pdfs $integrate_opt \
+                --setup infile $infile $base_time_opt \
+                --setup plot_variable ${depotype}_deposition \
+                --dest=${plotdir}_${depotype} \
+                --num-procs=\$SLURM_CPUS_PER_TASK
+        done
+    fi
 done
 
 if [[ -n $jobdir ]] ; then
