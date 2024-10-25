@@ -1,6 +1,10 @@
 pipeline {
     agent {label 'podman'}
 
+    parameters {
+        booleanParam(name: 'PUSH_IMAGE_TO_ECR', defaultValue: false, description: 'Push image to ECR?')
+    }
+
     options {
 
         disableConcurrentBuilds()
@@ -11,7 +15,12 @@ pipeline {
     environment {
         CR_ALL = 'docker-all-nexus.meteoswiss.ch'
         SPACK_TAG='dev_PR-12'
-        TAG = "flexpart-poc/flexpart"
+
+        TAG = sh(
+            script: "echo \$(date +%g%m).${GIT_COMMIT}",
+            returnStdout: true
+        ).trim()
+
         VERSION = sh(
             returnStdout: true, 
             script: 'if [ "$BRANCH_NAME" = "main" ]; then echo -n latest; elif [ -n "${TAG_NAME+1}" ]; then echo -n ${TAG_NAME}; else echo -n ${BRANCH_NAME}; fi'
@@ -20,46 +29,81 @@ pipeline {
             returnStdout: true, 
             script: 'if [ "$BRANCH_NAME" = "main" ]; then echo -n 1; elif [ -n "${TAG_NAME+1}" ]; then echo -n 1; else echo -n 0; fi'
             )
-        IMAGE_INTERN = "docker-intern-nexus.meteoswiss.ch/$TAG:$VERSION"
-        IMAGE_PUBLIC = "docker-public-nexus.meteoswiss.ch/$TAG:$VERSION"
+
+        NAMESPACE = "numericalweatherpredictions/dispersionmodelling/flexpart-ifs/flexpart-containerize"
+        IMAGE_INTERN = "docker-intern-nexus.meteoswiss.ch/$NAMESPACE:$TAG"
+        IMAGE_PUBLIC = "docker-public-nexus.meteoswiss.ch/$NAMESPACE:$TAG"
+        REPO_ECR = "493666016161.dkr.ecr.eu-central-2.amazonaws.com"
+        IMAGE_ECR = "$REPO_ECR/$NAMESPACE:$TAG"
+
         DOCKER_CONFIG = "$workspace/.docker"
         REGISTRY_AUTH_FILE = "$workspace/.containers/auth.json"
         HTTP_PROXY = 'http://proxy.meteoswiss.ch:8080/'
+        PATH = "/opt/maker/tools/aws:$PATH"
     }
     stages {
         stage('Deploy container') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'openshift-nexus',
-                                          passwordVariable: 'NXPASS',
-                                          usernameVariable: 'NXUSER'), 
-                                 usernamePassword(credentialsId: 'github app credential for the meteoswiss-apn github organization',
-                                          usernameVariable: 'GITHUB_APP',
-                                          passwordVariable: 'GITHUB_ACCESS_TOKEN')]) {
-                    sh '''
-                        echo $(id -u):$(id -g)
-                        echo \$NXPASS | podman login docker-intern-nexus.meteoswiss.ch -u \$NXUSER --password-stdin
-                        echo \$NXPASS | podman login docker-public-nexus.meteoswiss.ch -u \$NXUSER --password-stdin
+                script {
+                    withCredentials([usernamePassword(credentialsId: 'openshift-nexus',
+                                            passwordVariable: 'NXPASS',
+                                            usernameVariable: 'NXUSER'), 
+                                    usernamePassword(credentialsId: 'github app credential for the meteoswiss-apn github organization',
+                                            usernameVariable: 'GITHUB_APP',
+                                            passwordVariable: 'GITHUB_ACCESS_TOKEN')]) {
+                        sh '''
+                            echo $(id -u):$(id -g)
+                            echo \$NXPASS | podman login docker-intern-nexus.meteoswiss.ch -u \$NXUSER --password-stdin
+                            echo \$NXPASS | podman login docker-public-nexus.meteoswiss.ch -u \$NXUSER --password-stdin
 
-                        test -d ctx && rm -rf ctx
-                        mkdir ctx
+                            test -d ctx && rm -rf ctx
+                            mkdir ctx
 
-                        cp docker/Dockerfile docker/spack.yaml docker/entrypoint.sh docker/upload_s3.py docker/IGBP_int1.dat docker/sandbox_generator.py docker/genconf.yml docker/fdb_schema ctx/
-                        podman build --format docker --pull --build-arg TOKEN_FLEXPART=$GITHUB_ACCESS_TOKEN --build-arg container_registry=\$CR_ALL --build-arg spack_tag=\$SPACK_TAG -t \$IMAGE_INTERN ctx
-                        podman push \$IMAGE_INTERN
-                        podman tag \$IMAGE_INTERN \$IMAGE_PUBLIC
-                        if [ "${PUBLIC_RELEASE}" = 1 ]; then podman push \$IMAGE_PUBLIC; fi
-                    '''
+                            cp docker/Dockerfile docker/spack.yaml docker/entrypoint.sh docker/upload_s3.py docker/IGBP_int1.dat docker/sandbox_generator.py docker/genconf.yml ctx/
+                            podman build --format docker --pull --build-arg TOKEN_FLEXPART=$GITHUB_ACCESS_TOKEN --build-arg container_registry=\$CR_ALL --build-arg spack_tag=\$SPACK_TAG -t \$IMAGE_INTERN ctx
+                            podman push \$IMAGE_INTERN
+                            podman tag \$IMAGE_INTERN \$IMAGE_PUBLIC \$IMAGE_ECR
+                            if [ "${PUBLIC_RELEASE}" = 1 ]; then podman push \$IMAGE_PUBLIC; fi
+                        '''
+                    }
+                    if (params.PUSH_IMAGE_TO_ECR) {
+                        withCredentials([usernamePassword(credentialsId: 'aws-icon-sandbox',
+                                                    passwordVariable: 'AWS_SECRET_ACCESS_KEY',
+                                                    usernameVariable: 'AWS_ACCESS_KEY_ID')]) {
+                            echo "---- PUBLISH IMAGE TO ECR ----"
+                            sh """
+                            #!/bin/bash
+
+                            if test -f /etc/ssl/certs/ca-certificates.crt; then
+                                export AWS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+                            else
+                                export AWS_CA_BUNDLE=/etc/ssl/certs/ca-bundle.crt
+                            fi
+                            aws ecr get-login-password --region eu-central-2 | podman login --username AWS --password-stdin --cert-dir /etc/ssl/certs \$REPO_ECR
+
+                            podman push --cert-dir /etc/ssl/certs \$IMAGE_ECR
+
+                            """
+                        }
+                    } 
                 }
-            }
+            } 
             post {
                 cleanup {
-                    sh """
-                    rm -rf ctx
-                    podman image rm -f \$IMAGE_INTERN
-                    podman image rm -f \$IMAGE_PUBLIC
-                    podman logout docker-intern-nexus.meteoswiss.ch || true
-                    podman logout docker-public-nexus.meteoswiss.ch || true
-                    """
+                    script {
+                        // Remove the context directory and images
+                        sh """
+                        rm -rf ctx
+                        podman image rm -f \$IMAGE_INTERN
+                        podman image rm -f \$IMAGE_PUBLIC
+                        podman image rm -f \$IMAGE_ECR
+                        podman logout docker-intern-nexus.meteoswiss.ch || true
+                        podman logout docker-public-nexus.meteoswiss.ch || true
+                        """
+                        if (params.PUSH_IMAGE_TO_ECR) {
+                            sh "podman logout ${env.REPO_ECR} || true"
+                        }
+                    }
                 }
             }
         }
