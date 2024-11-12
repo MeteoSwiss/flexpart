@@ -4,8 +4,6 @@ import os
 import argparse
 from datetime import datetime
 
-# current date and time
-now = datetime.now()
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -37,7 +35,7 @@ def uploadDirectory(root_path, bucket_name, endpoint_url):
             aws_secret_access_key=os.getenv('S3_SECRET_KEY')
         )
         my_bucket = s3_resource.Bucket(bucket_name)
-        top_dir = os.path.join(now.strftime("%m%d%Y%H:%M:%S"),os.path.basename(os.path.dirname(root_path)))
+        top_dir = os.path.join(f"{os.getenv('IBDATE')}{os.getenv('IBTIME')}",os.path.basename(os.path.dirname(root_path)))
         if os.path.exists(root_path):
             for path, subdirs, files in os.walk(root_path):
                 path = path.replace("\\","/")
