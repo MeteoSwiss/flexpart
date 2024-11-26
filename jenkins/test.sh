@@ -12,6 +12,6 @@ wget -q https://nexus.meteoswiss.ch/nexus/repository/app-artifacts-mch/nwp-rzplu
 wget -q https://nexus.meteoswiss.ch/nexus/repository/app-artifacts-mch/nwp-rzplus/flexpart-poc/flexpart/IGBP_int1.dat
 
 
-podman run --name flexpart-container-test-$BRANCH_NAME -v ${data_dir}:/data:ro $IMAGE_INTERN --fdb
-podman cp flexpart-container-test-$BRANCH_NAME:/scratch/flexpart_output ctx/output
+podman run --name flexpart-container-tester -v ${data_dir}:/data:ro $IMAGE_INTERN
+podman cp flexpart-container-tester:/scratch/flexpart_output ctx/output
 [ "$(find ctx/output -name grid_*.nc)" ] && find ctx/output -name grid_*.nc || (echo "No data found in flexpart output folder" && exit 1)
