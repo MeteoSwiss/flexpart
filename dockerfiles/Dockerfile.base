@@ -1,0 +1,21 @@
+# Docker base image for Flexpart dependencies
+
+ARG spack_tag=latest
+FROM docker-all-nexus.meteoswiss.ch/flexpart-poc/spack:${spack_tag}
+ARG TOKEN
+ENV TOKEN=$TOKEN 
+
+RUN git config --global url."https://x-access-token:${TOKEN}@github.com/MeteoSwiss-APN/".insteadOf "ssh://git@github.com/MeteoSwiss-APN/"
+RUN git config --global url."https://github.com/MeteoSwiss/".insteadOf "git@github.com:MeteoSwiss/"
+RUN git config --list
+
+RUN mkdir -p /scratch/spack-env/ 
+COPY spack.yaml /scratch/spack-env/spack.yaml
+
+RUN apt-get -yqq update \
+    && apt-get -yqq install --no-install-recommends \
+    zlib1g && spack external find
+
+RUN spack config add "config:build_jobs:12" && spack env activate -p /scratch/spack-env/ && spack concretize && spack install
+
+RUN git config --global --remove-section url."https://x-access-token:${TOKEN}@github.com/MeteoSwiss-APN/" 
