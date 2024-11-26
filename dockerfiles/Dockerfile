@@ -1,7 +1,7 @@
 ARG container_registry=dockerhub.apps.cp.meteoswiss.ch
 ARG base_tag=v0.2.1
 
-FROM ${container_registry}/flexpart-poc/spack-dependencies:${base_tag} as intermediate
+FROM ${container_registry}/numericalweatherpredictions/dispersionmodelling/flexpart-ifs/flexpart-base:${base_tag} as intermediate
 
 RUN mkdir -p /scratch/spack-env/ 
 COPY spack.yaml /scratch/spack-env/spack.yaml
@@ -13,7 +13,7 @@ RUN apt-get -yqq update \
 
 RUN spack env activate -p spack-env && spack concretize && spack install
 
-FROM ${container_registry}/flexpart-poc/spack-dependencies:${base_tag}
+FROM ${container_registry}/numericalweatherpredictions/dispersionmodelling/flexpart-ifs/flexpart-base:${base_tag}
 
 RUN mkdir -p \
     /opt/spack/ \
