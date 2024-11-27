@@ -1,4 +1,3 @@
-#!/usr/bin/python3
 import os
 import yaml
 import glob
@@ -7,26 +6,12 @@ import re
 import argparse
 import boto3
 
+from flexpart_ifs_utils import s3_utils
+
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
 except ImportError:
     from yaml import Loader, Dumper
-
-
-def download_file(obj, file):
-    bucket = os.getenv('FLEXPART_S3_BUCKETS__INPUT__NAME')
-    endpoint_url = os.getenv('FLEXPART_S3_BUCKETS__INPUT__ENDPOINT_URL')
-
-    s3 = boto3.client('s3', endpoint_url=endpoint_url, aws_access_key_id=os.getenv('S3_ACCESS_KEY'),
-            aws_secret_access_key=os.getenv('S3_SECRET_KEY'),)
-
-    try: 
-        with open(file, 'wb') as f:
-            print(f"Downloading {obj} to {f} from bucket: {bucket}")
-            s3.download_fileobj(bucket, obj, f)
-    except Exception as e:
-        raise(e)
-    
 
 with open('genconf.yml') as f:
     conf: dict = yaml.load(f, Loader=Loader)

@@ -1,0 +1,74 @@
+[[tool.poetry.source]]
+name = "meteoswiss"
+url = "https://service.meteoswiss.ch/nexus/repository/python-all/simple"
+priority = "primary"
+
+[tool.poetry]
+name = "flexpart-ifs-utils"
+version = "1.0.0"
+description = "Library for preparing Flexpart-IFS jobs."
+authors = ["MeteoSwiss"]
+
+[tool.poetry.dependencies]
+python = "~3.11"
+boto3 = "^1.34.14"
+botocore = "^1.34.31"
+mchpy = "^2.0.1"
+pyyaml = "^6.0.1"
+jinja2 = "^3.1.3"
+python-dotenv = "^1.0.1"
+eccodes = "^1.7.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest-cov = "*"
+pytest-mock = "*"
+pylint = "*"
+yapf = "*"
+mypy = "*"
+sphinx = "*"
+importlib_resources = "*"
+pydata-sphinx-theme = "*"
+sphinx-autoapi = "*"
+moto = {extras = ["server", "s3"], version = "^5.0.6"}
+types-pyyaml = "^6.0.12.20240311"
+
+[tool.yapf]
+based_on_style = "pep8"
+column_limit = "120"
+
+[tool.pylint.master]
+disable = [
+    'C0114', # missing-module-docstring
+    'C0115', # missing-class-docstring
+    'C0116', # missing-function-docstring
+]
+
+[tool.pylint.basic]
+argument-naming-style = 'any'
+attr-naming-style = 'any'
+
+[tool.pylint.format]
+# Maximum number of lines in a module.
+max-line-length = 120
+
+[tool.pylint.design]
+# Minimum number of public methods for a class (see R0903).
+min-public-methods = 0
+
+[tool.mypy]
+ignore_missing_imports = true
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+# to avoid mypy errors when importing modules from commons
+# aka "module is installed, but missing library stubs or py.typed marker"
+module = ["mchpy.*"]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]
