@@ -3,11 +3,11 @@
 # It describes a set of packages to be installed, along with
 # configuration settings.
 spack:
+  # add package specs to the `specs` list
   specs: 
-    - flexpart-ifs@fdb 
-    - fdb +tools
-    - eckit@1.20.2 ~mpi 
-    - eccodes@2.19.0 +aec jp2k=none 
+    - flexpart-ifs@main
+    - eckit@1.20.2 ~mpi
+    - eccodes@2.19.0 +aec jp2k=none +fortran 
     - hdf5 ~mpi
   view: false
   concretizer:
@@ -18,3 +18,4 @@ spack:
   packages:
     all:
       target: [x86_64]
+

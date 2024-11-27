@@ -1,21 +1,102 @@
-# Docker base image for Flexpart dependencies
+# Dockerfile to build an image with the dependencies of Flexpart-IFS installed in an environment via spack.
+FROM docker-all-nexus.meteoswiss.ch/mch/ubuntu-jammy AS spack
 
-ARG spack_tag=latest
-FROM docker-all-nexus.meteoswiss.ch/numericalweatherpredictions/dispersionmodelling/flexpart-ifs/spack-container:${spack_tag}
-ARG TOKEN
-ENV TOKEN=$TOKEN 
-
-RUN git config --global url."https://x-access-token:${TOKEN}@github.com/MeteoSwiss-APN/".insteadOf "ssh://git@github.com/MeteoSwiss-APN/"
-RUN git config --global url."https://github.com/MeteoSwiss/".insteadOf "git@github.com:MeteoSwiss/"
-RUN git config --list
-
-RUN mkdir -p /scratch/spack-env/ 
-COPY spack.yaml /scratch/spack-env/spack.yaml
+ENV DOCKERFILE_BASE=ubuntu            \
+    DOCKERFILE_DISTRO=ubuntu          \
+    DOCKERFILE_DISTRO_VERSION=20.04   \
+    SPACK_PREFIX=/root/c2sm-spack     \
+    SPACK_SYSTEM_CONFIG_PATH=/root/c2sm-spack/sysconfigs/unknown \
+    SPACK_ROOT=/root/c2sm-spack/spack \
+    SPACK_TAG=v0.20.1.3               \
+    DEBIAN_FRONTEND=noninteractive    \
+    CURRENTLY_BUILDING_DOCKER_IMAGE=1
 
 RUN apt-get -yqq update \
     && apt-get -yqq install --no-install-recommends \
-    zlib1g && spack external find
+    build-essential \
+    ca-certificates \
+    curl \
+    file \
+    g++-11 \
+    gcc-11 \
+    gfortran-11 \
+    git \
+    gnupg2 \
+    iproute2 \
+    locales \
+    make \
+    python3.9 \
+    python3-pip \
+    python3-setuptools \
+    tcl \
+    ssh \
+    unzip \
+    bzip2 \
+    cmake \
+    libnetcdf-dev \
+    libnetcdff-dev \
+    automake \
+    m4 \
+    libopenjp2-7-dev \
+    flex \
+    bison \
+    vim \ 
+    && locale-gen en_US.UTF-8
 
-RUN spack config add "config:build_jobs:12" && spack env activate -p /scratch/spack-env/ && spack concretize && spack install
+RUN pip3 install boto3 \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN git config --global --remove-section url."https://x-access-token:${TOKEN}@github.com/MeteoSwiss-APN/" 
+ENV LANGUAGE=en_US.UTF-8 \
+    LANG=en_US.UTF-8 \
+    LC_ALL=en_US.UTF-8
+
+RUN git clone --depth 1 --recurse-submodules --shallow-submodules -b ${SPACK_TAG} https://github.com/C2SM/spack-c2sm.git ${SPACK_PREFIX}
+RUN cd ${SPACK_PREFIX} && git rev-parse --verify HEAD && . ./setup-env.sh && spack compiler find && spack external find --all
+RUN chmod -R 777 ${SPACK_PREFIX}/setup-env.sh && echo $SPACK_SYSTEM_CONFIG_PATH
+
+RUN mkdir -p $SPACK_ROOT
+
+RUN ln -s $SPACK_ROOT/share/spack/docker/entrypoint.bash \
+    /usr/local/bin/docker-shell \
+    && ln -s $SPACK_ROOT/share/spack/docker/entrypoint.bash \
+    /usr/local/bin/interactive-shell \
+    && ln -s $SPACK_ROOT/share/spack/docker/entrypoint.bash \
+    /usr/local/bin/spack-env
+
+RUN mkdir -p /root/.spack \
+    && cp $SPACK_ROOT/share/spack/docker/modules.yaml \
+    /root/.spack/modules.yaml \
+    && rm -rf /root/*.* /run/nologin $SPACK_ROOT/.git
+
+FROM spack AS builder
+
+RUN apt-get -yqq update \
+    && apt-get -yqq install --no-install-recommends zlib1g csh \
+    && . $SPACK_ROOT/share/spack/setup-env.sh \
+    && spack external find
+
+# Make scratch
+RUN mkdir -p /scratch/flexpart/ /scratch/spack-root 
+WORKDIR /scratch
+
+# Create spack environment and install dependencies
+RUN mkdir spack-env && \
+    cd spack-env && \
+    . $SPACK_ROOT/share/spack/setup-env.sh && \
+    spack env create -d . && \
+    spack -e . concretize --force || { echo "Error concretizing environment"; exit 1; } && \
+    spack -e . add flexpart-ifs@main  target=x86_64 || { echo "Error adding spec"; exit 1; } && \
+    # Configure development path for the package
+    spack -e . develop --no-clone --path /scratch/flexpart flexpart-ifs@main || { echo "Error adding develop"; exit 1; } && \
+    spack -e . config --scope env:/scratch/spack-env add -f /scratch/spack-env/spack.yaml config:install_tree:root:/scratch/spack-root && \
+    spack -e . config --scope env:/scratch/spack-env add -f /scratch/spack-env/spack.yaml config:install_path_scheme:"\"{name}\"" && \ 
+    spack -e . concretize && \
+    spack -e . install --only=dependencies --fail-fast
+
+ARG USERNAME=default_user
+ARG USER_UID=1000
+ARG USER_GID=$USER_UID
+# Create the user
+RUN groupadd --gid $USER_GID $USERNAME \
+    && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME
+USER $USERNAME
