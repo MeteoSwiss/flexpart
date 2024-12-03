@@ -4,9 +4,9 @@ FROM docker-all-nexus.meteoswiss.ch/mch/ubuntu-jammy AS spack
 ENV DOCKERFILE_BASE=ubuntu            \
     DOCKERFILE_DISTRO=ubuntu          \
     DOCKERFILE_DISTRO_VERSION=20.04   \
-    SPACK_PREFIX=/root/c2sm-spack     \
-    SPACK_SYSTEM_CONFIG_PATH=/root/c2sm-spack/sysconfigs/unknown \
-    SPACK_ROOT=/root/c2sm-spack/spack \
+    SPACK_PREFIX=/opt/c2sm-spack     \
+    SPACK_SYSTEM_CONFIG_PATH=/opt/c2sm-spack/sysconfigs/unknown \
+    SPACK_ROOT=/opt/c2sm-spack/spack \
     SPACK_TAG=v0.20.1.3               \
     DEBIAN_FRONTEND=noninteractive    \
     CURRENTLY_BUILDING_DOCKER_IMAGE=1
@@ -52,7 +52,7 @@ ENV LANGUAGE=en_US.UTF-8 \
 
 RUN git clone --depth 1 --recurse-submodules --shallow-submodules -b ${SPACK_TAG} https://github.com/C2SM/spack-c2sm.git ${SPACK_PREFIX}
 RUN cd ${SPACK_PREFIX} && git rev-parse --verify HEAD && . ./setup-env.sh && spack compiler find && spack external find --all
-RUN chmod -R 777 ${SPACK_PREFIX}/setup-env.sh && echo $SPACK_SYSTEM_CONFIG_PATH
+RUN chmod 777 ${SPACK_PREFIX}/setup-env.sh  && echo $SPACK_SYSTEM_CONFIG_PATH
 
 RUN mkdir -p $SPACK_ROOT
 
@@ -63,10 +63,10 @@ RUN ln -s $SPACK_ROOT/share/spack/docker/entrypoint.bash \
     && ln -s $SPACK_ROOT/share/spack/docker/entrypoint.bash \
     /usr/local/bin/spack-env
 
-RUN mkdir -p /root/.spack \
+RUN mkdir -p /opt/.spack \
     && cp $SPACK_ROOT/share/spack/docker/modules.yaml \
-    /root/.spack/modules.yaml \
-    && rm -rf /root/*.* /run/nologin $SPACK_ROOT/.git
+    /opt/.spack/modules.yaml \
+    && rm -rf /opt/*.* /run/nologin $SPACK_ROOT/.git
 
 FROM spack AS builder
 
@@ -76,27 +76,34 @@ RUN apt-get -yqq update \
     && spack external find
 
 # Make scratch
-RUN mkdir -p /scratch/flexpart/ /scratch/spack-root 
+RUN mkdir -p /scratch/flexpart/ /scratch/spack-root && chmod -R 777 /scratch/flexpart
 WORKDIR /scratch
 
 # Create spack environment and install dependencies
 RUN mkdir spack-env && \
     cd spack-env && \
     . $SPACK_ROOT/share/spack/setup-env.sh && \
-    spack env create -d . && \
-    spack -e . concretize --force || { echo "Error concretizing environment"; exit 1; } && \
-    spack -e . add flexpart-ifs@main  target=x86_64 || { echo "Error adding spec"; exit 1; } && \
-    # Configure development path for the package
+    spack env create -d . --with-view /scratch/spack-view/ && \
+    spack -e . add flexpart-ifs@main target=x86_64 || { echo "Error adding spec"; exit 1; } && \
     spack -e . develop --no-clone --path /scratch/flexpart flexpart-ifs@main || { echo "Error adding develop"; exit 1; } && \
     spack -e . config --scope env:/scratch/spack-env add -f /scratch/spack-env/spack.yaml config:install_tree:root:/scratch/spack-root && \
-    spack -e . config --scope env:/scratch/spack-env add -f /scratch/spack-env/spack.yaml config:install_path_scheme:"\"{name}\"" && \ 
+    spack -e . config --scope env:/scratch/spack-env add -f /scratch/spack-env/spack.yaml config:install_path_scheme:"\"{name}\""
+
+# Install dependencies
+RUN cd spack-env && \
+    . $SPACK_ROOT/share/spack/setup-env.sh && \
     spack -e . concretize && \
     spack -e . install --only=dependencies --fail-fast
 
 ARG USERNAME=default_user
 ARG USER_UID=1000
 ARG USER_GID=$USER_UID
+
 # Create the user
 RUN groupadd --gid $USER_GID $USERNAME \
     && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME
+
+RUN chown -R $USERNAME:$USERNAME /scratch /opt
+
+# Switch to default_user for subsequent steps
 USER $USERNAME
