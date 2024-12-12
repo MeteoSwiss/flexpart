@@ -6,7 +6,7 @@ import re
 import argparse
 import boto3
 
-from flexpart_ifs_utils import s3_utils
+from flexpart_ifs_utils.s3_utils import download_file
 
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
@@ -74,8 +74,6 @@ filedata = re.sub('IBTIME'+r'= *\d*, .*',
                     'IBTIME'+'={date}0000,'.format(date=f"{int(conf['IBTIME']):02}"), filedata)
 filedata = re.sub('IETIME'+r'= *\d*, .*',
                     'IETIME'+'={date}0000,'.format(date=f"{int(conf['IETIME']):02}"), filedata)
-
-
 
 with open(conf['sandbox_dir']+'/input/COMMAND', 'w') as file:
     file.write(filedata)
