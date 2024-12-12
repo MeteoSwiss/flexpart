@@ -85,7 +85,6 @@ pipeline {
                name: 'awsAccount')
 
         booleanParam(name: 'BUILD_BASE_IMAGE', defaultValue: false, description: 'Rebuilds the base image containing Spack dependencies')
-        booleanParam(name: 'BUILD_SPACK_IMAGE', defaultValue: false, description: 'Rebuilds the base image containing Spack and spack-c2sm')
     }
 
     options {
@@ -177,7 +176,6 @@ pipeline {
                             Globals.awsEcrRepo = "${env.AWS_ACCOUNT_ID}.dkr.ecr.${Globals.AWS_REGION}.amazonaws.com"
                             Globals.awsEcrImageTag = "${Globals.awsEcrRepo}/${Globals.AWS_IMAGE_NAME}-${Globals.deployEnv}:${shortBranchName}"
                             echo "Using container version ${Globals.imageTag}"
-                            echo "Using awsEcrRepo ${Globals.awsEcrRepo}"
                         }
                     } 
                 }
@@ -188,6 +186,10 @@ pipeline {
             when { expression { params.BUILD_BASE_IMAGE } }
             steps {
                 withCredentials([usernamePassword(
+                                    credentialsId: 'github app credential for the meteoswiss github organization (limited to repositories used by APN)',
+                                    usernameVariable: 'GITHUB_APP',
+                                    passwordVariable: 'GITHUB_ACCESS_TOKEN'),
+                                usernamePassword(
                                     credentialsId: 'openshift-nexus',
                                     passwordVariable: 'NXPASS',
                                     usernameVariable: 'NXUSER')
@@ -213,46 +215,26 @@ pipeline {
             }
         }
 
-        stage('Build spack container dependencies image') {
-            when { expression { params.BUILD_SPACK_IMAGE } }
+        stage('Build') {
+            when { expression { Globals.build } }
             steps {
                 withCredentials([usernamePassword(
+                                    credentialsId: 'github app credential for the meteoswiss github organization (limited to repositories used by APN)',
+                                    usernameVariable: 'GITHUB_APP',
+                                    passwordVariable: 'GITHUB_ACCESS_TOKEN'),
+                                usernamePassword(
                                     credentialsId: 'openshift-nexus',
                                     passwordVariable: 'NXPASS',
                                     usernameVariable: 'NXUSER')
                             ]) {
-                    echo "---- BUILDING SPACK IMAGE ----"
+                    echo "Starting with Build image"
                     sh """
-                    podman build --pull -f dockerfiles/Dockerfile.spack --build-arg VERSION=${Globals.version} -t "spack:${GIT_COMMIT}" .
+                    podman build --pull --build-arg TOKEN=${GITHUB_ACCESS_TOKEN} --build-arg COMMIT=${GIT_COMMIT} --build-arg VERSION=${Globals.version} --target tester -t ${Globals.imageTag}-tester .
+                    mkdir -p test_reports
                     """
-                    echo "---- PUBLISH SPACK IMAGE ----"
-                    sh """
-                    echo $NXPASS | podman login ${Globals.IMAGE_REPO} -u $NXUSER --password-stdin
-                    podman tag spack:${GIT_COMMIT} spack:latest
-                    podman push spack:${GIT_COMMIT}
-                    podman push spack:latest
-                    """
-                }
-            }
-            post {
-                cleanup {
-                    sh "podman logout ${Globals.IMAGE_REPO} || true"
-                    sh 'oc logout || true'
-                }
-            }
-        }
-
-        stage('Build') {
-            when { expression { Globals.build } }
-            steps {
-                echo "Starting with Build image"
-                sh """
-                podman build --pull --build-arg VERSION=${Globals.version} --target tester -t ${Globals.imageTag}-tester .
-                mkdir -p test_reports
-                """
-                echo "Starting with unit-testing including coverage"
-                sh "podman run --rm -v \$(pwd)/test/resource/schema:/src/app-root/schema -v \$(pwd)/test_reports:/src/app-root/test_reports ${Globals.imageTag}-tester sh -c '. ./test_ci.sh && run_tests_with_coverage'"
-
+                    echo "Starting with unit-testing including coverage"
+                    sh "podman run --rm -v \$(pwd)/test/resource/schema:/src/app-root/schema -v \$(pwd)/test_reports:/src/app-root/test_reports ${Globals.imageTag}-tester sh -c '. ./test_ci.sh && run_tests_with_coverage'"
+                } 
             }
             post {
                 always {
@@ -321,8 +303,12 @@ pipeline {
             steps {
                 script {
                     if (expression { Globals.build || Globals.deploy }) {
-                        echo "---- CREATE IMAGE ----"
-                        sh "podman build --pull --build-arg COMMIT=${GIT_COMMIT}  --target runner --build-arg VERSION=${Globals.version} -t ${Globals.imageTag} ."
+                        withCredentials([usernamePassword(credentialsId: 'github app credential for the meteoswiss github organization (limited to repositories used by APN)',
+                            usernameVariable: 'GITHUB_APP',
+                            passwordVariable: 'GITHUB_ACCESS_TOKEN')]) {
+                            echo "---- CREATE IMAGE ----"
+                            sh "podman build --pull --build-arg TOKEN=${GITHUB_ACCESS_TOKEN} --build-arg COMMIT=${GIT_COMMIT} --target runner --build-arg VERSION=${Globals.version} -t ${Globals.imageTag} ."
+                        } 
                     }
                 }
             }
@@ -330,10 +316,6 @@ pipeline {
 
         stage('Publish Artifacts') {
             when { expression { Globals.deploy } }
-            environment {
-                REGISTRY_AUTH_FILE = "$workspace/.containers/auth.json"
-                PATH = "$HOME/tools/openshift-client-tools:$PATH"
-            }
             steps {
                 script {
                     if (expression { Globals.deploy }) {
@@ -361,34 +343,38 @@ pipeline {
                 HTTPS_PROXY="http://proxy.meteoswiss.ch:8080"
                 AWS_DEFAULT_OUTPUT="json"
                 AWS_CA_BUNDLE="/etc/ssl/certs/MCHRoot.crt"
-                PATH = "/opt/maker/tools/terraform:/opt/maker/tools/aws:$PATH"
+                PATH = "/opt/maker/tools/aws:$PATH"
             }
             steps {
                 script {
-                    withVault(
-                        configuration: [vaultUrl: 'https://vault.apps.cp.meteoswiss.ch',
-                                        vaultCredentialId: Globals.vaultCredentialId,
-                                        engineVersion: 2],
-                        vaultSecrets: [
-                            [
-                                path: Globals.vaultPath, engineVersion: 2, secretValues: [
-                                    [envVar: 'AWS_ACCESS_KEY_ID', vaultKey: 'jenkins-aws-access-key'],
-                                    [envVar: 'AWS_SECRET_ACCESS_KEY', vaultKey: 'jenkins-aws-secret-key']
+                    withCredentials([usernamePassword(credentialsId: 'github app credential for the meteoswiss github organization (limited to repositories used by APN)',
+                                usernameVariable: 'GITHUB_APP',
+                                passwordVariable: 'GITHUB_ACCESS_TOKEN')]) {
+                        withVault(
+                            configuration: [vaultUrl: 'https://vault.apps.cp.meteoswiss.ch',
+                                            vaultCredentialId: Globals.vaultCredentialId,
+                                            engineVersion: 2],
+                            vaultSecrets: [
+                                [
+                                    path: Globals.vaultPath, engineVersion: 2, secretValues: [
+                                        [envVar: 'AWS_ACCESS_KEY_ID', vaultKey: 'jenkins-aws-access-key'],
+                                        [envVar: 'AWS_SECRET_ACCESS_KEY', vaultKey: 'jenkins-aws-secret-key']
+                                    ]
                                 ]
                             ]
-                        ]
-                    ) {
-                        sh """
-                            if test -f /etc/ssl/certs/ca-certificates.crt; then
-                                export AWS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
-                            else
-                                export AWS_CA_BUNDLE=/etc/ssl/certs/ca-bundle.crt
-                            fi
+                        ) {
+                            sh """
+                                if test -f /etc/ssl/certs/ca-certificates.crt; then
+                                    export AWS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+                                else
+                                    export AWS_CA_BUNDLE=/etc/ssl/certs/ca-bundle.crt
+                                fi
 
-                            aws ecr get-login-password --region ${Globals.AWS_REGION} | podman login -u AWS --password-stdin ${Globals.awsEcrRepo}
-                            podman build --pull --target runner --build-arg COMMIT=${GIT_COMMIT} --build-arg VERSION=${Globals.version} -t ${Globals.awsEcrImageTag} .
-                            podman push ${Globals.awsEcrImageTag}
-                        """
+                                aws ecr get-login-password --region ${Globals.AWS_REGION} | podman login -u AWS --password-stdin ${Globals.awsEcrRepo}
+                                podman build --pull --target runner --build-arg COMMIT=${GIT_COMMIT} --build-arg VERSION=${Globals.version} -t ${Globals.awsEcrImageTag} .
+                                podman push ${Globals.awsEcrImageTag}
+                            """
+                        }
                     }
                 }
             }
@@ -396,6 +382,7 @@ pipeline {
                 cleanup {
                     sh "podman image rm -f ${Globals.imageTag}-tester || true"
                     sh "podman image rm -f ${Globals.imageTag} || true"
+                    sh "podman image rm -f ${Globals.IMAGE_NAME}-base || true"
                     sh "podman image rm -f ${Globals.awsEcrImageTag} || true"
                 }
                 success {
