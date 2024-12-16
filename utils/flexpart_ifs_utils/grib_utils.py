@@ -16,7 +16,7 @@ class GribMetadata(RunMetadata):
 
 
 def extract_metadata_from_grib_file(path: Path) -> GribMetadata:
-    """ This function assumes all GRIB messages in the file have the same forecast datetime, step, model, member."""
+    """ This function assumes all GRIB messages in the file have the same forecast datetime, step."""
 
     with open(path, "rb") as f:
         gid = codes_grib_new_from_file(f)

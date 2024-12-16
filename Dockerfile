@@ -28,7 +28,7 @@ RUN cd spack-env && \
     spack -e . -vv install -j1 --fail-fast && \
     spack gc -y
 
-RUN git clone --depth 1 --branch 2.25.0 https://github.com/ecmwf/eccodes.git
+RUN git clone --depth 1 --branch 2.35.0 https://github.com/ecmwf/eccodes.git
 
 FROM docker-all-nexus.meteoswiss.ch/mch/ubuntu-jammy AS runner
 

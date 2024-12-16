@@ -64,12 +64,9 @@ def prepare_job_directory(
     # Copy the shared options directory
     shutil.copytree(options_dir, input_dir)
 
-    # Copy the landuse data
-    shutil.copy(jobs_dir / 'IGBP_int1.dat', input_dir)
-
     # Copy OUTGRID
     shutil.copy(options_dir / 'OUTGRID.f', input_dir / 'OUTGRID')
-    
+
     # Configure COMMAND and RELEASES file
     for namelist in (['COMMAND'] + list(input_dir.glob('RELEASES*'))):
         _configure_namelist(configuration, input_dir / namelist)
@@ -158,7 +155,11 @@ def _write_job_script(file_path: Path | str,
     """Writes the final bash script that will execute Flexpart"""
     # Generate job
     with open(file_path, 'w', encoding="utf-8") as f:
-        f.writelines(['#!/bin/bash\n', 'ulimit -s unlimited\n', f'{flexpart_exe} -vv\n'])
+        f.writelines(['#!/bin/bash\n',
+            f'export OMP_NUM_THREADS={openmp_config.num_threads}\n\n',
+            f'export OMP_STACKSIZE={openmp_config.stack_size}\n\n',
+            f'export FLEXPART_EXE={flexpart_exe}\n',
+            'ulimit -s unlimited\n\n', '$FLEXPART_EXE -vvv\n'])
 
 
 def _generate_available(path: Path, data_paths: list[Path]) -> None:
@@ -171,19 +172,11 @@ def _generate_available(path: Path, data_paths: list[Path]) -> None:
         _logger.info('Writing lines to AVAILABLE file')
 
         for file in data_paths:
-
-            if file.name.endswith('c'):
-                step_datetime = _get_valid_datetime(file)
-                adate = datetime.strftime(step_datetime, '%Y%m%d')
-                entry = f'{str(adate)} 999999      {file.name}\n'
-                f.write(entry)
-                _logger.info(entry)
-            else:
-                step_datetime = _get_valid_datetime(file)
-                adate, atime = datetime.strftime(step_datetime, '%Y%m%d'), datetime.strftime(step_datetime, '%H')
-                entry = f'{str(adate)} {atime:02}0000      {file.name}\n'
-                f.write(entry)
-                _logger.info(entry)
+            step_datetime = _get_valid_datetime(file)
+            adate, atime = datetime.strftime(step_datetime, '%Y%m%d'), datetime.strftime(step_datetime, '%H')
+            entry = f'{str(adate)} {atime:02}0000      {file.name}\n'
+            f.write(entry)
+            _logger.info(entry)
 
 
 def _get_valid_datetime(
