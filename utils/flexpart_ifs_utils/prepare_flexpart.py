@@ -34,11 +34,13 @@ def validate_env(data: dict[str, str | None]) -> None:
     if violations:
         raise RuntimeError(f"Environment is missing variables needed to prepare runtime configuration: {violations}")
 
+
 def parse_env() -> dict[str, str | None]:
     return {"IBDATE": os.getenv("IBDATE"),
             "IBTIME": os.getenv("IBTIME"),
             "IEDATE": os.getenv("IEDATE"),
             "IETIME": os.getenv("IETIME")}
+
 
 def prepare_job_directory(
         configuration: dict,
@@ -102,13 +104,10 @@ def prepare_job_directory(
     _write_job_script(
         job_dir / 'job',
         flexpart_dir / 'bin' / 'FLEXPART',
-        input_dir,
-        output_dir,
-        job_data_dir,
-        available_path,
         openmp_config)
 
     return job_dir
+
 
 def render_template(
         template_path: Path,
@@ -147,19 +146,17 @@ def _filter_config(yaml_file: Path, release_sites: list[str]) -> None:
 
 def _write_job_script(file_path: Path | str,
                      flexpart_exe: Path | str,
-                     input_dir: Path,
-                     output_dir: Path,
-                     data_dir: Path,
-                     available_path: Path | str,
                      openmp_config: OpenMPConfig) -> None:
     """Writes the final bash script that will execute Flexpart"""
-    # Generate job
+
     with open(file_path, 'w', encoding="utf-8") as f:
-        f.writelines(['#!/bin/bash\n',
+        f.writelines([
+            '#!/bin/bash\n',
             f'export OMP_NUM_THREADS={openmp_config.num_threads}\n\n',
             f'export OMP_STACKSIZE={openmp_config.stack_size}\n\n',
+            'ulimit -s unlimited\n\n',
             f'export FLEXPART_EXE={flexpart_exe}\n',
-            'ulimit -s unlimited\n\n', '$FLEXPART_EXE -vvv\n'])
+            '$FLEXPART_EXE\n'])
 
 
 def _generate_available(path: Path, data_paths: list[Path]) -> None:
@@ -170,7 +167,6 @@ def _generate_available(path: Path, data_paths: list[Path]) -> None:
             '________ ______      __________________\n'
         ])
         _logger.info('Writing lines to AVAILABLE file')
-
         for file in data_paths:
             step_datetime = _get_valid_datetime(file)
             adate, atime = datetime.strftime(step_datetime, '%Y%m%d'), datetime.strftime(step_datetime, '%H')
@@ -229,6 +225,7 @@ def _configure_namelist(config: dict, namelist: Path) -> None:
     with open(namelist, 'w', encoding="utf-8") as file:
         file.write(filedata)
 
+
 def select_files(
         config: dict,
         table: DBTable,
@@ -245,14 +242,19 @@ def select_files(
     forecast_date = forecast_datetime[:8]
     forecast_time = forecast_datetime[8:12]
 
-    if _is_dynamodb_table(table):
+    if table.backend_type == BackendType.DYNAMODB:
         objs = s3_utils.list_objs_in_bucket_via_dynamodb(
-            table = table,
-            date = forecast_date,
-            time = forecast_time,
+            table=table,
+            date=forecast_date,
+            time=forecast_time,
+        )
+    elif table.backend_type == BackendType.SQLITE:
+        objs = s3_utils.list_objs_in_bucket_via_sqlite(
+            table.name,
+            forecast_datetime,
         )
     else:
-        objs = s3_utils.list_objs_in_bucket_via_sqlite(table.name, forecast_datetime)
+        raise ValueError(f"Unsupported backend type: {table.backend_type}")
     
     if not objs:
         msg = f"""
@@ -281,10 +283,6 @@ def select_files(
     
     return subset
 
-def _is_dynamodb_table(table):
-    if table.region:
-        return True
-    return False
 
 def _get_start_end(config: dict) -> tuple[datetime, datetime]:
 

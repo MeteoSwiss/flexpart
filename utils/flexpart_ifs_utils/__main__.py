@@ -138,7 +138,7 @@ if __name__ == '__main__':
     # Download input data
     if not data_paths:
         keys = select_files(configs[0]['command'],
-                            table = CONFIG.main.aws.db.nwp_model_data, # Could be DynamoDB table or SQLite DB path
+                            table = CONFIG.main.aws.db.nwp_model_data,
                             forecast_datetime = FORECAST_DATETIME,
                             step_unit = CONFIG.main.input.step_unit)
 

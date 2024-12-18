@@ -19,6 +19,7 @@ main:
       nwp_model_data:
         name: /scratch/db/sqlite3-db
         region: ""
+        backend_type: SQLITE
     s3:
       nwp_model_data:
         region: eu-central-2

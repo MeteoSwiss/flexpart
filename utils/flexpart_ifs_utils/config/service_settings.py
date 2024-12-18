@@ -1,6 +1,7 @@
 from mchpy.audit.logger import LoggingSettings
 from mchpy.config.base_settings import BaseServiceSettings
 from pydantic import BaseModel
+from enum import Enum
 
 
 class Bucket(BaseModel):
@@ -13,16 +14,21 @@ class S3(BaseModel):
     nwp_model_data: Bucket
     output: Bucket
 
+class BackendType(str, Enum):
+    DYNAMODB = "dynamodb"
+    SQLITE = "sqlite"
+
 class DBTable(BaseModel):
     name: str
     region: str
+    backend_type: BackendType
 
-class DynamoDB(BaseModel):
+class DB(BaseModel):
     nwp_model_data: DBTable
 
 class AWS(BaseModel):
     s3: S3
-    db: DynamoDB
+    db: DB
 
 class InputSettings(BaseModel):
     step_unit: str

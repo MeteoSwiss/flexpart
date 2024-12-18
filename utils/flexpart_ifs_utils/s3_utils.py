@@ -109,29 +109,6 @@ def _get_input_metadata(directory: Path) -> RunMetadata:
     raise FileNotFoundError("No GRIB files found in the directory.")
 
 
-def upload_directory_previous(root_path, bucket_name, endpoint_url, access_key, secret_key):
-    """Uploads a directory to the specified S3 bucket."""
-    print(f"Uploading directory: {root_path} to bucket: {bucket_name} in endpoint_url: {endpoint_url}")
-
-    s3_resource = get_s3_resource(endpoint_url, access_key, secret_key)
-    my_bucket = s3_resource.Bucket(bucket_name)
-    
-    top_dir = os.path.join(f"{os.getenv('IBDATE')}{os.getenv('IBTIME')}", os.path.basename(os.path.dirname(root_path)))
-
-    if not os.path.exists(root_path):
-        raise FileNotFoundError("Directory provided to upload does not exist.")
-
-    for path, subdirs, files in os.walk(root_path):
-        path = path.replace("\\", "/")
-        directory_name = os.path.join(top_dir, path.replace(root_path, "")) if path != root_path else top_dir
-
-        for file in files:
-            file_path = os.path.join(path, file)
-            s3_key = f"{directory_name}/{file}"
-            print(f"Uploading {file_path} to {s3_key}")
-            my_bucket.upload_file(file_path, s3_key)
-
-
 def list_objs_in_bucket_via_dynamodb(table: DBTable,
                                      date: str,
                                      time: str) -> dict[str, GribMetadata]:
@@ -202,13 +179,19 @@ def list_objs_in_bucket_via_sqlite(db_path: str, forecast_datetime: str):
     items = cursor.fetchall()
     conn.close()
 
-    matching_objects = {
-        item[0] : GribMetadata(
-            date = dt.strptime(item[1], "%Y-%m-%d %H:%M:%S").strftime("%Y%m%d"),
-            time = dt.strptime(item[1], "%Y-%m-%d %H:%M:%S").strftime("%H%m"),
-            step = item[2])
-         for item in items}
+    # Dictionary to store unique steps
+    unique_steps = {}
 
+    # Iterate through items and add only unique steps
+    matching_objects = {
+        item[0]: GribMetadata(
+            date=dt.strptime(item[1], "%Y-%m-%d %H:%M:%S").strftime("%Y%m%d"),
+            time=dt.strptime(item[1], "%Y-%m-%d %H:%M:%S").strftime("%H%m"),
+            step=item[2],
+        )
+        for item in items
+        if item[2] not in unique_steps and not unique_steps.update({item[2]: True})
+    }
     return matching_objects
 
 def download_keys_from_bucket(keys: list[str],
