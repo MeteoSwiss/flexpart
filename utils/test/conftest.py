@@ -7,10 +7,13 @@ from typing import Generator
 
 import pytest
 import boto3
+from botocore.config import Config
 from dotenv import load_dotenv
+from moto import mock_aws
 from unittest.mock import MagicMock, patch
 
 from flexpart_ifs_utils import CONFIG
+
 
 @pytest.fixture(scope="function")
 def aws_credentials():
@@ -27,27 +30,31 @@ def aws_credentials():
         del os.environ["AWS_PROFILE"]
 
 
+
 @pytest.fixture(scope="function")
-def s3(aws_credentials):
+def s3(request):
     """
-    This fixture replaces the regular boto3 client with the mocking library moto.
-    The replacement is done by mocking the constant which is used to make sure that a S3 client is reused for calls.
-    This replacement is a bit different from the usual way of introducing moto described in
-    https://docs.getmoto.org/en/latest/docs/getting_started.html. Doing it this way was caused by problems with the
-    MinIO server url which could not be easily overwritten.
+    Mocked S3 client fixture with dynamic platform and endpoint_url support.
     """
-    from moto import mock_aws
+    platform, endpoint_url = request.param
+
     with mock_aws():
-        session = boto3.Session()
-        s3 = session.client('s3')
+        if endpoint_url:
+            # Custom endpoint
+            s3 = boto3.Session().client("s3", endpoint_url=endpoint_url)
+
+        else:
+            # AWS S3 - handle location constraint for non-us-east-1 regions
+            s3 = boto3.Session().client("s3", region_name="us-east-1")
+
         s3.create_bucket(Bucket=CONFIG.main.aws.s3.nwp_model_data.name)
         s3.create_bucket(Bucket=CONFIG.main.aws.s3.output.name)
         yield s3
 
+
 @pytest.fixture(scope="session")
 def model_data() -> Path:
     return Path(os.environ['TEST_DATA'])
-
 
 
 @pytest.fixture(scope="session")
@@ -55,11 +62,11 @@ def resource_dir() -> Path:
     resource: Path = Path(os.path.dirname(os.path.realpath(__file__))) / 'resource'
     return resource
 
-
 @pytest.fixture(scope="session")
 def jinja_template() -> Path:
     jinja_template: Path = Path(os.path.dirname(os.path.realpath(__file__))).parent / 'flexpart_ifs_utils/runtime_configuration.j2'
     return jinja_template
+
 
 @pytest.fixture(scope="session")
 def references() -> Path:
@@ -79,7 +86,6 @@ def pytest_configure(config):
 
     # The below functions are required for setting up local tests only.
     load_dotenv(override=True)
-    _set_grib_definitions_path()
     _set_local_flexpart_install_prefix()
     _set_local_eccodes_install_prefix()
     _set_local_jobs_dir()
@@ -97,7 +103,6 @@ def _set_local_flexpart_install_prefix():
         else:
             logging.error("Set FLEXPART_PREFIX in test/.env for local testing.")
             raise RuntimeError("FLEXPART_PREFIX is undefined.")
-
 
 def _set_local_eccodes_install_prefix():
     try:
@@ -129,7 +134,6 @@ def _set_local_entrypoint():
         os.environ['PYTEST_ENTRYPOINT'] = str( WORKDIR.parent.parent / 'entrypoint.sh' )
         print("PYTEST_ENTRYPOINT: %s" % os.getenv("PYTEST_ENTRYPOINT", 'unset'))
 
-
 def _set_local_test_data_path():
     # If running locally, provide a path for TEST_DATA in .env - the directory will be symlinked to the job dir.
     if os.getenv('TEST_DATA'):
@@ -140,7 +144,7 @@ def _set_local_test_data_path():
                 raise FileNotFoundError
         except FileNotFoundError:
             raise FileNotFoundError('The path you provided for environment variable TEST_DATA: %s is empty or does not exist.' % src_data_dir)
-        
+
         print("TEST_DATA: %s" % os.getenv("TEST_DATA", 'unset'))
         dst_data_dir = Path(os.getenv('JOBS_DIR')) / 'data'
         if dst_data_dir.is_symlink():
@@ -149,32 +153,6 @@ def _set_local_test_data_path():
         os.symlink(src_data_dir, dst_data_dir)
     else:
         raise RuntimeError('TEST_DATA path is undefined.')
-
-def _set_grib_definitions_path():
-
-    if 'GRIB_DEFINITION_PATH' not in os.environ:
-
-        definitions_dir = WORKDIR / 'resource'
-
-        if not os.path.exists(definitions_dir / 'eccodes'):
-
-            eccodes_dir = f"{WORKDIR / 'eccodes'}"
-            
-            if os.path.exists(eccodes_dir) and os.path.isdir(eccodes_dir):
-                shutil.rmtree(eccodes_dir)
-
-            subprocess.run(["git", "clone", "--depth", "1", "-b", "2.35.1",
-                            "git@github.com:ecmwf/eccodes.git", f"{eccodes_dir}"])
-            
-            # Keep only definitions folder from eccodes
-            definitions_src = WORKDIR / 'eccodes'
-            definitions_dest = definitions_dir / 'eccodes' / 'definitions'
-            shutil.copytree(definitions_src / 'definitions', definitions_dest)
-            shutil.rmtree(definitions_src)
-
-        os.environ["GRIB_DEFINITION_PATH"] = f"{definitions_dir / 'eccodes' / 'definitions'}"
-
-    print("GRIB_DEFINITION_PATH: %s" % os.getenv("GRIB_DEFINITION_PATH", 'unset'))
 
 
 

@@ -16,7 +16,8 @@ from flexpart_ifs_utils.grib_utils import GribMetadata
 from test.conftest import jinja_template, references, s3, mock_config
 
 MOCK_MD_EXTRACTION = "flexpart_ifs_utils.grib_utils.extract_metadata_from_grib_file"
-MOCK_LIST_OBJS_IN_BUCKET_VIA_DB = "flexpart_ifs_utils.s3_utils.list_objs_in_bucket_via_dynamodb"
+MOCK_LIST_OBJS_IN_BUCKET_VIA_DYNAMODB = "flexpart_ifs_utils.s3_utils.list_objs_in_bucket_via_dynamodb"
+MOCK_LIST_OBJS_IN_BUCKET_VIA_SQLITE = "flexpart_ifs_utils.s3_utils.list_objs_in_bucket_via_sqlite"
 
 @pytest.fixture
 def mock_logger(mocker):
@@ -85,19 +86,11 @@ def test_write_job_script(tmp_path, mock_config):
     data = {
         "file_path" : tmp_path / "job.sh",
         "flexpart_exe" : tmp_path / "flexpart_exe",
-        "input_dir" : tmp_path / "input",
-        "output_dir" : tmp_path / "output",
-        "data_dir" : tmp_path / "data",
-        "available_path" : tmp_path / "available"
     }
 
     _write_job_script(
         data["file_path"], 
         data["flexpart_exe"], 
-        data["input_dir"], 
-        data["output_dir"], 
-        data["data_dir"], 
-        data["available_path"],
         CONFIG.main.openmp_config
     )
 
@@ -275,54 +268,15 @@ def test_configure_namelist(tmp_path, references):
     assert "LON2=8.567," in releases_copy.read_text()
 
 
-@patch(MOCK_LIST_OBJS_IN_BUCKET_VIA_DB, spec=True)
-@pytest.mark.parametrize("step_unit", ["minutes", "hours"])
-def test_select_files_no_constant(mock_list_bucket, tmp_path, s3, step_unit):
+@pytest.mark.parametrize("step_unit, backend_type", [("minutes", "sqlite"), ("hours", "dynamodb")])
+def test_select_files(tmp_path, step_unit, backend_type):
     from flexpart_ifs_utils import CONFIG
 
     CONFIG.main.input.step_unit = step_unit
+    CONFIG.main.aws.db.nwp_model_data.backend_type = backend_type
 
     DATE="20240501"
     TIME="1200"
-
-    RUNTIME_CONF = {"IBDATE": "20240501", "IBTIME": 120000, "IEDATE": "20240501", "IETIME": 160000}
-
-    if step_unit == 'minutes':
-        multiplier = 60
-    elif step_unit == 'hours':
-        multiplier = 1
-
-    keys = [
-        str(tmp_path / "data-0"),
-        str(tmp_path / "data-1"),
-        str(tmp_path / "data-2"),
-        str(tmp_path / "data-3"),
-        str(tmp_path / "data-4"),
-        str(tmp_path / "data-5"),
-    ]
-
-    mock_list_bucket.return_value = {key: GribMetadata(date = DATE, time = TIME, step = int(str(key).split('-')[-1])*multiplier) for key in keys}
-    
-    with pytest.raises(RuntimeError) as excinfo:
-        select_files(RUNTIME_CONF, 
-                        table=CONFIG.main.aws.db.nwp_model_data, 
-                        forecast_datetime=f"{DATE}{TIME}", 
-                        step_unit=CONFIG.main.input.step_unit)
-    
-    assert "no constant file" in str(excinfo.value).lower()
-
-
-@patch(MOCK_LIST_OBJS_IN_BUCKET_VIA_DB, spec=True)
-@pytest.mark.parametrize("step_unit", ["minutes", "hours"])
-def test_select_files(mock_list_bucket, tmp_path, s3, step_unit):
-    from flexpart_ifs_utils import CONFIG
-
-    CONFIG.main.input.step_unit = step_unit
-
-    MODEL = "ICON-CH1-EPS"
-    DATE="20240501"
-    TIME="1200"
-    ENS = "1"
 
     RUNTIME_CONF = {"IBDATE": "20240501", "IBTIME": 140000, "IEDATE": "20240501", "IETIME": 180000}
 
@@ -332,7 +286,6 @@ def test_select_files(mock_list_bucket, tmp_path, s3, step_unit):
         multiplier = 1
 
     keys = [
-        str(tmp_path / "0000c"),
         str(tmp_path / "0000"),
         str(tmp_path / "1000"),
         str(tmp_path / "2000"),
@@ -342,22 +295,36 @@ def test_select_files(mock_list_bucket, tmp_path, s3, step_unit):
         str(tmp_path / "6000"),
     ]
 
-    mock_list_bucket.return_value = {key: GribMetadata(
-        date = DATE,
-        time = TIME,
-        step = int(str(key).split('/')[-1][0])*multiplier,
-        ) for key in keys}
+    if backend_type == "sqlite":
+        patch_target = MOCK_LIST_OBJS_IN_BUCKET_VIA_SQLITE
+    elif backend_type == "dynamodb":
+        patch_target = MOCK_LIST_OBJS_IN_BUCKET_VIA_DYNAMODB
+    else:
+        raise ValueError(f"Unsupported backend_type: {backend_type}")
 
-    subset = select_files(RUNTIME_CONF, 
-                        table=CONFIG.main.aws.db.nwp_model_data, 
-                        forecast_datetime=f"{DATE}{TIME}", 
-                        step_unit=CONFIG.main.input.step_unit)
-    print(subset)
+    with patch(patch_target, spec=True) as mock_list_bucket:
+        mock_list_bucket.return_value = {key: GribMetadata(
+            date = DATE,
+            time = TIME,
+            step = int(str(key).split('/')[-1][0])*multiplier,
+            ) for key in keys}
+        print(keys)
+        subset = select_files(RUNTIME_CONF, 
+                            table=CONFIG.main.aws.db.nwp_model_data, 
+                            forecast_datetime=f"{DATE}{TIME}", 
+                            step_unit=CONFIG.main.input.step_unit)
+        print(subset)
 
-    expected = set(keys)
-    expected.remove(str(tmp_path / "0000"))
-    assert len(subset) == 7
-    assert set(subset) == expected
+        expected = { 
+            'dispf2024050113',
+            'dispf2024050114',
+            'dispf2024050115',
+            'dispf2024050116',
+            'dispf2024050117',
+            'dispf2024050118'
+        } 
+        assert len(subset) == 6
+        assert set(subset) == expected
 
 def test_get_start_end():
     config = {"IBDATE": "20230101", "IBTIME": 120000, "IEDATE": "20230201", "IETIME": 220000}
