@@ -2,7 +2,7 @@
 import logging
 from pathlib import Path
 
-from eccodes import codes_grib_new_from_file, codes_get_string, codes_release, CodesInternalError
+from eccodes import codes_grib_new_from_file, codes_get_string, codes_count_in_file, codes_release, CodesInternalError
 from pydantic import BaseModel
 
 _logger = logging.getLogger(__name__)
@@ -46,3 +46,15 @@ def extract_metadata_from_grib_file(path: Path) -> GribMetadata:
         time = fcst_time,
         step = step_hr)
 
+
+def _is_grib_file(file_path: Path) -> bool:
+    """Check if a file is a GRIB file using eccodes."""
+
+    try:
+        with open(file_path, 'rb') as f:
+            gid = codes_count_in_file(f)
+            if not gid:
+                return False
+    except CodesInternalError:
+        return False
+    return True

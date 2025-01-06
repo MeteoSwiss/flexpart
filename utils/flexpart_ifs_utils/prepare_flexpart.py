@@ -242,17 +242,17 @@ def select_files(
     forecast_date = forecast_datetime[:8]
     forecast_time = forecast_datetime[8:12]
 
-    if table.backend_type == BackendType.DYNAMODB:
+    if table.backend_type == 'dynamodb':
         objs = s3_utils.list_objs_in_bucket_via_dynamodb(
             table=table,
             date=forecast_date,
             time=forecast_time,
         )
-    elif table.backend_type == BackendType.SQLITE:
+    elif table.backend_type == 'sqlite':
         objs = s3_utils.list_objs_in_bucket_via_sqlite(
-            table.name,
-            forecast_datetime,
-        )
+            table,
+            date=forecast_date,
+            time=forecast_time)
     else:
         raise ValueError(f"Unsupported backend type: {table.backend_type}")
     
@@ -264,6 +264,12 @@ def select_files(
         raise RuntimeError(msg)
 
     start_dt, end_dt = _get_start_end(config)
+
+    # If simulation start time is later than the forecast reference time,
+    # we need to include the previous step to simulation start time
+    # in order for Flexpart to correctly deaccumulate the precipitation.
+    if start_dt > datetime.strptime(forecast_date+forecast_time, '%Y%m%d%H%M'):
+        start_dt -= timedelta(hours=1)
 
     _logger.info("Matching objects between the validity times: %s, %s", start_dt, end_dt)
 

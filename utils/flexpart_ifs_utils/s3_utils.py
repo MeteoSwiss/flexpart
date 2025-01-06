@@ -72,9 +72,10 @@ def upload_directory(directory: Path,
             ) from e
 
     try:
-        client = boto3.Session().client('s3', region_name=bucket.region)
+        client = _create_s3_client(bucket)
 
         path_list = [Path(f) for f in glob.iglob(f"{directory}/**", recursive=True) if os.path.isfile(f)]
+
         if parent:
             path_list = [f for f in path_list if f.parent.name == parent]
 
@@ -130,7 +131,7 @@ def list_objs_in_bucket_via_dynamodb(table: DBTable,
 
     filter_expression = (
                          " ForecastDate = :forecastdate AND"
-                         " ForecastTime = :forecasttime AND")
+                         " ForecastTime = :forecasttime")
 
     expression_attributes_values = {
         ":forecastdate": date,
@@ -168,13 +169,16 @@ def list_objs_in_bucket_via_dynamodb(table: DBTable,
 
     return matching_objects
 
-def list_objs_in_bucket_via_sqlite(db_path: str, forecast_datetime: str):
-    conn = sqlite3.connect(db_path)
+def list_objs_in_bucket_via_sqlite(table: DBTable,
+                                    date: str,
+                                    time: str) -> dict[str, GribMetadata]:
+
+    conn = sqlite3.connect(table.name)
     cursor = conn.cursor()
     query = f"""
     SELECT key, forecast_ref_time, step FROM uploaded WHERE forecast_ref_time = ?
     """
-    forecast_ref_time_dt = dt.strptime(forecast_datetime, "%Y%m%d%H%M")
+    forecast_ref_time_dt = dt.strptime(date + time, "%Y%m%d%H%M")
     cursor.execute(query, (forecast_ref_time_dt,))
     items = cursor.fetchall()
     conn.close()
@@ -236,15 +240,14 @@ def _create_s3_client(bucket):
         'mode': 'standard'
     }
 
-    # Check if endpoint_url is present to differentiate between AWS and other platforms
-    if hasattr(bucket, 'endpoint_url') and bucket.endpoint_url.strip():
+    if bucket.platform == 'other':
         # Non-AWS configuration
         return boto3.Session().client(
             's3',
             endpoint_url=bucket.endpoint_url,
             config=Config(retries=retries_config)
         )
-    else:
+    elif bucket.platform == 'aws':
         # AWS S3 configuration
         return boto3.Session().client(
             's3',
