@@ -156,7 +156,7 @@ def _write_job_script(file_path: Path | str,
             f'export OMP_STACKSIZE={openmp_config.stack_size}\n\n',
             'ulimit -s unlimited\n\n',
             f'export FLEXPART_EXE={flexpart_exe}\n',
-            '$FLEXPART_EXE\n'])
+            '$FLEXPART_EXE -vvv\n'])
 
 
 def _generate_available(path: Path, data_paths: list[Path]) -> None:
@@ -250,7 +250,7 @@ def select_files(
         )
     elif table.backend_type == 'sqlite':
         objs = s3_utils.list_objs_in_bucket_via_sqlite(
-            table,
+            table=table,
             date=forecast_date,
             time=forecast_time)
     else:

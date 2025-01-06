@@ -190,7 +190,7 @@ def list_objs_in_bucket_via_sqlite(table: DBTable,
     matching_objects = {
         item[0]: GribMetadata(
             date=dt.strptime(item[1], "%Y-%m-%d %H:%M:%S").strftime("%Y%m%d"),
-            time=dt.strptime(item[1], "%Y-%m-%d %H:%M:%S").strftime("%H%m"),
+            time=dt.strptime(item[1], "%Y-%m-%d %H:%M:%S").strftime("%H%M"),
             step=item[2],
         )
         for item in items
