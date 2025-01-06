@@ -9,6 +9,7 @@ class Bucket(BaseModel):
     name: str
     retries: int | None
     endpoint_url: str
+    platform: str
 
 class S3(BaseModel):
     nwp_model_data: Bucket

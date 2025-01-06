@@ -17,18 +17,20 @@ main:
     db:
       # This db is an index of the objects in the S3 bucket nwp_model_data
       nwp_model_data:
-        name: /scratch/db/sqlite3-db
-        region: ""
-        backend_type: SQLITE
+        name: MyTable
+        region: eu-central-2
+        backend_type: dynamodb
     s3:
       nwp_model_data:
         region: eu-central-2
-        name: meteoswiss-flexpart-flexpart-output-dev
-        endpoint_url: ""
+        name: flexpart-input
+        endpoint_url: None
         retries: 10
+        platform: aws
       output:
         region: eu-central-2
-        name: meteoswiss-flexpart-flexpart-output-dev
-        endpoint_url: ""
+        name: flexpart-output
+        endpoint_url: None
         retries: 10
+        platform: aws
 
