@@ -6,10 +6,10 @@
 ***************************************************************************************************************
 &COMMAND
  LDIRECT=1,
- IBDATE=20241213,
- IBTIME=030000,
- IEDATE=20241213,
- IETIME=090000,
+ IBDATE=20241210,
+ IBTIME=000000,
+ IEDATE=20241210,
+ IETIME=050000,
  LOUTSTEP=3600,
  LOUTAVER=           3600, ! Interval of output averaging (s)
  LOUTSAMPLE=          900, ! Interval of output sampling  (s), higher stat. accuracy with shorter intervals

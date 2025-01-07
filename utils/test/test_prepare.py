@@ -46,14 +46,14 @@ def test_render_template(tmp_path, jinja_template, references):
     output_path = tmp_path / "output.txt"
 
     data = {
-        "IBDATE" : "20241213",
-        "IBTIME" : "03",
-        "IEDATE" : "20241213",
-        "IETIME" : "09"}
+        "IBDATE" : "20241210",
+        "IBTIME" : "00",
+        "IEDATE" : "20241210",
+        "IETIME" : "05"}
 
     render_template(jinja_template, output_path, ['BEZ'], data)
 
-    assert "IBDATE: '20241213'" in output_path.read_text()
+    assert "IBDATE: '20241210'" in output_path.read_text()
     assert 'COMMENT: Leibstadt' not in output_path.read_text()
 
     with open(output_path, 'r', encoding="utf-8") as f:

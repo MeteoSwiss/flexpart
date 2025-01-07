@@ -99,7 +99,7 @@ COPY utils/test /scratch/test
 
 # This environment tells pytest that the tests are occuring in a container.
 ENV PYTEST_ENTRYPOINT=/scratch/entrypoint.sh
-ENV FLEXPART_PREFIX=/scratch/spack-root/flexpart-cosmo/
+ENV FLEXPART_PREFIX=/scratch/spack-root/flexpart-ifs/
 ENV PATH="/scratch/spack-view/bin:$PATH"
 ENV JOBS_DIR=/scratch/jobs/
 
