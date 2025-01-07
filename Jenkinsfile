@@ -64,6 +64,12 @@ class Globals {
 
     // the target environment to deploy (e.g., devt, depl, prod)
     static String deployEnv = ''
+
+    // the Vault credititalId
+    static String vaultCredentialId = ''
+
+    // the Vault path
+    static String vaultPath = ''
 }
 
 @Library('dev_tools@main') _
@@ -101,7 +107,6 @@ pipeline {
         scannerHome = tool name: 'Sonarqube-certs-PROD', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
         DOCKER_CONFIG = "$workspace/.docker"
         REGISTRY_AUTH_FILE = "$workspace/.containers/auth.json"
-        HTTP_PROXY = 'http://proxy.meteoswiss.ch:8080/'
         PATH = "/opt/maker/tools/aws:$PATH"
     }
 
@@ -120,67 +125,67 @@ pipeline {
                         Globals.vaultPath = "iwf2-poc/dispersionmodelling-${Globals.deployEnv}-secrets"
                     }
 
-                withVault(
-                    configuration: [vaultUrl: 'https://vault.apps.cp.meteoswiss.ch',
-                                    vaultCredentialId: Globals.vaultCredentialId,
-                                    engineVersion: 2],
-                    vaultSecrets: [
-                        [
-                            path: Globals.vaultPath, engineVersion: 2, secretValues: [
-                                [envVar: 'AWS_ACCOUNT_ID', vaultKey: 'aws-account-id']
+                    withVault(
+                        configuration: [vaultUrl: 'https://vault.apps.cp.meteoswiss.ch',
+                                        vaultCredentialId: Globals.vaultCredentialId,
+                                        engineVersion: 2],
+                        vaultSecrets: [
+                            [
+                                path: Globals.vaultPath, engineVersion: 2, secretValues: [
+                                    [envVar: 'AWS_ACCOUNT_ID', vaultKey: 'aws-account-id']
+                                ]
                             ]
-                        ]
-                    ]) {
-                        // Determine the type of build
-                        switch (params.buildChoice) {
-                            case 'Build':
-                                Globals.build = true
-                                break
-                            case 'Deploy':
-                                Globals.deploy = true
-                                break
-                            case 'Release':
-                                Globals.release = true
-                                Globals.build = true
-                                break
-                            case 'Restart':
-                                Globals.restart = true
-                                break
-                            case 'Delete':
-                                Globals.deleteContainer = true
-                                break
-                            case 'Trivy-Scan':
-                                Globals.runTrivyScan = true
-                                break
-                        }
-
-                        if (Globals.build || Globals.deploy || Globals.runTrivyScan) {
-                            echo 'Starting with calulating version'
-                            def shortBranchName = env.BRANCH_NAME.replaceAll("[^a-zA-Z0-9]+", "").take(30).toLowerCase()
-                            try {
-                                Globals.version = sh(script: "git describe --tags --match v[0-9]*", returnStdout: true).trim()
-                            } catch (err) {
-                                def version = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
-                                Globals.version = "${shortBranchName}-${version}"
+                        ]) {
+                            // Determine the type of build
+                            switch (params.buildChoice) {
+                                case 'Build':
+                                    Globals.build = true
+                                    break
+                                case 'Deploy':
+                                    Globals.deploy = true
+                                    break
+                                case 'Release':
+                                    Globals.release = true
+                                    Globals.build = true
+                                    break
+                                case 'Restart':
+                                    Globals.restart = true
+                                    break
+                                case 'Delete':
+                                    Globals.deleteContainer = true
+                                    break
+                                case 'Trivy-Scan':
+                                    Globals.runTrivyScan = true
+                                    break
                             }
-                            echo "Using version ${Globals.version}"
-                            if (env.BRANCH_NAME == 'main') {
-                                Globals.imageTag = "${Globals.IMAGE_NAME}:latest"
-                                Globals.imageTagPublic = "${Globals.IMAGE_NAME_PUBLIC}:latest"
-                                Globals.imageTagPublicPull = "${Globals.IMAGE_NAME_PUBLIC_PULL}:latest"
-                            } else {
-                                Globals.imageTag = "${Globals.IMAGE_NAME}:${shortBranchName}"
-                                Globals.imageTagPublic = "${Globals.IMAGE_NAME_PUBLIC}:${shortBranchName}"
-                                Globals.imageTagPublicPull = "${Globals.IMAGE_NAME_PUBLIC_PULL}:${shortBranchName}"
-                             }
-                            Globals.awsEcrRepo = "${env.AWS_ACCOUNT_ID}.dkr.ecr.${Globals.AWS_REGION}.amazonaws.com"
-                            Globals.awsEcrImageTag = "${Globals.awsEcrRepo}/${Globals.AWS_IMAGE_NAME}-${Globals.deployEnv}:${shortBranchName}"
-                            echo "Using container version ${Globals.imageTag}"
-                        }
-                    } 
+
+                            if (Globals.build || Globals.deploy || Globals.runTrivyScan) {
+                                echo 'Starting with calulating version'
+                                def shortBranchName = env.BRANCH_NAME.replaceAll("[^a-zA-Z0-9]+", "").take(30).toLowerCase()
+                                try {
+                                    Globals.version = sh(script: "git describe --tags --match v[0-9]*", returnStdout: true).trim()
+                                } catch (err) {
+                                    def version = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
+                                    Globals.version = "${shortBranchName}-${version}"
+                                }
+                                echo "Using version ${Globals.version}"
+                                if (env.BRANCH_NAME == 'main') {
+                                    Globals.imageTag = "${Globals.IMAGE_NAME}:latest"
+                                    Globals.imageTagPublic = "${Globals.IMAGE_NAME_PUBLIC}:latest"
+                                    Globals.imageTagPublicPull = "${Globals.IMAGE_NAME_PUBLIC_PULL}:latest"
+                                } else {
+                                    Globals.imageTag = "${Globals.IMAGE_NAME}:${shortBranchName}"
+                                    Globals.imageTagPublic = "${Globals.IMAGE_NAME_PUBLIC}:${shortBranchName}"
+                                    Globals.imageTagPublicPull = "${Globals.IMAGE_NAME_PUBLIC_PULL}:${shortBranchName}"
+                                }
+                                Globals.awsEcrRepo = "${env.AWS_ACCOUNT_ID}.dkr.ecr.${Globals.AWS_REGION}.amazonaws.com"
+                                Globals.awsEcrImageTag = "${Globals.awsEcrRepo}/${Globals.AWS_IMAGE_NAME}-${Globals.deployEnv}:${shortBranchName}"
+                                echo "Using container version ${Globals.imageTag}"
+                            }
+                        } 
+                    }
                 }
             }
-        }
 
         stage('Build Base dependencies image') {
             when { expression { params.BUILD_BASE_IMAGE } }
