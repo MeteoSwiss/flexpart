@@ -7,18 +7,16 @@ RUN cd /scratch \
     && poetry export --without-hashes -o requirements.txt \
     && poetry export --without-hashes --with dev -o requirements_dev.txt
 
-#  FROM ${container_registry}/numericalweatherpredictions/dispersionmodelling/flexpart-ifs/flexpart-base:${base_tag} as spack-builder
-FROM localhost/base-0612:latest as spack-builder
+FROM ${container_registry}/numericalweatherpredictions/dispersionmodelling/flexpart-ifs/flexpart-base:${base_tag} as spack-builder
 
 ARG TOKEN
 ENV TOKEN=$TOKEN 
-# RUN git config --global url."https://x-access-token:${TOKEN}@github.com/MeteoSwiss/".insteadOf "git@github.com:MeteoSwiss/"
+RUN git config --global url."https://x-access-token:${TOKEN}@github.com/MeteoSwiss/".insteadOf "git@github.com:MeteoSwiss/"
 ARG COMMIT
 ENV COMMIT=$COMMIT
 
 # Add Flexpart-IFS source code
-# RUN git clone git@github.com:MeteoSwiss/flexpart.git /scratch/flexpart && cd /scratch/flexpart && git checkout $COMMIT 
-COPY  --chown=default_user:default_user ../flexpart-ifs /scratch/flexpart
+RUN git clone git@github.com:MeteoSwiss/flexpart.git /scratch/flexpart && cd /scratch/flexpart && git checkout $COMMIT 
 RUN chmod -R 777 /scratch/flexpart
 RUN cd /scratch
 
@@ -28,7 +26,6 @@ RUN cd spack-env && \
     spack -e . -vv install -j1 --fail-fast && \
     spack gc -y
 
-RUN git clone --depth 1 --branch 2.35.0 https://github.com/ecmwf/eccodes.git
 
 FROM docker-all-nexus.meteoswiss.ch/mch/ubuntu-jammy AS runner
 
@@ -51,19 +48,16 @@ RUN mkdir -p \
     /scratch/output/ \
     /scratch/flexpart_ifs_utils/ \
     /scratch/jobs/ \
-    /scratch/eccodes/definitions \
     /scratch/db/
 
 COPY --from=python-builder /scratch/requirements.txt /scratch/requirements.txt
 COPY --from=spack-builder /scratch/spack-root/ /scratch/spack-root/
 COPY --from=spack-builder /scratch/spack-view/ /scratch/spack-view/
-COPY --from=spack-builder /scratch/eccodes/definitions /scratch/eccodes/definitions
 
 
-ENV GRIB_DEFINITION_PATH=/scratch/eccodes/definitions
 ENV PATH="/scratch/spack-view/bin:$PATH"
-ENV JOBS_DIR=/scratch/jobs/
-ENV FLEXPART_PREFIX=/scratch/spack-root/flexpart-ifs/
+ENV JOBS_DIR=/scratch/jobs
+ENV FLEXPART_PREFIX=/scratch/spack-root/flexpart-ifs
 
 WORKDIR /scratch
 
@@ -82,7 +76,7 @@ RUN chmod -R a+rwx /scratch
 ARG USERNAME=default_user
 ARG USER_UID=1000
 ARG USER_GID=$USER_UID
-# Create the user
+
 RUN groupadd --gid $USER_GID $USERNAME \
     && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME
 USER $USERNAME
@@ -90,3 +84,28 @@ USER $USERNAME
 ENTRYPOINT ["/bin/bash", "/scratch/entrypoint.sh"]
 
 CMD [""]
+
+FROM runner AS tester
+
+USER root
+
+COPY --from=python-builder /scratch/requirements_dev.txt /scratch/requirements_dev.txt
+RUN python3.11 -m pip install -r /scratch/requirements_dev.txt
+
+RUN mkdir test_reports && chmod -R a+rwx test_reports
+COPY utils/pyproject.toml utils/test_ci.sh /scratch/
+RUN chmod +x /scratch/test_ci.sh 
+COPY utils/test /scratch/test
+
+# This environment tells pytest that the tests are occuring in a container.
+ENV PYTEST_ENTRYPOINT=/scratch/entrypoint.sh
+ENV FLEXPART_PREFIX=/scratch/spack-root/flexpart-cosmo/
+ENV PATH="/scratch/spack-view/bin:$PATH"
+ENV JOBS_DIR=/scratch/jobs/
+
+ARG USERNAME=default_user
+USER $USERNAME
+
+ENTRYPOINT []
+
+CMD ["/bin/bash", "-c", "source ./test_ci.sh && run_ci_tools"]

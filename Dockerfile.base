@@ -84,7 +84,10 @@ RUN mkdir spack-env && \
     cd spack-env && \
     . $SPACK_ROOT/share/spack/setup-env.sh && \
     spack env create -d . --with-view /scratch/spack-view/ && \
-    spack -e . add flexpart-ifs@main target=x86_64 || { echo "Error adding spec"; exit 1; } && \
+    spack -e . add flexpart-ifs@main target=x86_64 || { echo "Error adding flexpart-ifs"; exit 1; } && \
+    spack -e . add eckit@1.20.2 ~mpi || { echo "Error adding eckit"; exit 1; } && \
+    spack -e . add eccodes@2.19.0 +aec jp2k=none || { echo "Error adding eccodes"; exit 1; } && \
+    spack -e . add hdf5 ~mpi || { echo "Error adding hdf5"; exit 1; } && \
     spack -e . develop --no-clone --path /scratch/flexpart flexpart-ifs@main || { echo "Error adding develop"; exit 1; } && \
     spack -e . config --scope env:/scratch/spack-env add -f /scratch/spack-env/spack.yaml config:install_tree:root:/scratch/spack-root && \
     spack -e . config --scope env:/scratch/spack-env add -f /scratch/spack-env/spack.yaml config:install_path_scheme:"\"{name}\""
