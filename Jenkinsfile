@@ -296,30 +296,6 @@ pipeline {
             }
         }
 
-        stage('Test container') {
-            steps {
-                withCredentials([usernamePassword(credentialsId: 'openshift-nexus',
-                                          passwordVariable: 'NXPASS',
-                                          usernameVariable: 'NXUSER')]) {
-                    sh '''
-                        echo \$NXPASS | podman login docker-intern-nexus.meteoswiss.ch -u \$NXUSER --password-stdin
-                        echo \$NXPASS | podman login docker-public-nexus.meteoswiss.ch -u \$NXUSER --password-stdin
-
-                        cd jenkins && ./test.sh
-                        '''
-                }
-            }
-            post {
-                cleanup {
-                    sh """
-                    rm -rf ctx
-                    podman image rm -f \$IMAGE_INTERN
-                    podman rm -i flexpart-container-tester
-                    """
-                }
-            }
-        }
-
         stage('Create Artifacts') {
             when { expression { Globals.build || Globals.deploy } }
             steps {
@@ -355,6 +331,7 @@ pipeline {
             post {
                 cleanup {
                     sh "podman logout ${Globals.IMAGE_REPO} || true"
+                    sh 'oc logout || true'
                 }
             }
         }
@@ -403,6 +380,7 @@ pipeline {
             post {
                 cleanup {
                     sh "podman image rm -f ${Globals.imageTag}-tester || true"
+                    sh "podman image rm -f ${Globals.imageTagPublic}-tester || true"
                     sh "podman image rm -f ${Globals.imageTag} || true"
                     sh "podman image rm -f ${Globals.IMAGE_NAME}-base || true"
                     sh "podman image rm -f ${Globals.awsEcrImageTag} || true"
