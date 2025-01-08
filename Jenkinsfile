@@ -369,7 +369,14 @@ pipeline {
                                     export AWS_CA_BUNDLE=/etc/ssl/certs/ca-bundle.crt
                                 fi
 
-                                aws ecr get-login-password --region ${Globals.AWS_REGION} | podman login -u AWS --password-stdin ${Globals.awsEcrRepo}
+                                export AWS_ACCESS_KEY_ID=${env.AWS_ACCESS_KEY_ID}
+                                export AWS_SECRET_ACCESS_KEY=${env.AWS_SECRET_ACCESS_KEY}
+
+                                echo "Logging into AWS ECR..."
+                                aws ecr get-login-password --region ${Globals.AWS_REGION} > ecr_password.txt
+                                cat ecr_password.txt | podman login -u AWS --password-stdin ${Globals.awsEcrRepo}
+
+                                echo "Building and pushing Docker image to AWS ECR..."
                                 podman build --pull --target runner --build-arg COMMIT=${GIT_COMMIT} --build-arg VERSION=${Globals.version} -t ${Globals.awsEcrImageTag} .
                                 podman push ${Globals.awsEcrImageTag}
                             """
@@ -377,18 +384,19 @@ pipeline {
                     }
                 }
             }
-            post {
-                cleanup {
-                    sh "podman image rm -f ${Globals.imageTag}-tester || true"
-                    sh "podman image rm -f ${Globals.imageTagPublic}-tester || true"
-                    sh "podman image rm -f ${Globals.imageTag} || true"
-                    sh "podman image rm -f ${Globals.IMAGE_NAME}-base || true"
-                    sh "podman image rm -f ${Globals.awsEcrImageTag} || true"
-                }
-                success {
-                    echo 'Build succeeded'
-                }
-            }
+        }
+    }
+
+    post {
+        cleanup {
+            sh "podman image rm -f ${Globals.imageTag}-tester || true"
+            sh "podman image rm -f ${Globals.imageTagPublic}-tester || true"
+            sh "podman image rm -f ${Globals.imageTag} || true"
+            sh "podman image rm -f ${Globals.IMAGE_NAME}-base || true"
+            sh "podman image rm -f ${Globals.awsEcrImageTag} || true"
+        }
+        success {
+            echo 'Build succeeded'
         }
     }
 }
