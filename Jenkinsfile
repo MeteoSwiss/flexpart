@@ -5,10 +5,9 @@ class Globals {
     static final String PROJECT = 'flexpart-ifs'
     static final String IMAGE_REPO = 'docker-intern-nexus.meteoswiss.ch'
     static final String IMAGE_REPO_PUBLIC = 'docker-public-nexus.meteoswiss.ch'
-    static final String IMAGE_NAME = 'docker-intern-nexus.meteoswiss.ch/numericalweatherpredictions/dispersionmodelling/flexpart-ifs/flexpart'
-    static final String IMAGE_NAME_PUBLIC = 'docker-public-nexus.meteoswiss.ch/numericalweatherpredictions/dispersionmodelling/flexpart-ifs/flexpart'
-    static final String IMAGE_NAME_PUBLIC_PULL = 'container-registry.meteoswiss.ch/numericalweatherpredictions/dispersionmodelling/flexpart-ifs/flexpart'
-    static final String AWS_IMAGE_NAME = 'numericalweatherpredictions/dispersionmodelling/flexpart-ifs/flexpart'
+    static final String IMAGE_NAME = 'docker-intern-nexus.meteoswiss.ch/dispersionmodelling/flexpart-ifs'
+    static final String IMAGE_NAME_PUBLIC = 'docker-public-nexus.meteoswiss.ch/dispersionmodelling/flexpart-ifs'
+    static final String IMAGE_NAME_PUBLIC_PULL = 'container-registry.meteoswiss.ch/dispersionmodelling/flexpart-ifs'
     static final String AWS_REGION = 'eu-central-2'
 
     // sets the pipeline to execute all steps related to building the service
@@ -61,6 +60,9 @@ class Globals {
 
     // the AWS ECR repository name
     static String awsEcrRepo = ''
+
+    // the AWS image name
+    static String awsImageName = ''
 
     // the target environment to deploy (e.g., devt, depl, prod)
     static String deployEnv = ''
@@ -123,6 +125,7 @@ pipeline {
                     if (params.awsAccount == 'aws-icon-sandbox') {
                         Globals.vaultCredentialId = "iwf2-poc-approle"
                         Globals.vaultPath = "iwf2-poc/dispersionmodelling-${Globals.deployEnv}-secrets"
+                        Globals.awsImageName = "dispersionmodelling/flexpart-ifs-${Globals.deployEnv}"
                     }
 
                     withVault(
@@ -179,7 +182,7 @@ pipeline {
                                     Globals.imageTagPublicPull = "${Globals.IMAGE_NAME_PUBLIC_PULL}:${shortBranchName}"
                                 }
                                 Globals.awsEcrRepo = "${env.AWS_ACCOUNT_ID}.dkr.ecr.${Globals.AWS_REGION}.amazonaws.com"
-                                Globals.awsEcrImageTag = "${Globals.awsEcrRepo}/${Globals.AWS_IMAGE_NAME}-${Globals.deployEnv}:${shortBranchName}"
+                                Globals.awsEcrImageTag = "${Globals.awsEcrRepo}/${Globals.awsImageName}:${shortBranchName}"
                                 echo "Using container version ${Globals.imageTag}"
                             }
                         } 

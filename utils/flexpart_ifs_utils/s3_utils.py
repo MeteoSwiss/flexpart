@@ -80,7 +80,7 @@ def upload_directory(directory: Path,
             path_list = [f for f in path_list if f.parent.name == parent]
 
         for path in path_list:
-            key = f"{md.date}_{md.time}/{site}/{path.name}"
+            key = f"{md.date}_{md.time[:2]}/{site}/{path.name}"
             try:
                 _logger.info("Uploading file: %s to bucket: %s with key: %s", path, bucket.name, key)
                 with open(path, "rb") as data:
