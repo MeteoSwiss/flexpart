@@ -26,39 +26,27 @@
 #=============================================================================
 # Name of file defining environment
 flexpart_env=CSCS.env
-# Machine-dependent defaults
-case "$HOST" in
-    balfrin* | tasna*)
-        # Path to user store
-        [[ -z $STORE ]] && STORE=/store_new/mch/msopr/$LOGNAME
-        # Default partition (-p, --partition) on balfrin/tasna
-        partition_serial=postproc
-        partition_parallel=postproc
-        ;;
-    tsa* | arolla*)
-        # Path to user store
-        [[ -z $STORE ]] && STORE=/store/mch/msopr/$LOGNAME
-        # Default partition (-p, --partition) on tsa/arolla
-        # one of postproc, pp-long, pp-serial
-        partition_serial=pp-serial
-        partition_parallel=postproc
-        ;;
-    *)
-        echo "ERROR configuring environment, unknown host: $HOST"
-        ;;
-esac
+[[ -z $STORE ]] && STORE=/store_new/mch/msopr/$LOGNAME
+# Default partition (-p, --partition) on balfrin/tasna
+partition_serial=postproc
+partition_parallel=postproc
+
 # Directory-name-dependent defaults
 # Default resolution (-r, --resol)
 case "$PWD" in
     *ifs*)   resol=g ;;
-    *cosmo*) resol=1e ;;
     *icon*)  resol=i1 ;;
+    *cosmo*) resol=1e ;;
 esac
 
 # NWP model data sources
 # ----------------------
+# Version string of operational environment OPR_VERSION
+export OPR_VERSION=emme
 # Load operational definition of OPR_OPR_DIR
-[[ -z $OPR_OPR_DIR ]] && source /oprusers/osm/.opr_setup_dir
+# the value of which depends on OPR_VERSION
+# and is needed to find the NWP data sources
+source /oprusers/osm/.opr_setup_dir
 
 # NWP data source depending on resolution (see --resol)
 # The source-list string is split at " in: "
@@ -69,7 +57,7 @@ esac
 # CAUTION: shell wildcards {} are not resolved, do not use!
 # The constant-fields file can be added, separated by a comma.
 # If not found, constant fields are assumed
-# to be contained in at least the first windfield file.
+# to be contained in the first windfield file.
 resolutions=()
 
 # ICON-CH1-EPS
@@ -617,10 +605,6 @@ if [[ -n $dry_run ]] ; then
     $exe_cmd
 fi
 
-# Report arguments
-echo $tag: "NWP input base time, range, and simulation mode:" \
-    "$basetime, $fc_range, $mode"
-
 # Select resolution and NWP data source
 # -------------------------------------
 # Select resolution
@@ -713,9 +697,12 @@ if (( $t2 > $fc_range )) ; then
     t2=$fc_range
 fi
 
-eval nwp_model=\$nwp_model_$resol
+# Report arguments
+echo $tag: "NWP-input base time, range, and simulation mode:" \
+    "$basetime, $fc_range, $mode"
 
 # Model-dependent settings
+eval nwp_model=\$nwp_model_$resol
 if [[ -z $exe_dir ]] ; then # option --exe-dir
     eval exe_dir=\$exe_dir_$nwp_model
 fi
@@ -814,7 +801,7 @@ if [[ -e $exe_dir/$exe_name.env ]] ; then
     echo $tag: "Specific environment file found, using: $exe_dir/$flexpart_env"
 elif [[ ! -e $exe_dir/$flexpart_env ]] ; then
     echo $tag: "Environment file not found: $exe_dir/$flexpart_env"
-    echo $tag: "This is not a problem if FLEXPART has been compiled with spack"
+    echo "${tag//[a-z\/_-]/ }  This is not a problem if FLEXPART has been compiled with spack"
     unset flexpart_env
 fi
 if [[ -n $flexpart_env ]] ; then
