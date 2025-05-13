@@ -31,22 +31,23 @@ flexpart_env=CSCS.env
 partition_serial=postproc
 partition_parallel=postproc
 
-# Directory-name-dependent defaults
-# Default resolution (-r, --resol)
-case "$PWD" in
-    *ifs*)   resol=g ;;
-    *icon*)  resol=i1 ;;
-    *cosmo*) resol=1e ;;
-esac
-
 # NWP model data sources
 # ----------------------
-# Version string of operational environment OPR_VERSION
-export OPR_VERSION=emme
+# Determine current operational environment
+# Unset OPR_VERSION to use the default version
+if [[ -n $OPR_VERSION ]] ; then
+    # OPR_VERSION is set in the environment
+    OPR_VERSION_SAVE=$OPR_VERSION
+    unset OPR_VERSION
+fi
 # Load operational definition of OPR_OPR_DIR
-# the value of which depends on OPR_VERSION
-# and is needed to find the NWP data sources
+# to define the NWP data sources
 source /oprusers/osm/.opr_setup_dir
+# Reset OPR_VERSION to previous value
+if [[ -n $OPR_VERSION_SAVE ]] ; then
+    # OPR_VERSION was set in the environment
+    export OPR_VERSION=$OPR_VERSION_SAVE
+fi
 
 # NWP data source depending on resolution (see --resol)
 # The source-list string is split at " in: "
