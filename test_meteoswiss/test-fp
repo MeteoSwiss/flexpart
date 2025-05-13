@@ -688,7 +688,7 @@ if (( $fc_range > $nwp_max_range )) ; then
 fi
 (( $t1 < 0 )) && t1=0
 (( $t1 > $fc_range )) && t1=$fc_range
-if (( $t2 <= $t1 )) ; then
+if (( $t2 < $t1 )) ; then
     echo $tag: "Error: Release end before release start: $t2 < $t1"
     exit 1
 fi
