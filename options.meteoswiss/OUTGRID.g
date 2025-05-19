@@ -11,5 +11,5 @@
  NUMYGRID=            720, ! Number of grid points in y direction (= No. of cells + 1)
  DXOUT=              0.25, ! Grid distance in x direction
  DYOUT=              0.25, ! Grid distance in y direction
- OUTHEIGHTS=500,2000,10000 ! Height of levels (upper boundary)
+ OUTHEIGHTS=500.,2000.,10000. ! Height of levels (upper boundary)
 /
