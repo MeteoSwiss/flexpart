@@ -15,7 +15,7 @@ See usage and a short help with command
 
     ./test-fp --help
 
-For all settings see the settings section of the script.
+For the full list of configuration options, refer to the Settings section within the script.
 
 When the script is called with no options or not all of the mandatory input,
 it will prompt the user to select from command-line menus.
