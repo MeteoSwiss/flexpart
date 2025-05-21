@@ -26,45 +26,39 @@
 #=============================================================================
 # Name of file defining environment
 flexpart_env=CSCS.env
-# Machine-dependent defaults
-case "$HOST" in
-    balfrin* | tasna*)
-        # Path to user store
-        [[ -z $STORE ]] && STORE=/store_new/mch/msopr/$LOGNAME
-        # Default partition (-p, --partition) on balfrin/tasna
-        partition_serial=postproc
-        partition_parallel=postproc
-        ;;
-    tsa* | arolla*)
-        # Path to user store
-        [[ -z $STORE ]] && STORE=/store/mch/msopr/$LOGNAME
-        # Default partition (-p, --partition) on tsa/arolla
-        # one of postproc, pp-long, pp-serial
-        partition_serial=pp-serial
-        partition_parallel=postproc
-        ;;
-    *)
-        echo "ERROR configuring environment, unknown host: $HOST"
-        ;;
-esac
-# Directory-name-dependent defaults
-# Default resolution (-r, --resol)
-case "$PWD" in
-    *ifs*)   resol=g ;;
-    *cosmo*) resol=1e ;;
-    *icon*)  resol=i1 ;;
-esac
+[[ -z $STORE ]] && STORE=/store_new/mch/msopr/$LOGNAME
+# Default partition (-p, --partition) on balfrin/tasna
+partition_serial=postproc
+partition_parallel=postproc
 
 # NWP model data sources
 # ----------------------
+# Determine current operational environment
+# Unset OPR_VERSION to use the default version
+if [[ -n $OPR_VERSION ]] ; then
+    # OPR_VERSION is set in the environment
+    OPR_VERSION_SAVE=$OPR_VERSION
+    unset OPR_VERSION
+fi
 # Load operational definition of OPR_OPR_DIR
-[[ -z $OPR_OPR_DIR ]] && source /oprusers/osm/.opr_setup_dir
+# to define the NWP data sources
+source /oprusers/osm/.opr_setup_dir
+# Reset OPR_VERSION to previous value
+if [[ -n $OPR_VERSION_SAVE ]] ; then
+    # OPR_VERSION was set in the environment
+    export OPR_VERSION=$OPR_VERSION_SAVE
+fi
 
-# Path to NWP files depending on resolution (see --resol)
-# String is split at " in: "
+# NWP data source depending on resolution (see --resol)
+# The source-list string is split at " in: "
 # Template:
 #   "<description> in: <file-with-path>"
-# Allowed placeholders: <yymmddhh>, <ex>, <ddhh>, <mem>
+# Allowed placeholders: <yymmddhh>, <ex>, <ddhh>, <hhh>, <mem>,
+# and shell wildcards * and []
+# CAUTION: shell wildcards {} are not resolved, do not use!
+# The constant-fields file can be added, separated by a comma.
+# If not found, constant fields are assumed
+# to be contained in the first windfield file.
 resolutions=()
 
 # ICON-CH1-EPS
@@ -74,22 +68,26 @@ nwp_max_range_i1=33
 lt_inc_i1=1
 nwp_source_list_i1=(
     "Operational LADM cache (interp) in: $OPR_OPR_DIR/cache/LADM/FLEXPART-I1E-CTRL/dispc*"
-    "Operational fcst cache (native) in: $OPR_OPR_DIR/cache/ICON-CH1-EPS/FCST_RING/<yymmddhh>_6<ex>/icon/<mem>/lfff<ddhh>0000{,c}"
-    "User cache                      in: $SCRATCH/<yymmddhh>_6<ex>/icon/<mem>/lfff<ddhh>0000"
-    "Cases in user store             in: $STORE/CASES/FLEXPART-I1E-CTRL/<yyyymmddhh>/dispc*"
+    "Operational fcst wd    (interp) in: $OPR_OPR_DIR/wd/<yymmddhh>_6<ex>/_FXINP_lfrf<ddhh>0000_<mem>,_FXINP_lfrf00000000_000c"
+    "Operational fcst cache (native) in: $OPR_OPR_DIR/cache/ICON-CH1-EPS/FCST_RING/<yymmddhh>_6<ex>/icon/<mem>/lfff<ddhh>0000,lfff00000000c"
+    "User cache on scratch  (interp) in: $SCRATCH/flexpart/icon/<yymmddhh>_6<ex>/fxshare/_FXINP_lfrf<ddhh>0000_<mem>,_FXINP_lfrf00000000_000c"
+    "User cache on scratch  (native) in: $SCRATCH/<yymmddhh>_7<ex>/icon/<mem>/lfff<ddhh>0000,lfff00000000c"
+    "User cases on store    (interp) in: $STORE/CASES/FLEXPART-I1E-CTRL/<yyyymmddhh>/dispc*"
 )
 t1_i1=3; t2_i1=9; species_no_i1=39; rel_mass_i1=2.16E4; rel_site_i1=bez # Default: opr settings
 
 # ICON-CH2-EPS
 resolutions+=( "i2: ICON-CH2-EPS (Cent. Europe 2 km)" )
 nwp_model_i2=icon
-nwp_max_range_i2=33
+nwp_max_range_i2=120
 lt_inc_i2=1
 nwp_source_list_i2=(
     "Operational LADM cache (interp) in: $OPR_OPR_DIR/cache/LADM/FLEXPART-I2E-CTRL/dispc*"
-    "Operational fcst cache (native) in: $OPR_OPR_DIR/cache/ICON-CH2-EPS/FCST_RING/<yymmddhh>_7<ex>/icon/<mem>/lfff<ddhh>0000{,c}"
-    "User cache                      in: $SCRATCH/<yymmddhh>_7<ex>/icon/<mem>/lfff<ddhh>0000"
-    "Cases in user store             in: $STORE/CASES/FLEXPART-I2E-CTRL/<yyyymmddhh>/dispc*"
+    "Operational fcst wd    (interp) in: $OPR_OPR_DIR/wd/<yymmddhh>_7<ex>/_FXINP_lfrf<ddhh>0000_<mem>,_FXINP_lfrf00000000_000c"
+    "Operational fcst cache (native) in: $OPR_OPR_DIR/cache/ICON-CH2-EPS/FCST_RING/<yymmddhh>_7<ex>/icon/<mem>/lfff<ddhh>0000,lfff00000000c"
+    "User cache on scratch  (interp) in: $SCRATCH/flexpart/icon/<yymmddhh>_7<ex>/fxshare/_FXINP_lfrf<ddhh>0000_<mem>,_FXINP_lfrf00000000_000c"
+    "User cache on scratch  (native) in: $SCRATCH/<yymmddhh>_7<ex>/icon/<mem>/lfff<ddhh>0000,lfff00000000c"
+    "Cases in user store    (interp) in: $STORE/CASES/FLEXPART-I2E-CTRL/<yyyymmddhh>/dispc*"
 )
 t1_i2=3; t2_i2=9; species_no_i2=39; rel_mass_i2=2.16E4; rel_site_i2=bez # Default: opr settings
 
@@ -101,7 +99,7 @@ lt_inc_1e=1
 nwp_source_list_1e=(
     "Operational LADM cache     in: $OPR_OPR_DIR/cache/LADM/FLEXPART-C1E-CTRL/dispc*"
     "Operational fcst cache     in: arolla:$OPR_OPR_DIR/cache/COSMO-1E/FCST_RING/<yymmddhh>_4<ex>/cosmo/<mem>/lfff<ddhh>0000{,c}"
-    "User cache                 in: $SCRATCH/<yymmddhh>_4<ex>/cosmo/<mem>/lfff<ddhh>0000"
+    "User cache on scratch      in: $SCRATCH/<yymmddhh>_4<ex>/cosmo/<mem>/lfff<ddhh>0000"
     "Cases in user store        in: $STORE/CASES/FLEXPART-C1E-CTRL/<yyyymmddhh>/dispc*"
 )
 t1_1e=3; t2_1e=9; species_no_1e=39; rel_mass_1e=2.16E4; rel_site_1e=bez # Default: opr settings
@@ -114,7 +112,7 @@ lt_inc_2e=1
 nwp_source_list_2e=(
     "Operational LADM cache     in: $OPR_OPR_DIR/cache/LADM/FLEXPART-C2E/<yymmddhh>/dispc*_<mem>"
     "Operational fcst cache     in: arolla:$OPR_OPR_DIR/cache/COSMO-2E/FCST_RING/<yymmddhh>_5<ex>/cosmo/<mem>lfff<ddhh>0000{,c}"
-    "User cache                 in: $SCRATCH/<yymmddhh>_5<ex>/cosmo/<mem>/lfff<ddhh>0000"
+    "User cache on scratch      in: $SCRATCH/<yymmddhh>_5<ex>/cosmo/<mem>/lfff<ddhh>0000"
     "Cases in user store        in: $STORE/CASES/FLEXPART-C2E/<yyyymmddhh>/dispc*_<mem>"
 )
 t1_2e=3; t2_2e=9; species_no_2e=39; rel_mass_2e=2.16E4; rel_site_2e=bez # Default: opr settings
@@ -127,7 +125,7 @@ lt_inc_f=1
 nwp_source_list_f=(
     "Operational LADM cache     in: $OPR_OPR_DIR/cache/LADM/FLEXPART-IFS-EUROPE/dispf*"
     "Cases in operational store in: /store/mch/msopr/flexpart_data/test-input/ifs-europe/<yyyymmddhh>/dispf*"
-    "User cache                 in: $SCRATCH/FLEXPART-IFS-EUROPE/disp*"
+    "User cache on scratch      in: $SCRATCH/FLEXPART-IFS-EUROPE/disp*"
     "Cases in user store        in: $STORE/CASES/FLEXPART-IFS-EUROPE/<yyyymmddhh>/dispf*"
 )
 t1_f=6; t2_f=12; species_no_f=39; rel_mass_f=21.6E10; rel_site_f=cherno # Default: opr settings
@@ -139,7 +137,7 @@ nwp_max_range_g=144
 lt_inc_g=3
 nwp_source_list_g=(
     "Operational LADM cache     in: $OPR_OPR_DIR/cache/LADM/FLEXPART-IFS-GLOBAL/disp*"
-    "User cache                 in: $SCRATCH/FLEXPART-IFS-GLOBAL/disp*"
+    "User cache on scratch      in: $SCRATCH/FLEXPART-IFS-GLOBAL/disp*"
     "Cases in user store        in: $STORE/CASES/FLEXPART-IFS-GLOBAL/<yyyymmddhh>/disp*"
 )
 t1_g=0; t2_g=0; species_no_g=39; rel_mass_g=4.32E10; rel_site_g=punggye # Default: opr settings
@@ -152,7 +150,7 @@ lt_inc_1=1
 nwp_source_list_1=(
     "Operational LADM cache     in: *** no longer available ***"
     "Operational fcst ring      in: *** no longer available ***"
-    "User cache                 in: $SCRATCH/<yymmddhh>_1<ex>/lm_coarse/lfff<ddhh>0000{,c}"
+    "User cache on scratch      in: $SCRATCH/<yymmddhh>_1<ex>/lm_coarse/lfff<ddhh>0000{,c}"
     "Cases in user store        in: $STORE/CASES/COSMO-1/<yymmddhh>_1<ex>/lm_coarse/lfff<ddhh>0000{,c}"
 )
 t1_1=3; t2_1=9; species_no_1=39; rel_mass_1=2.16E4; rel_site_1=bez # Default: opr settings
@@ -165,7 +163,7 @@ lt_inc_e=1
 nwp_source_list_e=(
     "Operational LADM cache     in: *** no longer available ***"
     "Operational fcst ring      in: *** no longer available ***"
-    "User cache                 in: $SCRATCH/<yymmddhh>_2<ex>/lm_coarse/<mem>/lfff<ddhh>0000{,c}"
+    "User cache on scratch      in: $SCRATCH/<yymmddhh>_2<ex>/lm_coarse/<mem>/lfff<ddhh>0000{,c}"
     "Cases in user store        in: $STORE/CASES/COSMO-E/<yymmddhh>_2<ex>/lm_coarse/<mem>/lfff<ddhh>0000{,c}"
 )
 t1_e=3; t2_e=9; species_no_e=39; rel_mass_e=2.16E4; rel_site_e=bez # Default: opr settings
@@ -202,8 +200,6 @@ job_out=job.log
 # ----------------------
 # Base time
 basetime=$(date --utc --date="12 yesterday" +%Y%m%d%H)           # Yesterday 12 UTC
-# Forecast range (automatically reduced if > max_range)
-fc_range=48
 # Simulation mode
 mode=1
 
@@ -220,8 +216,10 @@ rel_lon_bushehr=50.8872 ; rel_lat_bushehr=28.8289 ; rel_height_bushehr=100 ; rel
 rel_lon_cherno=30.0997   ; rel_lat_cherno=51.3897  ; rel_height_cherno=100  ; rel_name_cherno=Chernobyl
 rel_lon_punggye=129.0900 ; rel_lat_punggye=41.2800 ; rel_height_punggye=100 ; rel_name_punggye=Punggye-ri
 rel_lon_segula=178.1400  ; rel_lat_segula=52.0200  ; rel_height_segula=100  ; rel_name_segula=Segula
-# Ensemble members (-m, --member)
+# Default ensemble member (-m, --member)
 member=000
+# Output gid (-O, --outgrid-tag), default: resolution (-r, --resol)
+outgrid_tag=
 # Flexpart executable path (-E, --exe-dir)
 # should agree with Makefile variable EXEDIR
 exe_dir_icon=$(dirname $PWD)/bin
@@ -276,42 +274,45 @@ Usage: $tag [OPTION]... [BASETIME]
 Arguments:
 
   BASETIME      forecast base time (format YYYYMMDDHH, def.: $basetime)
-  FC_RANGE      maximum lead time / forecast range (def.: $fc_range)
+  FC_RANGE      maximum lead time / forecast range (def. depends on resol.)
   MODE          simulation mode: 1 = forward, -1 = backward (def.: $mode)
 
 Options:
   Mandatory arguments to long options are mandatory for short options too.
-  -a, --average=H      averaging interval and output freqency of H [hours]
-                       (Default: $avg_h)
-  -n, --dry-run        print commands without executing them
-  -E, --exe-dir=DIR    Flexpart executable file path, default for
-                       - ICON: $exe_dir_icon
-                       - COSMO: $exe_dir_cosmo
-                       - IFS: $exe_dir_ifs
-  -e, --exe-name=NAME  executable file name, default: newest in DIR
-  -o, --fp-opt=OPT     add option OPT to command line when starting FLEXPART
-                       (Default: $fp_opt)
-  -h, --help           show this help and exit
-  -I, --iout=I         Set IOUT to I (1 binary, 9 NetCDF output)
-  -j, --job=NAME       manually set job name (default: consecutive number)
-  -N, --ncpus=N        numbers of cpus to allocate to OpenMP parallel run
-  -p, --partition=PART partition, one of postproc (may be abbreviated as pp),
-                       pp-serial, debug, normal, dev
-  -r, --resol=RESOL    resolution, one of: i1, i2, 1e, 2e, 1, e, f, g
-  -M, --rel-lon=LON    longitude of release
-  -M, --rel-lat=LAT    latitude of release
-  -M, --rel-mass=MASS  released mass [Bq] (default: $rel_mass)
-  -M, --rel-name=NAME  name of release site
-  -R, --rel-tag=TAG    release tag, selects file RELEASES.TAG
-  -R, --rel-site=SITE  release site, selects SITE from predefined sites
-  -t, --rel-time=T1,T2 release from T1 to T2 (lead times [hours]).
-                       (Default: $t1,$t2)
-      --run-mode=MODE  run code in MODE, one of serial or parallel
-  -S, --source-no=N    select source no N from list of NWP data sources
-  -N, --species-no=N   select species no N according to definition
-                       in SPECIES directory
-  -s, --stop           stop script before starting job (do not submit job)
-  -V, --version        output version information and exit
+  -a, --average=H       averaging interval and output freqency of H [hours]
+                        (Default: $avg_h)
+      --debug           display additional debug information
+  -n, --dry-run         print commands without executing them
+  -E, --exe-dir=DIR     Flexpart executable file path, default for
+                        - ICON: $exe_dir_icon
+                        - COSMO: $exe_dir_cosmo
+                        - IFS: $exe_dir_ifs
+  -e, --exe-name=NAME   executable file name, default: newest in DIR
+  -o, --fp-opt=OPT      add option OPT to command line when starting FLEXPART
+                        (Default: $fp_opt)
+  -h, --help            show this help and exit
+  -I, --iout=I          Set IOUT to I (1 binary, 9 NetCDF output)
+  -j, --job=NAME        manually set job name (default: consecutive number)
+  -N, --ncpus=N         numbers of cpus to allocate to OpenMP parallel run
+  -O, --outgrid-tag=TAG output grid tag, selects file OUTGRID.TAG
+  -p, --partition=PART  partition, one of postproc (may be abbreviated as pp),
+                        pp-serial, debug, normal, dev
+  -r, --resol=RESOL     resolution, one of: i1, i2, 1e, 2e, 1, e, f, g
+  -M, --rel-lon=LON     longitude of release
+  -M, --rel-lat=LAT     latitude of release
+  -M, --rel-mass=MASS   released mass [Bq] (default: $rel_mass)
+  -M, --rel-name=NAME   name of release site
+  -R, --rel-tag=TAG     release tag, selects file RELEASES.TAG
+  -R, --rel-site=SITE   release site, selects SITE from predefined sites
+  -t, --rel-time=T1,T2  release from T1 to T2 (lead times [hours]).
+                        (Default: $t1,$t2)
+      --run-mode=MODE   run code in MODE, one of serial or parallel
+  -s, --source=PATTERN  search pattern for NWP data files
+  -S, --source-no=N     select source no N from list of NWP data sources
+  -N, --species-no=N    select species no N according to definition
+                        in SPECIES directory
+  -s, --stop            stop script before starting job (do not submit job)
+  -V, --version         output version information and exit
 
 EOF
 } # function usage
@@ -336,6 +337,9 @@ while (( $# > 0 )) ; do
                 (( $# > 1 )) && shift && avg_h="$1"
             fi
             ;;
+	    --debug)
+	        debug=yes
+	        ;;
         -E | --exe-dir*)
             # Mandatory option argument with or without =
             if [[ "$1" == *=* ]] ; then
@@ -370,6 +374,14 @@ while (( $# > 0 )) ; do
                 job_name="${1#*=}"
             else
                 (( $# > 1 )) && shift && job_name="$1"
+            fi
+            ;;
+        -m | --member*)
+            # Mandatory option argument with or without =
+            if [[ "$1" == *=* ]] ; then
+                member="${1#*=}"
+            else
+                (( $# > 1 )) && shift && member="$1"
             fi
             ;;
         --rel-lon*)
@@ -427,6 +439,14 @@ while (( $# > 0 )) ; do
                 fp_opt="${1#*=}"
             else
                 (( $# > 1 )) && shift && fp_opt="$1"
+            fi
+            ;;
+        -O | --outgrid-tag*)
+            # Mandatory option argument with or without =
+            if [[ "$1" == *=* ]] ; then
+                outgrid_tag="${1#*=}"
+            else
+                (( $# > 1 )) && shift && outgrid_tag="$1"
             fi
             ;;
         -p | --partition*)
@@ -492,7 +512,7 @@ while (( $# > 0 )) ; do
                 (( $# > 1 )) && shift && t2="$1"
             fi
             ;;
-        -S | --source-no*)
+        -S | --source-no*) # Note: position above --source*
             # Mandatory option argument with or without =
             if [[ "$1" == *=* ]] ; then
                 source_no="${1#*=}"
@@ -502,6 +522,20 @@ while (( $# > 0 )) ; do
                     source_no="$1"
                 else
                     echo $tag: "Missing value for option: --source-no"
+                    exit 1
+                fi
+            fi
+            ;;
+        -s | --source*) # Note: pattern includes --source-no, position below that
+            # Mandatory option argument with or without =
+            if [[ "$1" == *=* ]] ; then
+                source="${1#*=}"
+            else
+                if (( $# > 1 )) ; then
+                    shift
+                    source="$1"
+                else
+                    echo $tag: "Missing value for option: --source"
                     exit 1
                 fi
             fi
@@ -572,10 +606,6 @@ if [[ -n $dry_run ]] ; then
     $exe_cmd
 fi
 
-# Report arguments
-echo $tag: "NWP input base time, range, and simulation mode:" \
-    "$basetime, $fc_range, $mode"
-
 # Select resolution and NWP data source
 # -------------------------------------
 # Select resolution
@@ -597,23 +627,43 @@ fi
 
 # Select NWP data source
 eval nwp_source_list=( \"\${nwp_source_list_${resol}[@]}\" )
-if [[ -z $source_no ]] ; then
-    echo "Select NWP data source (option --source-no)"
-    select answer in "${nwp_source_list[@]}" ; do
-        # Note: Press return for default not possible
-        # as select repeats prompt until REPLY is not empty
-        [[ $REPLY == quit || $REPLY == exit ]] && exit
-        # answer is only set if REPLY was valid
-        [[ -n $answer ]] && break
-    done
-    source_no=$REPLY
+if [[ -n $source ]] ; then
+    # NWP data source specified, format as in source list
+    nwp_source_full="$source"
+    if [[ -n $source_no ]] ; then
+        echo $tag: "Duplicate specification of NWP source with --source and --source-no option," \
+            "these are mutually exclusive"
+        exit 1
+    fi
 else
-    (( i_source = $source_no - 1 ))
-    answer=${nwp_source_list[$i_source]}
+    if [[ -z $source_no ]] ; then
+        echo "Select NWP data source (option --source-no)"
+        select answer in "${nwp_source_list[@]}" ; do
+            # Note: Press return for default not possible
+            # as select repeats prompt until REPLY is not empty
+            [[ $REPLY == quit || $REPLY == exit ]] && exit
+            # answer is only set if REPLY was valid
+            [[ -n $answer ]] && break
+        done
+        source_no=$REPLY
+    else
+        (( i_source = $source_no - 1 ))
+        answer="${nwp_source_list[$i_source]}"
+    fi
+    # Extract description and file path from nwp_source_list entry, splitting at "in:"
+    source_desc="${answer%in:*}"
+    nwp_source_full="${answer#*in:}"
 fi
-# Extract description and file path from nwp_source_list entry, splitting at "in:"
-source_desc="${answer%in:*}"
-nwp_source="${answer#*in:}"
+nwp_source=${nwp_source_full%,*}
+grib_const_file=${nwp_source_full#*,}
+if [[ $nwp_source == $grib_const_file ]] ; then
+    # no separate constant fields file specified, unset
+    unset grib_const_file
+fi
+if [[ -n $debug ]] ; then
+    echo "DBG nwp_source=$nwp_source"
+    echo "DBG grib_const_file=$grib_const_file"
+fi
 # Trim trailing space in source_desc
 source_desc="${source_desc%"${source_desc##*[![:space:]]}"}"
 # Trim leading space in nwp_source
@@ -631,15 +681,29 @@ eval lt_inc=\$lt_inc_$resol
 [[ -z $species_no ]] && eval species_no=\$species_no_$resol
 [[ -z $rel_mass ]] && eval rel_mass=\$rel_mass_$resol
 [[ -z $rel_site ]] && eval rel_site=\$rel_site_$resol
-(( $fc_range > $nwp_max_range )) && fc_range=$nwp_max_range
+[[ -z $fc_range ]] && fc_range=$(( $nwp_max_range > 48 ? 48 : $nwp_max_range ))
+if (( $fc_range > $nwp_max_range )) ; then
+    echo $tag: "Warning: Forecast range greater than maximum available:" \
+        "$fc_range > $nwp_max_range, shortened"
+    fc_range=$nwp_max_range
+fi
 (( $t1 < 0 )) && t1=0
 (( $t1 > $fc_range )) && t1=$fc_range
-(( $t2 <= $t1 )) && echo $tag: "Error: Release end before release start: $t2 < $t1"
-(( $t2 > $fc_range )) && t2=$fc_range
+if (( $t2 < $t1 )) ; then
+    echo $tag: "Error: Release end before release start: $t2 < $t1"
+    exit 1
+fi
+if (( $t2 > $fc_range )) ; then
+    echo $tag: "Warning: Release end after maximum lead time: $t2 > $fc_range, shortened"
+    t2=$fc_range
+fi
 
-eval nwp_model=\$nwp_model_$resol
+# Report arguments
+echo $tag: "NWP-input base time, range, and simulation mode:" \
+    "$basetime, $fc_range, $mode"
 
 # Model-dependent settings
+eval nwp_model=\$nwp_model_$resol
 if [[ -z $exe_dir ]] ; then # option --exe-dir
     eval exe_dir=\$exe_dir_$nwp_model
 fi
@@ -667,10 +731,16 @@ if [[ -z $exe_name ]] ; then
     # Select newest from exe_dir
     echo $tag: "Looking for newest FLEXPART executable in: $exe_dir"
     exe_list=( $(ls -t $exe_dir/FLEXPART*) )
+    if (( $? )) ; then
+        echo $tag: "No executable found: $exe_dir/FLEXPART*"
+        exit 6
+    fi
     exe_name=$(basename ${exe_list[0]%.env})
-    echo -n $tag: "Found: "
-    ls -l $exe_dir/$exe_name
-    if [[ $exe_name == *omp* || $exe_name == $exe_name_parallel_ifs ]] ; then
+    # Run mode sequential or parallel:
+    # Check if name (eventually of linked file) contains omp
+    exe_listing=$(ls -l $exe_dir/$exe_name)
+    echo $tag: "Found: $exe_listing"
+    if [[ $exe_listing == *omp* || $exe_name == $exe_name_parallel_ifs ]] ; then
         if [[ $run_mode == serial ]] ; then
             echo $tag: "Requested run-mode serial with OMP-enabled executable: Setting OMP_NUM_THREADS=1"
             ncpus=1
@@ -732,7 +802,7 @@ if [[ -e $exe_dir/$exe_name.env ]] ; then
     echo $tag: "Specific environment file found, using: $exe_dir/$flexpart_env"
 elif [[ ! -e $exe_dir/$flexpart_env ]] ; then
     echo $tag: "Environment file not found: $exe_dir/$flexpart_env"
-    echo $tag: "This is not a problem if FLEXPART has been compiled with spack"
+    echo "${tag//[a-z\/_-]/ }  This is not a problem if FLEXPART has been compiled with spack"
     unset flexpart_env
 fi
 if [[ -n $flexpart_env ]] ; then
@@ -814,17 +884,25 @@ case $resol in
 esac
 
 # NWP data source: Replace placeholders
+member=$(printf %03d $member)
 nwp_search=$(echo "$nwp_source" \
     | sed "s/<yyyymmddhh>/${basetime}/g" \
     | sed "s/<yymmddhh>/${basetime:2:8}/g" \
     | sed "s/<ex>/??/g" \
     | sed "s/<ddhh>/[0-9][0-9][0-9][0-9]/g" \
+    | sed "s/<hhh>/[0-9][0-9][0-9]/g" \
     | sed "s/<mem>/$member/g")
 # Check if NWP data is available
+# Note: Braces {} as wildcards in $nwp_search are not expanded!
 nwp_files=( $nwp_search )
 nwp_dir=$(dirname $nwp_files)
-if [ ! -f $nwp_files ] ; then
-    echo $tag: "%ERROR: No matching files found: $nwp_files"
+if [[ -n $debug ]] ; then
+    echo "DBG #nwp_files, nwp_files[0]=${#nwp_files[*]}, ${nwp_files[0]}"
+    echo "DBG nwp_dir=$nwp_dir"
+fi
+
+if [[ ! -f $nwp_files ]] ; then
+    echo $tag: "%ERROR: No matching files found: $nwp_search"
     if [[ $nwp_files == /opr/* && $HOSTNAME != arolla* ]] ; then
         echo $tag: "For current data on /opr try on arolla"
     fi
@@ -839,11 +917,11 @@ fi
 
 # Check if GRIB constant data available
 if [[ $nwp_files != *disp* ]] ; then
-    # Forecast files, assuming COSMO forecasts
-    grib_const_file=lfff00000000c
-    if [ ! -f $nwp_dir/$grib_const_file ] ; then
-        echo $tag: "Constant GRIB data not available in: $nwp_dir"
-        exit 1
+    # Forecast files, file with constant fields needed
+    [[ -n $debug ]] && echo "DBG looking for \$nwp_dir/\$grib_const_file=$nwp_dir/$grib_const_file"
+    if [[ ! -f $nwp_dir/$grib_const_file ]] ; then
+        echo $tag: "WARNING: Constant GRIB data file not found: $nwp_dir/$grib_const_file"
+        unset grib_const_file
     fi
 fi
 
@@ -852,7 +930,7 @@ echo $tag: "NWP data source: $nwp_dir contains ${#nwp_files[*]} files"
 
 # NWP input data location for flexpart
 grib_input=$start_location/grib
-if [ -d $grib_input ] ; then
+if [[ -d $grib_input ]] ; then
     echo $tag: "Using existing NWP data directory: $grib_input"
 else
     echo $tag: "Creating NWP data directory: $grib_input"
@@ -905,13 +983,29 @@ YYYYMMDD HHMISS
 ________ ______      __________________
 EOF
 
+    # Add grib file with constant fields if available
+    # Format see readavailable.f90 line read(unitavailab,...)
+    # '(i8,1x,i6,2(6x,a32))'
+    avail_fmt='%8s %6s      %s\n'
+    if [[ -n $grib_const_file ]] ; then
+        printf "$avail_fmt" \
+            0 999999 $(basename $grib_const_file) >> \
+            $available_file
+    fi
+
+
     # Find grib files
     if [ -d $grib_input ] ; then
         pushd $grib_input > /dev/null
         gribfiles=( $nest* )
         if (( ${#gribfiles[*]} < 2)) ; then
             echo $tag: "No $nest* files found in: $grib_input"
-            unset gribfiles
+            echo $tag: "Use other files (no nesting possible)"
+            gribfiles=( $(basename "$nwp_search") )
+            if (( ${#gribfiles[*]} < 2)) ; then
+                echo $tag: "No files found: $grib_input/$nwp_search"
+                unset gribfiles
+            fi
         fi
         popd > /dev/null
     else
@@ -924,9 +1018,18 @@ EOF
             echo $tag: "WARNING: Broken link found and removed in NWP input data direcory: $grib_input/$grib_file"
             rm $grib_input/$grib_file
         else
-            printf "%s %s0000      %s\n" \
-                ${grib_file:5:8} ${grib_file:13:2} $grib_file >> \
-                $available_file
+            if [[ $grib_file == disp* ]] ; then
+                # Extract valid date/time from filename
+                printf "$avail_fmt" \
+                    ${grib_file:5:8} ${grib_file:13:2}0000 $grib_file >> \
+                    $available_file
+            else
+                # Extract valid date/time with grins
+                vdate=$(grins --vdate --number=1 $grib_input/$grib_file)
+                printf "$avail_fmt" \
+                    ${vdate:8:8} ${vdate:16:4}00 $grib_file >> \
+                    $available_file
+            fi
         fi
     done
 
@@ -981,7 +1084,11 @@ $exe_cmd cp $input_templates/SPECIES/* $flex_input/SPECIES
 
 # Namelist template files
 command=COMMAND
-outgrid=OUTGRID.$resol
+if [[ -n $outgrid_tag ]] ; then
+    outgrid=OUTGRID.$outgrid_tag
+else
+    outgrid=OUTGRID.$resol
+fi
 
 # Link landuse source
 eval landuse_source=\$landuse_source_$nwp_model
@@ -1007,7 +1114,7 @@ fi
 
 # Command
 [[ -z $exe_cmd ]] && echo -n " $command --> COMMAND,"
-if [ -f $input_templates/$command ] ; then
+if [[ -f $input_templates/$command ]] ; then
     $exe_cmd cp $input_templates/$command $flex_input/COMMAND
 else
     echo
@@ -1018,7 +1125,7 @@ fi
 
 # Outgrid
 [[ -z $exe_cmd ]] && echo -n " $outgrid --> OUTGRID"
-if [ -f $input_templates/$outgrid ] ; then
+if [[ -f $input_templates/$outgrid ]] ; then
     $exe_cmd cp $input_templates/$outgrid $flex_input/OUTGRID
 else
     echo
@@ -1242,7 +1349,7 @@ logline="$0 $args # $tag $basetime $fc_range $mode"
 logline+=" --average=$avg_h --exe-dir=$exe_dir --exe-name=$exe_name"
 logline+=" --job=$job_name"
 [[ $run_mode == parallel ]] && logline+=" --ncpus=$ncpus"
-logline+=" --partition=$partition"
+logline+=" --outgrid-tag=$outgrid_tag --partition=$partition"
 logline+=" --rel-mass=$rel_mass --rel-tag=$rel_tag --rel-time=$t1,$t2 --rel-site=$rel_site"
 logline+=" --resol=$resol --run-mode=$run_mode"
 logline+=" --species-no=$species_no"

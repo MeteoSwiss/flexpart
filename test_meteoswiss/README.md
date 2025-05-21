@@ -5,20 +5,20 @@ Testing with script `test-fp`
 -----------------------------
 
 Test script to prepare input data and run Flexpart. It
-- Retrieves GRIB file from the operational (or a personal) COSMO storage
-- Generates the 'pathnames' and the 'AVAILABLE' files
-- Adapts the FLEXPART control input files according to the arguments
-- Writes a batch job file
+- Retrieves GRIB file from the operational or from a personal ICON storage
+- Generates the `pathnames` and the `AVAILABLE` files
+- Adapts the FLEXPART control input files according to the provided arguments
+- Writes a batch-job file
 - Submits the job on a queue
 
 See usage and a short help with command
 
     ./test-fp --help
 
-For all settings see settings section of the script.
+For the full list of configuration options, refer to the Settings section within the script.
 
-The mandatory input can be selected from command-line menus when
-starting the script
+When the script is called with no options or not all of the mandatory input,
+it will prompt the user to select from command-line menus.
 
     ./test-fp
 
