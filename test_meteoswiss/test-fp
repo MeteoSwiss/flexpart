@@ -82,7 +82,7 @@ nwp_model_i2=icon
 nwp_max_range_i2=120
 lt_inc_i2=1
 nwp_source_list_i2=(
-    "Operational LADM cache (interp) in: $OPR_OPR_DIR/cache/LADM/FLEXPART-I2E-CTRL/dispc*"
+    "Operational LADM cache (interp) in: $OPR_OPR_DIR/cache/LADM/FLEXPART-I2E/<yymmddhh>/dispc*_<mem>"
     "Operational fcst wd    (interp) in: $OPR_OPR_DIR/wd/<yymmddhh>_7<ex>/_FXINP_lfrf<ddhh>0000_<mem>,_FXINP_lfrf00000000_000c"
     "Operational fcst cache (native) in: $OPR_OPR_DIR/cache/ICON-CH2-EPS/FCST_RING/<yymmddhh>_7<ex>/icon/<mem>/lfff<ddhh>0000,lfff00000000c"
     "User cache on scratch  (interp) in: $SCRATCH/flexpart/icon/<yymmddhh>_7<ex>/fxshare/_FXINP_lfrf<ddhh>0000_<mem>,_FXINP_lfrf00000000_000c"
@@ -293,17 +293,18 @@ Options:
   -h, --help            show this help and exit
   -I, --iout=I          Set IOUT to I (1 binary, 9 NetCDF output)
   -j, --job=NAME        manually set job name (default: consecutive number)
+  -m, --member=MEM      3-digit ensemble member MEM (default: $member)
   -N, --ncpus=N         numbers of cpus to allocate to OpenMP parallel run
   -O, --outgrid-tag=TAG output grid tag, selects file OUTGRID.TAG
   -p, --partition=PART  partition, one of postproc (may be abbreviated as pp),
                         pp-serial, debug, normal, dev
   -r, --resol=RESOL     resolution, one of: i1, i2, 1e, 2e, 1, e, f, g
-  -M, --rel-lon=LON     longitude of release
-  -M, --rel-lat=LAT     latitude of release
+      --rel-lon=LON     longitude of release
+      --rel-lat=LAT     latitude of release
   -M, --rel-mass=MASS   released mass [Bq] (default: $rel_mass)
-  -M, --rel-name=NAME   name of release site
+      --rel-name=NAME   name of release site
   -R, --rel-tag=TAG     release tag, selects file RELEASES.TAG
-  -R, --rel-site=SITE   release site, selects SITE from predefined sites
+      --rel-site=SITE   release site, selects SITE from predefined sites
   -t, --rel-time=T1,T2  release from T1 to T2 (lead times [hours]).
                         (Default: $t1,$t2)
       --run-mode=MODE   run code in MODE, one of serial or parallel
