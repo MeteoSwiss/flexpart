@@ -1,0 +1,36 @@
+logging:
+  root_log_level: INFO
+  # When running in k8s, use JSON logger via env setting
+  # formatter: json
+  formatter: "json"
+  child_log_levels:
+    mchpy: DEBUG
+    mchpy.audit.http_audit: INFO
+main:
+  app_name: Flexpart-IFS
+  openmp_config:
+    num_threads: 16
+    stack_size: 100M
+  input:
+    step_unit: hours
+  aws:
+    db:
+      # This db is an index of the objects in the S3 bucket nwp_model_data
+      nwp_model_data:
+        name: MyTable
+        region: eu-central-2
+        backend_type: dynamodb
+    s3:
+      nwp_model_data:
+        region: eu-central-2
+        name: flexpart-input
+        endpoint_url: None
+        retries: 10
+        platform: aws
+      output:
+        region: eu-central-2
+        name: flexpart-output
+        endpoint_url: None
+        retries: 10
+        platform: aws
+
