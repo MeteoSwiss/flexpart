@@ -16,7 +16,7 @@
 # Author: Pirmin Kaufmann, MeteoSwiss
 #
 # Version:
-  revision=1.9  #vincr# version number, may be incremented using vincr
+  revision=1.10  #vincr# version number, may be incremented using vincr
 #
 # See git log for history of modifications
 #-============================================================================
@@ -48,6 +48,8 @@ if [[ -n $OPR_VERSION_SAVE ]] ; then
     # OPR_VERSION was set in the environment
     export OPR_VERSION=$OPR_VERSION_SAVE
 fi
+# Operatonal host with working directories containing current model output
+opr_host=tasna
 
 # NWP data source depending on resolution (see --resol)
 # The source-list string is split at " in: "
@@ -91,32 +93,6 @@ nwp_source_list_i2=(
 )
 t1_i2=3; t2_i2=9; species_no_i2=39; rel_mass_i2=2.16E4; rel_site_i2=bez # Default: opr settings
 
-# COSMO-1E
-resolutions+=( "1e: COSMO-1E (Cent. Europe 1 km)" )
-nwp_model_1e=cosmo
-nwp_max_range_1e=33
-lt_inc_1e=1
-nwp_source_list_1e=(
-    "Operational LADM cache     in: $OPR_OPR_DIR/cache/LADM/FLEXPART-C1E-CTRL/dispc*"
-    "Operational fcst cache     in: arolla:$OPR_OPR_DIR/cache/COSMO-1E/FCST_RING/<yymmddhh>_4<ex>/cosmo/<mem>/lfff<ddhh>0000{,c}"
-    "User cache on scratch      in: $SCRATCH/<yymmddhh>_4<ex>/cosmo/<mem>/lfff<ddhh>0000"
-    "Cases in user store        in: $STORE/CASES/FLEXPART-C1E-CTRL/<yyyymmddhh>/dispc*"
-)
-t1_1e=3; t2_1e=9; species_no_1e=39; rel_mass_1e=2.16E4; rel_site_1e=bez # Default: opr settings
-
-# COSMO-2E
-resolutions+=( "2e: COSMO-2E (Cent. Europe 2 km)" )
-nwp_model_2e=cosmo
-nwp_max_range_2e=120
-lt_inc_2e=1
-nwp_source_list_2e=(
-    "Operational LADM cache     in: $OPR_OPR_DIR/cache/LADM/FLEXPART-C2E/<yymmddhh>/dispc*_<mem>"
-    "Operational fcst cache     in: arolla:$OPR_OPR_DIR/cache/COSMO-2E/FCST_RING/<yymmddhh>_5<ex>/cosmo/<mem>lfff<ddhh>0000{,c}"
-    "User cache on scratch      in: $SCRATCH/<yymmddhh>_5<ex>/cosmo/<mem>/lfff<ddhh>0000"
-    "Cases in user store        in: $STORE/CASES/FLEXPART-C2E/<yyyymmddhh>/dispc*_<mem>"
-)
-t1_2e=3; t2_2e=9; species_no_2e=39; rel_mass_2e=2.16E4; rel_site_2e=bez # Default: opr settings
-
 # ECMWF IFS-HRES Europe
 resolutions+=( "f: IFS-HRES-EUROPE (Europe 0.1°)" )
 nwp_model_f=ifs
@@ -125,7 +101,7 @@ lt_inc_f=1
 nwp_source_list_f=(
     "Operational LADM cache     in: $OPR_OPR_DIR/cache/LADM/FLEXPART-IFS-EUROPE/dispf*"
     "Cases in operational store in: /store/mch/msopr/flexpart_data/test-input/ifs-europe/<yyyymmddhh>/dispf*"
-    "User cache on scratch      in: $SCRATCH/FLEXPART-IFS-EUROPE/disp*"
+    "User cache on scratch      in: $SCRATCH/FLEXPART-IFS-EUROPE/dispf*"
     "Cases in user store        in: $STORE/CASES/FLEXPART-IFS-EUROPE/<yyyymmddhh>/dispf*"
 )
 t1_f=6; t2_f=12; species_no_f=39; rel_mass_f=21.6E10; rel_site_f=cherno # Default: opr settings
@@ -141,32 +117,6 @@ nwp_source_list_g=(
     "Cases in user store        in: $STORE/CASES/FLEXPART-IFS-GLOBAL/<yyyymmddhh>/disp*"
 )
 t1_g=0; t2_g=0; species_no_g=39; rel_mass_g=4.32E10; rel_site_g=punggye # Default: opr settings
-
-# COSMO-1 (until 2020-09)
-resolutions+=( "1: COSMO-1 (Cent. Europe 1 km until 2020-09)" )
-nwp_model_1=cosmo
-nwp_max_range_1=33
-lt_inc_1=1
-nwp_source_list_1=(
-    "Operational LADM cache     in: *** no longer available ***"
-    "Operational fcst ring      in: *** no longer available ***"
-    "User cache on scratch      in: $SCRATCH/<yymmddhh>_1<ex>/lm_coarse/lfff<ddhh>0000{,c}"
-    "Cases in user store        in: $STORE/CASES/COSMO-1/<yymmddhh>_1<ex>/lm_coarse/lfff<ddhh>0000{,c}"
-)
-t1_1=3; t2_1=9; species_no_1=39; rel_mass_1=2.16E4; rel_site_1=bez # Default: opr settings
-
-# COSMO-E (until 2020-09)
-resolutions+=( "e: COSMO-E (Cent. Europe 2 km until 2020-09)" )
-nwp_model_e=cosmo
-nwp_max_range_e=120
-lt_inc_e=1
-nwp_source_list_e=(
-    "Operational LADM cache     in: *** no longer available ***"
-    "Operational fcst ring      in: *** no longer available ***"
-    "User cache on scratch      in: $SCRATCH/<yymmddhh>_2<ex>/lm_coarse/<mem>/lfff<ddhh>0000{,c}"
-    "Cases in user store        in: $STORE/CASES/COSMO-E/<yymmddhh>_2<ex>/lm_coarse/<mem>/lfff<ddhh>0000{,c}"
-)
-t1_e=3; t2_e=9; species_no_e=39; rel_mass_e=2.16E4; rel_site_e=bez # Default: opr settings
 
 # Command used to launch an executable for your particular scheduler, 
 # e.g. srun, mpirun, etc
@@ -205,7 +155,7 @@ mode=1
 
 # Defaults for options
 # --------------------
-# Release site (-R, --rel-tag)
+# Defaults depending on release site rel_site (option --rel-site)
 rel_lon_bez=8.2284 ; rel_lat_bez=47.5519 ; rel_height_bez=100 ; rel_name_bez=Beznau
 rel_lon_bug=5.2700 ; rel_lat_bug=45.7992 ; rel_height_bug=100 ; rel_name_bug=Bugey
 rel_lon_fes=7.5625 ; rel_lat_fes=47.9036 ; rel_height_fes=100 ; rel_name_fes=Fessenheim
@@ -684,9 +634,8 @@ eval lt_inc=\$lt_inc_$resol
 [[ -z $rel_site ]] && eval rel_site=\$rel_site_$resol
 [[ -z $fc_range ]] && fc_range=$(( $nwp_max_range > 48 ? 48 : $nwp_max_range ))
 if (( $fc_range > $nwp_max_range )) ; then
-    echo $tag: "Warning: Forecast range greater than maximum available:" \
-        "$fc_range > $nwp_max_range, shortened"
-    fc_range=$nwp_max_range
+    echo $tag: "WARNING: Forecast range greater than normally available:" \
+        "$fc_range > $nwp_max_range"
 fi
 (( $t1 < 0 )) && t1=0
 (( $t1 > $fc_range )) && t1=$fc_range
@@ -904,14 +853,14 @@ fi
 
 if [[ ! -f $nwp_files ]] ; then
     echo $tag: "%ERROR: No matching files found: $nwp_search"
-    if [[ $nwp_files == /opr/* && $HOSTNAME != arolla* ]] ; then
-        echo $tag: "For current data on /opr try on arolla"
+    if [[ $nwp_files == $OPR_OPR_DIR/* && $HOSTNAME != $opr_host* ]] ; then
+        echo $tag: "For current data on $OPR_OPR_DIR try on $opr_host"
     fi
     exit 7
 fi
 if [[ $nwp_files == *tgz ]] ; then
     echo $tag: "Unzipping zipped file: $nwp_files"
-    gunzip $nwp_files
+    $exe_cmd gunzip $nwp_files
     nwp_files=( ${nwp_files%.tgz} )
     nwp_dir=$(dirname $nwp_files)
 fi
@@ -1041,9 +990,8 @@ EOF
 $grib_input/
 $available_file
 EOF
-
-        (( i_nest++ ))
     fi
+    (( i_nest++ ))
 done # Loop over nests
 
 # Write end of pathnames
@@ -1313,7 +1261,7 @@ if [[ -z $dry_run ]] ; then
 #SBATCH --output=$start_location/$job_out
 #SBATCH --error=$start_location/$job_out
 #SBATCH --partition=$partition
-#SBATCH --time=4:00:00
+#SBATCH --time=1:00:00
 $parallel_opt
 
 # Initialization

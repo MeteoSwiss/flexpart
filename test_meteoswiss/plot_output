@@ -219,33 +219,24 @@ else
     echo $tag: "Plot information file not found: output/$plot_info_file"
 fi
 
-if [[ -z $operational ]] ; then
-    # If conda environment exists, use pyflexplot from there
-    # Note: conda info --base interactively yields miniconda3 directory 
-    #                         in a shell script yields environment directory
-    echo $tag: "INFO: conda info --base yields:" $(conda info --base)
-    pyflexplot=$(conda info --base)/envs/pyflexplot/bin/pyflexplot
-    if [[ ! -x $pyflexplot ]] ; then
-        # Executable not found in pyflexplot environment,
-        # try base environment
-        pyflexplot=$(conda info --base)/bin/pyflexplot
+# Determine executable
+if [[ -n $operational ]] ; then
+    pyflexplot=$(which pyflexplot)
+    if [[ ! -e $pyflexplot ]] ; then
+        echo $tag: "No pyflexplot executable found in PATH, exiting."
+        exit 1
     fi
+else
+    # Run operational pyflexplot from $OPR_BIN
+    # Load definition of OPR_BIN
+    [[ -z $OPR_SETUP_DIR ]] && source /oprusers/osm/.opr_setup_dir
+    pyflexplot=$OPR_BIN/pyflexplot
     if [[ ! -x $pyflexplot ]] ; then
-        echo $tag: "WARNING: No Conda environment found: $pyflexplot"
+        echo $tag: "ERROR: No operational pyflexplot found: $pyflexplot"
+        exit 1
     fi
+    echo $tag: "INFO: Using operational environment: $pyflexplot"
 fi
-if [[ -n $operational || ! -x $pyflexplot ]] ; then
-        # Run operational pyflexplot from $OPR_BIN
-        # Load definition of OPR_BIN
-        [[ -z $OPR_SETUP_DIR ]] && source /oprusers/osm/.opr_setup_dir
-        pyflexplot=$OPR_BIN/pyflexplot
-        if [[ ! -x $pyflexplot ]] ; then
-            echo $tag: "ERROR: No operational pyflexplot found: $pyflexplot"
-            exit 1
-        fi
-        echo $tag: "INFO: Using operational environment: $pyflexplot"
-fi
-echo $tag: "Found pyflexplot: $pyflexplot"
 
 # Report executable
 echo $tag: "Using pyflexplot executable:" \
@@ -264,7 +255,7 @@ for infile in ${infiles[*]} ; do
     cleanup_plot_dir $plot_dir
     # Option -w: wait for job to complete
     [[ -n $wait_opt ]] && echo $tag: "Waiting for job completion."
-    $exe_cmd batchPP -t 2 -T 5 -n pfp_$jobdir $wait_opt -- \
+    $exe_cmd batchPP -t 1 -T 5 -n pfp_$jobdir $wait_opt -- \
         $pyflexplot --preset=$preset --merge-pdfs $integrate_opt \
         --setup infile $infile $base_time_opt \
         --dest=$plotdir \
