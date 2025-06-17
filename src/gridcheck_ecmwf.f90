@@ -203,7 +203,9 @@ subroutine gridcheck_ecmwf
       isec1(6)=167         ! indicatorOfParameter
     elseif ((parCat.eq.0).and.(parNum.eq.6).and.(typSurf.eq.103)) then ! 2D
       isec1(6)=168         ! indicatorOfParameter
-    elseif ((parCat.eq.1).and.(parNum.eq.11).and.(typSurf.eq.1)) then ! SD
+    elseif ((parCat.eq.1).and.(parNum.eq.11).and.(typSurf.eq.1)) then ! SDE
+      isec1(6)=141         ! indicatorOfParameter
+    elseif ((parCat.eq.1).and.(parNum.eq.254).and.(typSurf.eq.1)) then ! SD
       isec1(6)=141         ! indicatorOfParameter
     elseif ((parCat.eq.6).and.(parNum.eq.1) .or. parId .eq. 164) then ! CC
       isec1(6)=164         ! indicatorOfParameter
