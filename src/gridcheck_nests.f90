@@ -192,9 +192,11 @@ subroutine gridcheck_nests
     isec1(6)=146         ! indicatorOfParameter
   elseif ((parCat.eq.4).and.(parNum.eq.9).and.(typSurf.eq.1)) then ! SR
     isec1(6)=176         ! indicatorOfParameter
-  elseif ((parCat.eq.2).and.(parNum.eq.17) .or. parId .eq. 180) then ! EWSS !added by mc to make it consistent with new gridchek.f90
+!  elseif ((parCat.eq.2).and.(parNum.eq.17) .or. parId .eq. 180) then ! EWSS --wrong
+  elseif ((parCat.eq.2).and.(parNum.eq.38) .or. parId .eq. 180) then ! EWSS --correct
     isec1(6)=180         ! indicatorOfParameter
-  elseif ((parCat.eq.2).and.(parNum.eq.18) .or. parId .eq. 181) then ! NSSS !added by mc to make it consistent with new gridchek.f90
+!  elseif ((parCat.eq.2).and.(parNum.eq.18) .or. parId .eq. 181) then ! NSSS --wrong
+  elseif ((parCat.eq.2).and.(parNum.eq.37) .or. parId .eq. 181) then ! NSSS --correct
     isec1(6)=181         ! indicatorOfParameter
   elseif ((parCat.eq.3).and.(parNum.eq.4)) then ! ORO
     isec1(6)=129         ! indicatorOfParameter
