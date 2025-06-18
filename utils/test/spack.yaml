@@ -1,0 +1,17 @@
+# This is a Spack Environment file.
+#
+# It describes a set of packages to be installed, along with
+# configuration settings.
+spack:
+  specs: 
+    - flexpart-ifs@main 
+    - fdb +tools
+    - eckit@1.20.2 ~mpi 
+    - eccodes@2.19.0 +aec jp2k=none 
+    - hdf5 ~mpi
+  view: false
+  concretizer:
+    unify: true
+  packages:
+    all:
+      target: [x86_64]
