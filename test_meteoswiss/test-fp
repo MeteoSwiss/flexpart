@@ -248,10 +248,11 @@ Options:
   -O, --outgrid-tag=TAG output grid tag, selects file OUTGRID.TAG
   -p, --partition=PART  partition, one of postproc (may be abbreviated as pp),
                         pp-serial, debug, normal, dev
-  -r, --resol=RESOL     resolution, one of: i1, i2, 1e, 2e, 1, e, f, g
+  -r, --resol=RESOL     resolution, one of: i1, i2, f, g
       --rel-lon=LON     longitude of release
       --rel-lat=LAT     latitude of release
-  -M, --rel-mass=MASS   released mass [Bq] (default: $rel_mass)
+  -M, --rel-mass=MASS   released mass [Bq] (default: $rel_mass),
+                        may be a comma-separated list
       --rel-name=NAME   name of release site
   -R, --rel-tag=TAG     release tag, selects file RELEASES.TAG
       --rel-site=SITE   release site, selects SITE from predefined sites
@@ -261,7 +262,7 @@ Options:
   -s, --source=PATTERN  search pattern for NWP data files
   -S, --source-no=N     select source no N from list of NWP data sources
   -N, --species-no=N    select species no N according to definition
-                        in SPECIES directory
+                        in SPECIES directory, may be a comma-separated list
   -s, --stop            stop script before starting job (do not submit job)
   -V, --version         output version information and exit
 
@@ -354,9 +355,9 @@ while (( $# > 0 )) ; do
         -M | --rel-mass*)
             # Mandatory option argument with or without =
             if [[ "$1" == *=* ]] ; then
-                rel_mass="${1#*=}"
+                rel_mass_str="${1#*=}"
             else
-                (( $# > 1 )) && shift && rel_mass="$1"
+                (( $# > 1 )) && shift && rel_mass_str="$1"
             fi
             ;;
         --rel-name*)
@@ -447,9 +448,9 @@ while (( $# > 0 )) ; do
         -N | --species-no*)
             # Mandatory option argument with or without =
             if [[ "$1" == *=* ]] ; then
-                species_no="${1#*=}"
+                species_no_str="${1#*=}"
             else
-                (( $# > 1 )) && shift && species_no="$1"
+                (( $# > 1 )) && shift && species_no_str="$1"
             fi
             ;;
         -t | --rel-time*)
@@ -533,6 +534,16 @@ fi
 if [[ -n $t2 && ! $t2 =~ ^[0-9]+$ ]] ; then
     echo $tag: "Release time 2 not valid: $t2"
     exit 5
+fi
+
+# Option rel-mass
+if [[ -n $rel_mass_str ]] ; then
+    rel_mass=( ${rel_mass_str//,/ } )
+fi
+
+# Option species-no
+if [[ -n $species_no_str ]] ; then
+    species_no=( ${species_no_str//,/ } )
 fi
 
 #===============================================================================
@@ -1138,9 +1149,13 @@ echo $tag: Adapting RELEASES input file: $flex_input/RELEASES
 
 # RELEASES namelist input
 # Replace species number (option --species-no)
-echo $tag: "  Species number: $species_no"
+echo $tag: "  Number of species: ${#species_no[*]}"
+$exe_cmd gres "^ *NSPEC *=.*!" \
+"$(printf   "  NSPEC       = %9d" ${#species_no[*]}), !" $flex_input/RELEASES
+[[ -z $species_no_str ]] && species_no_str=$(IFS=, ; echo "${species_no[*]}")
+echo $tag: "  Species number(s): $species_no_str"
 $exe_cmd gres "^ *SPECNUM_REL *=.*!" \
-"$(printf   "  SPECNUM_REL = %9d" $species_no), !" $flex_input/RELEASES
+"$(printf   "  SPECNUM_REL = %9s" $species_no_str), !" $flex_input/RELEASES
 # Beginning date/time of release
 echo $tag: "  Beginning date/time of release: ${release_start[*]}"
 $exe_cmd gres "^ *IDATE1 *=.*!" \
@@ -1184,11 +1199,21 @@ if [[ -n $rel_height ]] ; then
         $flex_input/RELEASES
 fi
 # Replace total mass emitted (option --rel-mass)
-if [[ -n $rel_mass ]] ; then
-    echo $tag: "  Total mass emitted: $rel_mass"
-    $exe_cmd gres "^ *MASS *=.*!" \
-        "$(printf   " MASS    = %14s" $rel_mass), !" $flex_input/RELEASES
+[[ -z $rel_mass_str ]] && rel_mass_str=$(IFS=, ; echo "${rel_mass[*]}")
+if (( ${#species_no[*]} > 1 && ${#rel_mass[*]} == 1 )) ; then
+    i=1
+    while (( $i < ${#species_no[*]} )) ; do
+        rel_mass_str+=", $rel_mass"
+        (( ++i ))
+    done
+elif (( ${#species_no[*]} != ${#rel_mass[*]} )) ; then
+    echo $tag: "ERROR: Number of species (${#species_no[*]})" \
+        "and number of released mass values (${#rel_mass[*]}) do not match"
+    exit 1
 fi
+echo $tag: "  Total mass emitted: $rel_mass_str"
+$exe_cmd gres "^ *MASS *=.*!" \
+    "$(printf   " MASS    = %14s" $rel_mass_str), !" $flex_input/RELEASES
 # Comment
 if [[ -n $rel_name ]] ; then
     echo $tag: "  Comment: $rel_name"
@@ -1299,9 +1324,9 @@ logline+=" --average=$avg_h --exe-dir=$exe_dir --exe-name=$exe_name"
 logline+=" --job=$job_name"
 [[ $run_mode == parallel ]] && logline+=" --ncpus=$ncpus"
 logline+=" --outgrid-tag=$outgrid_tag --partition=$partition"
-logline+=" --rel-mass=$rel_mass --rel-tag=$rel_tag --rel-time=$t1,$t2 --rel-site=$rel_site"
+logline+=" --rel-mass=$rel_mass_str --rel-tag=$rel_tag --rel-time=$t1,$t2 --rel-site=$rel_site"
 logline+=" --resol=$resol --run-mode=$run_mode"
-logline+=" --species-no=$species_no"
+logline+=" --species-no=$species_no_str"
 logline+=" --source-no=$source_no # (${source_desc% })"
 logline+=" # $(date +%F\ %R)"
 if [[ -z $dry_run ]] ; then
