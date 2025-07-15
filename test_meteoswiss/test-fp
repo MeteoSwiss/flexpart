@@ -26,7 +26,10 @@
 #=============================================================================
 # Name of file defining environment
 flexpart_env=CSCS.env
-[[ -z $STORE ]] && STORE=/store_new/mch/msopr/$LOGNAME
+# Since July 2025, STORE as defined by the system login script
+# already points to /store/mch, we want /store_new/mch
+# until the migration is complete.
+export STORE=/store_new/mch
 # Default partition (-p, --partition) on balfrin/tasna
 partition_serial=postproc
 partition_parallel=postproc
@@ -74,7 +77,7 @@ nwp_source_list_i1=(
     "Operational fcst cache (native) in: $OPR_OPR_DIR/cache/ICON-CH1-EPS/FCST_RING/<yymmddhh>_6<ex>/icon/<mem>/lfff<ddhh>0000,lfff00000000c"
     "User cache on scratch  (interp) in: $SCRATCH/flexpart/icon/<yymmddhh>_6<ex>/fxshare/_FXINP_lfrf<ddhh>0000_<mem>,_FXINP_lfrf00000000_000c"
     "User cache on scratch  (native) in: $SCRATCH/<yymmddhh>_7<ex>/icon/<mem>/lfff<ddhh>0000,lfff00000000c"
-    "User cases on store    (interp) in: $STORE/CASES/FLEXPART-I1E-CTRL/<yyyymmddhh>/dispc*"
+    "User cases on store    (interp) in: $STORE/msopr/$LOGNAME/CASES/FLEXPART-I1E-CTRL/<yyyymmddhh>/dispc*"
 )
 t1_i1=3; t2_i1=9; species_no_i1=39; rel_mass_i1=2.16E4; rel_site_i1=bez # Default: opr settings
 
@@ -89,7 +92,7 @@ nwp_source_list_i2=(
     "Operational fcst cache (native) in: $OPR_OPR_DIR/cache/ICON-CH2-EPS/FCST_RING/<yymmddhh>_7<ex>/icon/<mem>/lfff<ddhh>0000,lfff00000000c"
     "User cache on scratch  (interp) in: $SCRATCH/flexpart/icon/<yymmddhh>_7<ex>/fxshare/_FXINP_lfrf<ddhh>0000_<mem>,_FXINP_lfrf00000000_000c"
     "User cache on scratch  (native) in: $SCRATCH/<yymmddhh>_7<ex>/icon/<mem>/lfff<ddhh>0000,lfff00000000c"
-    "Cases in user store    (interp) in: $STORE/CASES/FLEXPART-I2E-CTRL/<yyyymmddhh>/dispc*"
+    "Cases in user store    (interp) in: $STORE/msopr/$LOGNAME/CASES/FLEXPART-I2E-CTRL/<yyyymmddhh>/dispc*"
 )
 t1_i2=3; t2_i2=9; species_no_i2=39; rel_mass_i2=2.16E4; rel_site_i2=bez # Default: opr settings
 
@@ -102,7 +105,7 @@ nwp_source_list_f=(
     "Operational LADM cache     in: $OPR_OPR_DIR/cache/LADM/FLEXPART-IFS-EUROPE/dispf*"
     "Cases in operational store in: /store/mch/msopr/flexpart_data/test-input/ifs-europe/<yyyymmddhh>/dispf*"
     "User cache on scratch      in: $SCRATCH/FLEXPART-IFS-EUROPE/dispf*"
-    "Cases in user store        in: $STORE/CASES/FLEXPART-IFS-EUROPE/<yyyymmddhh>/dispf*"
+    "Cases in user store        in: $STORE/msopr/$LOGNAME/CASES/FLEXPART-IFS-EUROPE/<yyyymmddhh>/dispf*"
 )
 t1_f=6; t2_f=12; species_no_f=39; rel_mass_f=21.6E10; rel_site_f=cherno # Default: opr settings
 
@@ -114,7 +117,7 @@ lt_inc_g=3
 nwp_source_list_g=(
     "Operational LADM cache     in: $OPR_OPR_DIR/cache/LADM/FLEXPART-IFS-GLOBAL/disp*"
     "User cache on scratch      in: $SCRATCH/FLEXPART-IFS-GLOBAL/disp*"
-    "Cases in user store        in: $STORE/CASES/FLEXPART-IFS-GLOBAL/<yyyymmddhh>/disp*"
+    "Cases in user store        in: $STORE/msopr/$LOGNAME/CASES/FLEXPART-IFS-GLOBAL/<yyyymmddhh>/disp*"
 )
 t1_g=0; t2_g=0; species_no_g=39; rel_mass_g=4.32E10; rel_site_g=punggye # Default: opr settings
 
@@ -125,10 +128,10 @@ t1_g=0; t2_g=0; species_no_g=39; rel_mass_g=4.32E10; rel_site_g=punggye # Defaul
 [[ -z ${sbatch_cmd} ]] && sbatch_cmd="sbatch"
 
 # Path to ICON/COSMO landuse file GLC_EU_V2.bil
-landuse_source_icon="$STORE/../flexpart_data/GLC2000"
-landuse_source_cosmo="$STORE/../flexpart_data/GLC2000"
+landuse_source_icon="$STORE/msopr/flexpart_data/GLC2000"
+landuse_source_cosmo="$STORE/msopr/flexpart_data/GLC2000"
 # Path to IFS-HRES landuse file
-landuse_source_ifs="$STORE/../flexpart_data/IGBP_int1.dat"
+landuse_source_ifs="$STORE/msopr/flexpart_data/IGBP_int1.dat"
 
 # Flexpart input file templates
 input_templates_icon=$(dirname $PWD)/options
