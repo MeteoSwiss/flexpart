@@ -761,7 +761,10 @@ fi
 $exe_cmd cp -pv  $exe_dir/$exe_name $start_location/.
 $exe_cmd ln -sf $exe_dir $start_location/.
 # Copy environment file
-if [[ ! -e $exe_dir/$cscs_env ]] ; then
+if [[ -e $exe_dir/$exe_name.env ]] ; then
+    cscs_env=$exe_name.env
+    echo $tag: "Specific environment file found, using: $exe_dir/$cscs_env"
+elif [[ ! -e $exe_dir/$cscs_env ]] ; then
     echo $tag: "Environment file not found: $exe_dir/$cscs_env"
     echo "${tag//[a-z\/_-]/ }  This is not a problem if FLEXPART has been compiled with spack"
     unset cscs_env
