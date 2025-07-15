@@ -1,0 +1,22 @@
+---
+- name: BEZ
+  command:
+    LDIRECT: 1
+    IBDATE: "20241210"
+    IBTIME: "000000"
+    IEDATE: "20241210"
+    IETIME: "050000"
+    LOUTSTEP: 3600
+  releases:
+    NSPEC: 1
+    SPECNUM_REL: 16
+    IDATE1: "20241210"
+    ITIME1: "000000"
+    IDATE2: "20241210"
+    ITIME2: "050000"
+    LON1: 8.2284
+    LAT1: 47.5519
+    Z1: 100
+    ZKIND: 1
+    MASS: "2.8800E10"
+    COMMENT: Beznau
