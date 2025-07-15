@@ -16,7 +16,7 @@
 # Author: Pirmin Kaufmann, MeteoSwiss
 #
 # Version:
-  revision=1.10  #vincr# version number, may be incremented using vincr
+  revision=1.11  #vincr# version number, may be incremented using vincr
 #
 # See git log for history of modifications
 #-============================================================================
@@ -24,8 +24,8 @@
 #=============================================================================
 # Settings
 #=============================================================================
-# Name of file defining environment
-flexpart_env=CSCS.env
+# Name of file defining environment for CSCS
+cscs_env=CSCS.env
 # Since July 2025, STORE as defined by the system login script
 # already points to /store/mch, we want /store_new/mch
 # until the migration is complete.
@@ -761,16 +761,13 @@ fi
 $exe_cmd cp -pv  $exe_dir/$exe_name $start_location/.
 $exe_cmd ln -sf $exe_dir $start_location/.
 # Copy environment file
-if [[ -e $exe_dir/$exe_name.env ]] ; then
-    flexpart_env=$exe_name.env
-    echo $tag: "Specific environment file found, using: $exe_dir/$flexpart_env"
-elif [[ ! -e $exe_dir/$flexpart_env ]] ; then
-    echo $tag: "Environment file not found: $exe_dir/$flexpart_env"
+if [[ ! -e $exe_dir/$cscs_env ]] ; then
+    echo $tag: "Environment file not found: $exe_dir/$cscs_env"
     echo "${tag//[a-z\/_-]/ }  This is not a problem if FLEXPART has been compiled with spack"
-    unset flexpart_env
+    unset cscs_env
 fi
-if [[ -n $flexpart_env ]] ; then
-    $exe_cmd cp -p  $exe_dir/$flexpart_env $start_location/.
+if [[ -n $cscs_env ]] ; then
+    $exe_cmd cp -p  $exe_dir/$cscs_env $start_location/.
 fi
 
 # Input and output directories
@@ -1309,9 +1306,9 @@ ulimit -a
 # Run flexpart
 # ------------
 EOF
-    [[ -n $flexpart_env ]] && cat >> $start_location/$job_file <<EOF
+    [[ -n $cscs_env ]] && cat >> $start_location/$job_file <<EOF
 # Load needed environment
-source $flexpart_env
+source $cscs_env
 
 EOF
     cat >> $start_location/$job_file <<EOF

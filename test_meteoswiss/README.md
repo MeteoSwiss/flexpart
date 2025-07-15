@@ -117,7 +117,7 @@ whether the code is compiled as serial or as parallel code.
 
 Load the necessary modules to run FLEXPART:
 
-    source FLEXPART.env
+    source CSCS.env
 
 Allocate parallel processes and run FLEXPART in the job directory
 with:
