@@ -73,11 +73,14 @@ nwp_max_range_i1=33
 lt_inc_i1=1
 nwp_source_list_i1=(
     "Operational LADM cache (interp) in: $OPR_OPR_DIR/cache/LADM/FLEXPART-I1E-CTRL/dispc*"
-    "Operational fcst wd    (interp) in: $OPR_OPR_DIR/wd/<yymmddhh>_6<ex>/_FXINP_lfrf<ddhh>0000_<mem>,_FXINP_lfrf00000000_000c"
+    "Operational fcst wd    (interp) in: $OPR_OPR_DIR/wd/<yymmddhh>_6<ex>/fxshare/_FXINP_lfrf<ddhh>0000_<mem>,_FXINP_lfrf00000000_000c"
     "Operational fcst cache (native) in: $OPR_OPR_DIR/cache/ICON-CH1-EPS/FCST_RING/<yymmddhh>_6<ex>/icon/<mem>/lfff<ddhh>0000,lfff00000000c"
+    "User cache on scratch  (interp) in: $SCRATCH/msopr/$LOGNAME/CASES/FLEXPART-I1E-CTRL/<yymmddhh>_6<ex>/grib/dispc*"
     "User cache on scratch  (interp) in: $SCRATCH/flexpart/icon/<yymmddhh>_6<ex>/fxshare/_FXINP_lfrf<ddhh>0000_<mem>,_FXINP_lfrf00000000_000c"
-    "User cache on scratch  (native) in: $SCRATCH/<yymmddhh>_7<ex>/icon/<mem>/lfff<ddhh>0000,lfff00000000c"
-    "User cases on store    (interp) in: $STORE/msopr/$LOGNAME/CASES/FLEXPART-I1E-CTRL/<yyyymmddhh>/dispc*"
+    "User cache on scratch  (native) in: $SCRATCH/flexpart/icon/<yymmddhh>_6<ex>/icon/<mem>/lfff<ddhh>0000,lfff00000000c"
+    "User cases on store    (interp) in: $STORE/msopr/$LOGNAME/CASES/FLEXPART-I1E-CTRL/<yymmddhh>_6<ex>/grib/dispc*"
+    "User cases on store    (interp) in: $STORE/msopr/$LOGNAME/CASES/FLEXPART-I1E-CTRL/<yymmddhh>_6<ex>/fxshare/_FXINP_lfrf<ddhh>0000_<mem>,_FXINP_lfrf00000000_000c"
+    "User cases on store    (native) in: $STORE/msopr/$LOGNAME/CASES/FLEXPART-I1E-CTRL/<yymmddhh>_6<ex>/icon/<mem>/lfff<ddhh>0000,lfff00000000c"
 )
 t1_i1=3; t2_i1=9; species_no_i1=39; rel_mass_i1=2.16E4; rel_site_i1=bez # Default: opr settings
 
