@@ -127,7 +127,7 @@ subroutine readavailable
           stop
         endif
 
-        wfname1n(k,numbwfn(k))=fname
+        wfname1n(k,numbwfn(k))=fname(1:index(fname,' '))
         wfspec1n(k,numbwfn(k))=spec
         wftime1n(k,numbwfn(k))=nint((jul-bdate)*86400._dp)
       endif

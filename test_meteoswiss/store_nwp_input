@@ -1,29 +1,23 @@
 #!/bin/bash
 #+==============================================================================
-# Store input for FLEXPLOT run in user store
+# Store NWP input data for FLEXPART in user store
 #
 # Author:      Pirmin Kaufmann
 #-==============================================================================
 
-# Settings (should be equal to settings in test-fp)
-# --------
-tag=$(basename $0)
-# Machine-dependent defaults
-if [[ -z $STORE ]] ; then
-    case "$HOST" in
-        balfrin* | tasna*) STORE=/store_new/mch/msopr/$LOGNAME ;;
-        tsa* | arolla*) STORE=/store/mch/msopr/$LOGNAME ;;
-        *)  echo $tag: "ERROR configuring environment, unknown host: $HOST"
-            exit 1 ;;
-    esac
-fi
+# Settings equal to settings in test-fp
+# -------------------------------------
+# Since July 2025, STORE as defined by the system login script
+# already points to /store/mch, we want /store_new/mch
+# until the migration is complete.
+export STORE=/store_new/mch
 # File for automatic job numbering
 job_no_file=$HOME/.flexpart_job
 # Root directory for job directories (see also test-fp script)
 job_root=$SCRATCH/flexpart/job
 # File with some metadata missing in nc file (see also test-fp script)
 plot_info_file=plot_info
-# --------
+# -------------------------------------
 
 # Function
 # --------
@@ -31,18 +25,17 @@ function display_help {
     # Show script usage
     cat >&2 << EOF
 
-Use pyflexplot to produce the standard plot set for the NAZ.
+Copy model output files as FLEXPART input to user store.
        
-Usage: $tag [OPTION]... JOBDIR
+Usage: $tag [OPTION]... BASETIME
 
-  JOBDIR                 Directory in which job was run. FLEXPART output file
-                         is searched in $job_root/JOBDIR/output
-                         instead of current directory.
+  BASETIME              Base time of model run to save to user store.
 
 Mandatory arguments to long options are mandatory for short options too.
-  -d, --debug            print out additional debug output
-  -h, --help             display this help and exit
-  -n, --dry-run          print commands without executing them
+  -d, --debug           print out additional debug output
+  -h, --help            display this help and exit
+  -n, --dry-run         print commands without executing them
+  -r, --resol=RESOL     resolution, one of: i1, i2, f, g
 
 EOF
 } # function display_help
@@ -56,49 +49,79 @@ tag=$(basename $0)
 iarg=0
 while (( $# > 0 )) ; do
     case "$1" in
-	-d | --debug)
-	    debug=yes
-	    ;;
-	-n | --dry-run)
-	    dry_run=yes
-	    ;;
-	-h | --help)
-	    display_help
-	    exit
-	    ;;
-	-*)
-	    echo $tag: "Unknown option: $1"
-	    exit 1
-	    ;;
-	*)
-	    (( iarg++ ))
-	    case $iarg in
-		1)
-		    jobdir="$1"
-		    ;;
-		*)  # Additional arguments
-		    echo $tag: "Too many arguments: $1"
-		    exit 1
-		    ;;
-	    esac
-	    ;;
+        -d | --debug)
+            debug=yes
+            ;;
+        -n | --dry-run)
+            dry_run=yes
+            ;;
+        -h | --help)
+            display_help
+            exit
+            ;;
+        -r | --resol*)
+            # Mandatory option argument with or without =
+            if [[ "$1" == *=* ]] ; then
+                resol="${1#*=}"
+            else
+                (( $# > 1 )) && shift && resol="$1"
+            fi
+            ;;
+        -*)
+            echo $tag: "Unknown option: $1"
+            exit 1
+            ;;
+        *)
+            (( iarg++ ))
+            case $iarg in
+            1)
+                basetime="$1"
+                ;;
+            *)  # Additional arguments
+                echo $tag: "Too many arguments: $1"
+                exit 1
+                ;;
+            esac
+            ;;
     esac
     shift
 done
 
-# Check argument: Job directory
-if [[ -z $jobdir ]] ; then
-    if [[ -f $job_no_file ]] ; then
-	jobdir=$(cat $job_no_file)
-	echo $tag: "Missing argument: Job name/number, assuming last: $jobdir"
-    else
-	echo $tag: "Missing argument: Job name/number"
+# Check argument: Base time
+if [[ -z $basetime ]] ; then
+	echo $tag: "Missing argument: Base time."
 	exit 1
-    fi
 fi
 
-# Start Processing
-# ----------------
+# Check option: Resolution --resol
+if [[ -z $resol ]] ; then
+    echo $tag: "Missing option: Resolution."
+    echo $tag: "Use option -r, --resol=RESOL to specify"
+    exit 1
+fi
+case "$resol" in
+    i1) 
+        case_store=$STORE/msopr/$USER/CASES/FLEXPART-I1E-CTRL
+        resol_exp='6??'
+	    ;;
+    i2) 
+        case_store=$STORE/msopr/$USER/CASES/FLEXPART-I2E
+        resol_exp='7??'
+	    ;;
+    f) 
+        case_store=$STORE/msopr/$USER/CASES/FLEXPART-IFS-EUROPE
+        resol_exp='FIE'
+	    ;;
+    g) 
+        case_store=$STORE/msopr/$USER/CASES/FLEXPART-IFS-GLOBAL
+        resol_exp='FIP'
+	    ;;
+    *)
+        echo $tag: "Unknown resolution: $resol"
+        echo $tag: "Valid options are: i1, i2, f, g"
+        exit 1
+        ;;
+esac
 
 # Option -n, --dry-run
 if [[ -n $dry_run ]] ; then
@@ -110,57 +133,34 @@ if [[ -n $dry_run ]] ; then
     $exe_cmd
 fi
 
-# Change to job directory
-if [[ -n $jobdir ]] ; then
-    gribdir=$job_root/$jobdir/grib
-    pushd $job_root/$jobdir > /dev/null
-else
-    gribdir=.
+# Start Processing
+# ----------------
+
+# Search source directory on tasna
+yymmddhh=${basetime:2:8}
+source_dir=$(ssh tasna "ls -d /opr/osm/opr/wd/${yymmddhh}_${resol_exp}" 2>/dev/null)
+if [[ -z $source_dir ]] ; then
+    echo $tag: "No source directory found in: tasna:/opr/osm/opr/wd/${yymmddhh}_${resol_exp}"
+    exit 1
 fi
-echo $tag: "Storing NWP input from: $gribdir"
+case_dir=$case_store/$(basename $source_dir)
 
-# Derive variables job (job name or number) and resol (resolution)
-# from test-fp.log
-eval $(tail -n 1 test-fp.log | sed 's/.*\(resol=[a-z0-9]*\) .*\(job=[0-9]*\) .*/\1; \2/')
-
-# Define preset, use pyflexplot --preset=? to obtain the list of presets
-case "$resol" in
-    1e) case_store=$STORE/CASES/FLEXPART-C1E-CTRL
-	;;
-    2e) case_store=$STORE/CASES/FLEXPART-C2E
-	;;
-    f) case_store=$STORE/CASES/FLEXPART-IFS-EUROPE
-	;;
-    g) case_store=$STORE/CASES/FLEXPART-IFS-GLOBAL
-	;;
-esac
-
-# Derive basetime from file plot_info
-# Load plot_info if present
-if [[ -f output/$plot_info_file ]] ; then
-    basetime=$(cat output/$plot_info_file)
-    echo $tag: "Retrieved base time from output/$plot_info_file: $basetime"
-    base_time_opt="--setup base_time ${basetime}"
-else
-    echo $tag: "Plot information file not found: output/$plot_info_file"
+# Create target directories
+echo "Creating target directories for case: $(basename $case_dir)"
+$exe_cmd mkdir -p $case_dir/grib
+if [[ ${resol:0:1} == "i" ]] ; then
+    $exe_cmd mkdir -p $case_dir/fxshare
 fi
 
-if [[ ! -d $case_store ]] ; then
-    echo $tag: "Creating user storage for cases: $case_store"
-    $exe_cmd mkdir -p $case_store
+# Copy grib files from tasna to case directory
+echo $tag: "Saving NWP input from: $source_dir to $case_dir"
+$exe_cmd scp tasna:$source_dir/grib/dispc* $case_dir/grib/
+if [[ ${resol} == "f" ]] ; then
+    $exe_cmd scp tasna:$source_dir/grib/dispf* $case_dir/grib/
 fi
-if [[ ! -d $case_store/$basetime ]] ; then
-    echo $tag: "Creating case: $basetime"
-    $exe_cmd mkdir $case_store/$basetime
+if [[ ${resol:0:1} == "i" ]] ; then
+    $exe_cmd scp tasna:$source_dir/fxshare/_FXINP_lfrf[0-9][0-9][0-9][0-9]0000_000c $case_dir/fxshare/
+    $exe_cmd scp tasna:$source_dir/fxshare/_FXINP_lfrf[0-9][0-9][0-9][0-9]0000_000  $case_dir/fxshare/
 fi
 
-job_no=$(cat $job_no_file)
-job_log=$job_root/$job_no/job.log
-# flexpart-ifs
-grep 'Reading: .*grib' $job_log | sed 's|.*\(/scratch.*\)|\1|' | sort -u | \
-    xargs -I{} $exe_cmd cp -v {} $case_store/$basetime
-# flexpart-cosmo
-grep 'INFO.*/disp' $job_log | sed 's|.*\(/scratch.*\)|\1|' | sort -u | \
-    xargs -I{} $exe_cmd cp -v {} $case_store/$basetime
-
-exit
+exit 0
