@@ -1235,19 +1235,19 @@ if [[ -e $flex_input/INPUT_PHY ]] ; then
     user_record=$(getent passwd $USER | cut -d: -f5)
     author=$(echo $user_record | cut -d, -f1)
     institution=$(echo $user_record | cut -d, -f2)
-    [[ institution =~ \ *MCH\ * ]] && institution=MeteoSwiss
+    [[ $institution =~ \ *MCH\ * ]] && institution=MeteoSwiss
     echo $tag: " Institution: $institution"
     $exe_cmd gres "^ *INSTITUTION *=.*!" \
-        "$(printf  "  INSTITUTION = %s" '"'$institution'"'), !" $flex_input/INPUT_PHY
+        "$(printf  '  INSTITUTION = "%s", !' "$institution")" $flex_input/INPUT_PHY
     echo $tag: " Author: $author"
     $exe_cmd gres "^ *AUTHOR *=.*!" \
-        "$(printf  "  AUTHOR = %s" '"'$author'"'), !" $flex_input/INPUT_PHY
+        "$(printf  '  AUTHOR = "%s", !' "$author")" $flex_input/INPUT_PHY
     echo $tag: " Login name: $USER"
     $exe_cmd gres "^ *LOGIN_NAME *=.*!" \
-        "$(printf  "  LOGIN_NAME = %s" '"'$USER'"'), !" $flex_input/INPUT_PHY
+        "$(printf  '  LOGIN_NAME = "%s", !' "$USER")" $flex_input/INPUT_PHY
     echo $tag: " Host name: $HOST"
     $exe_cmd gres "^ *HOST_NAME *=.*!" \
-        "$(printf  "  HOST_NAME = %s" '"'$HOST'"'), !" $flex_input/INPUT_PHY
+        "$(printf  '  HOST_NAME = "%s", !' "$HOST")" $flex_input/INPUT_PHY
 fi
 
 
