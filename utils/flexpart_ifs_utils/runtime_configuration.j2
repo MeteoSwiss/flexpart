@@ -1,0 +1,122 @@
+---
+- name: BEZ
+  command:
+    LDIRECT: 1
+    IBDATE: "{{ data.IBDATE }}"
+    IBTIME: "{{ data.IBTIME }}0000"
+    IEDATE: "{{ data.IEDATE }}"
+    IETIME: "{{ data.IETIME }}0000"
+    LOUTSTEP: 3600
+  releases:
+    NSPEC: 1
+    SPECNUM_REL: 16
+    IDATE1: "{{ data.IBDATE }}"
+    ITIME1: "{{ data.IBTIME }}0000"
+    IDATE2: "{{ data.IEDATE }}"
+    ITIME2: "{{ data.IETIME }}0000"
+    LON1: 8.2284
+    LAT1: 47.5519
+    Z1: 100
+    ZKIND: 1
+    MASS: "2.8800E10"
+    COMMENT: Beznau
+- name: LEI
+  command:
+    LDIRECT: 1
+    IBDATE: "{{ data.IBDATE }}"
+    IBTIME: "{{ data.IBTIME }}0000"
+    IEDATE: "{{ data.IEDATE }}"
+    IETIME: "{{ data.IETIME }}0000"
+    LOUTSTEP: 10800
+  releases:
+    NSPEC: 1
+    SPECNUM_REL: 39
+    IDATE1: "{{ data.IBDATE }}"
+    ITIME1: "{{ data.IBTIME }}0000"
+    IDATE2: "{{ data.IEDATE }}"
+    ITIME2: "{{ data.IETIME }}0000"
+    LON1: 8.1824
+    LAT1: 47.6013
+    MASS: 2.1600E04
+    Z1: 100
+    COMMENT: Leibstadt
+- name: GOE
+  command:
+    LDIRECT: 1
+    IBDATE: "{{ data.IBDATE }}"
+    IBTIME: "{{ data.IBTIME }}0000"
+    IEDATE: "{{ data.IEDATE }}"
+    IETIME: "{{ data.IETIME }}0000"
+    LOUTSTEP: 10800
+  releases:
+    NSPEC: 1
+    SPECNUM_REL: 39
+    IDATE1: "{{ data.IBDATE }}"
+    ITIME1: "{{ data.IBTIME }}0000"
+    IDATE2: "{{ data.IEDATE }}"
+    ITIME2: "{{ data.IETIME }}0000"
+    LON1: 7.9668
+    LAT1: 47.3659
+    MASS: "2.1600E04"
+    Z1: 100
+    COMMENT: Goesgen
+
+- name: MUE
+  command:
+    LDIRECT: 1
+    IBDATE: "{{ data.IBDATE }}"
+    IBTIME: "{{ data.IBTIME }}0000"
+    IEDATE: "{{ data.IEDATE }}"
+    IETIME: "{{ data.IETIME }}0000"
+    LOUTSTEP: 10800
+  releases:
+    NSPEC: 1
+    SPECNUM_REL: 39
+    IDATE1: "{{ data.IBDATE }}"
+    ITIME1: "{{ data.IBTIME }}0000"
+    IDATE2: "{{ data.IEDATE }}"
+    ITIME2: "{{ data.IETIME }}0000"
+    LON1: 7.2685
+    LAT1: 46.969
+    MASS: "2.1600E04"
+    Z1: 100
+    COMMENT: Muehleberg
+- name: FES
+  command:
+    LDIRECT: 1
+    IBDATE: "{{ data.IBDATE }}"
+    IBTIME: "{{ data.IBTIME }}0000"
+    IEDATE: "{{ data.IEDATE }}"
+    IETIME: "{{ data.IETIME }}0000"
+    LOUTSTEP: 10800
+  releases:
+    NSPEC: 1
+    SPECNUM_REL: 39
+    IDATE1: "{{ data.IBDATE }}"
+    ITIME1: "{{ data.IBTIME }}0000"
+    IDATE2: "{{ data.IEDATE }}"
+    ITIME2: "{{ data.IETIME }}0000"
+    LON1: 7.5625
+    LAT1: 47.9036
+    MASS: "2.1600E04"
+    Z1: 100
+    COMMENT: Fessenheim
+- name: BUG
+  command:
+    IBDATE: "{{ data.IBDATE }}"
+    IBTIME: "{{ data.IBTIME }}0000"
+    IEDATE: "{{ data.IEDATE }}"
+    IETIME: "{{ data.IETIME }}0000"
+    LOUTSTEP: 10800
+  releases:
+    NSPEC: 1
+    SPECNUM_REL: 39
+    IDATE1: "{{ data.IBDATE }}"
+    ITIME1: "{{ data.IBTIME }}0000"
+    IDATE2: "{{ data.IEDATE }}"
+    ITIME2: "{{ data.IETIME }}0000"
+    LON1: 5.27
+    LAT1: 45.7992
+    MASS: "2.1600E04"
+    Z1: 100
+    COMMENT: Bugey

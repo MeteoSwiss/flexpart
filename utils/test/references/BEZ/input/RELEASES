@@ -1,0 +1,30 @@
+***************************************************************************************************************
+*                                                                                                             *
+*                                                                                                             *
+*                                                                                                             *
+*   Input file for the Lagrangian particle dispersion model FLEXPART                                          *
+*                        Please select your options                                                           *
+*                                                                                                             *
+*                                                                                                             *
+*                                                                                                             *
+***************************************************************************************************************
+&RELEASES_CTRL
+ NSPEC=1,
+ SPECNUM_REL=16,
+ /
+&RELEASE                   ! For each release 
+ IDATE1=20241210,
+ ITIME1=000000,
+ IDATE2=20241210,
+ ITIME2=050000,
+ LON1=8.2284,
+ LON2=8.2284,
+ LAT1=47.5519,
+ LAT2=47.5519,
+ Z1=100,
+ Z2=100,
+ ZKIND=1,
+ MASS=2.8800E10,
+ PARTS   =          10000, ! Total number of particles to be released
+ COMMENT="Beznau",
+ /
