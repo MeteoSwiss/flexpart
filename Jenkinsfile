@@ -15,29 +15,8 @@ class Globals {
     // sets to abort the pipeline if the Sonarqube QualityGate fails
     static boolean qualityGateAbortPipeline = false
 
-    // sets the pipeline to execute all steps related to releasing the service
-    static boolean release = false
-
     // sets the pipeline to execute all steps related to deployment of the service
     static boolean deploy = false
-
-    // sets the pipeline to execute all steps related to restart the service
-    static boolean restart = false
-
-    // sets the pipeline to execute all steps related to delete the service from the container platform
-    static boolean deleteContainer = false
-
-    // sets the pipeline to execute all steps related to trigger the trivy scan
-    static boolean runTrivyScan = false
-
-    // the project name in container platform
-    static String cpProjectName = ''
-
-    // the target deployment infrastructure
-    static String deploymentTarget = 'mch'
-
-    // OpenShift cluster to deploy container (e.g. "api.cpdepl.meteoswiss.ch:6443"), empty to skip'
-    static String ocpHostName = ''
 
     // the image tag used for tagging the image
     static String imageTag = ''
@@ -51,9 +30,6 @@ class Globals {
     // the service version
     static String version = ''
 
-    // the target environment to deploy (e.g., devt, depl, prod)
-    static String deployEnv = ''
-
     // the Vault credititalId
     static String vaultCredentialId = ''
 
@@ -66,14 +42,9 @@ pipeline {
     agent {label 'podman'}
 
     parameters {
-
-        choice(choices: ['Build', 'Deploy', 'Release', 'Restart', 'Delete', 'Trivy-Scan'],
+        choice(choices: ['Build', 'Deploy'],
             description: 'Build type',
             name: 'buildChoice')
-
-        choice(choices: ['devt', 'depl', 'prod'],
-               description: 'Environment',
-               name: 'environment')
 
         booleanParam(name: 'BUILD_BASE_IMAGE', defaultValue: false, description: 'Rebuilds the base image containing Spack dependencies')
     }
@@ -98,11 +69,8 @@ pipeline {
         stage('Preflight') {
             steps {
                 updateGitlabCommitStatus name: 'Build', state: 'running'
-
                 script {
                     echo 'Starting with Preflight'
-
-                    Globals.deployEnv = params.environment
 
                     // Determine the type of build
                     switch (params.buildChoice) {
@@ -112,22 +80,9 @@ pipeline {
                         case 'Deploy':
                             Globals.deploy = true
                             break
-                        case 'Release':
-                            Globals.release = true
-                            Globals.build = true
-                            break
-                        case 'Restart':
-                            Globals.restart = true
-                            break
-                        case 'Delete':
-                            Globals.deleteContainer = true
-                            break
-                        case 'Trivy-Scan':
-                            Globals.runTrivyScan = true
-                            break
                     }
 
-                    if (Globals.build || Globals.deploy || Globals.runTrivyScan) {
+                    if (Globals.build || Globals.deploy) {
                         echo 'Starting with calculating version'
 
                         def shortBranchName = env.BRANCH_NAME
@@ -194,12 +149,11 @@ pipeline {
             post {
                 cleanup {
                     sh "podman logout ${Globals.IMAGE_REPO} || true"
-                    sh 'oc logout || true'
                 }
             }
         }
 
-        stage('Build') {
+        stage('Test') {
             when { expression { Globals.build } }
             environment {
                 TEST_NODE = 'balfrin-ln003'
@@ -241,6 +195,9 @@ pipeline {
                 always {
                     junit keepLongStdio: true, testResults: 'test_reports/junit.xml'
                 }
+                cleanup {
+                    sh "podman logout ${Globals.IMAGE_REPO_PUBLIC} || true"
+                }
             }
         }
 
@@ -279,13 +236,20 @@ pipeline {
             when { expression { Globals.build || Globals.deploy } }
             steps {
                 script {
-                    if (expression { Globals.build || Globals.deploy }) {
-                        withCredentials([usernamePassword(credentialsId: 'github app credential for the meteoswiss github organization (limited to repositories used by APN)',
-                            usernameVariable: 'GITHUB_APP',
-                            passwordVariable: 'GITHUB_ACCESS_TOKEN')]) {
-                            echo "---- CREATE IMAGE ----"
-                            sh "podman build --pull --build-arg TOKEN=${GITHUB_ACCESS_TOKEN} --build-arg COMMIT=${GIT_COMMIT} --target runner --build-arg VERSION=${Globals.version} -t ${Globals.imageTag} ."
-                        } 
+                    withCredentials([usernamePassword(
+                        credentialsId: 'github app credential for the meteoswiss github organization (limited to repositories used by APN)',
+                        usernameVariable: 'GITHUB_APP',
+                        passwordVariable: 'GITHUB_ACCESS_TOKEN'
+                    )]) {
+                        echo "---- CREATE IMAGE ----"
+                        sh """
+                            podman build --pull \
+                            --build-arg TOKEN=${GITHUB_ACCESS_TOKEN} \
+                            --build-arg COMMIT=${GIT_COMMIT} \
+                            --build-arg VERSION=${Globals.version} \
+                            --target runner \
+                            -t ${Globals.imageTag} .
+                        """
                     }
                 }
             }
@@ -295,22 +259,19 @@ pipeline {
             when { expression { Globals.deploy } }
             steps {
                 script {
-                    if (expression { Globals.deploy }) {
-                        echo "---- PUBLISH IMAGE ----"
-                        withCredentials([usernamePassword(credentialsId: 'openshift-nexus',
-                            passwordVariable: 'NXPASS', usernameVariable: 'NXUSER')]) {
-                            sh """
-                            echo $NXPASS | podman login ${Globals.IMAGE_REPO} -u $NXUSER --password-stdin
-                            podman push ${Globals.imageTag}
-                            """
-                        }
+                    echo "---- PUBLISH IMAGE ----"
+                    withCredentials([usernamePassword(credentialsId: 'openshift-nexus',
+                        passwordVariable: 'NXPASS', usernameVariable: 'NXUSER')]) {
+                        sh """
+                        echo $NXPASS | podman login ${Globals.IMAGE_REPO} -u $NXUSER --password-stdin
+                        podman push ${Globals.imageTag}
+                        """
                     }
                 }
             }
             post {
                 cleanup {
                     sh "podman logout ${Globals.IMAGE_REPO} || true"
-                    sh 'oc logout || true'
                 }
             }
         }
