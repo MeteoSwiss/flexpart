@@ -10,10 +10,10 @@
  IBTIME=000000,
  IEDATE=20241210,
  IETIME=050000,
- LOUTSTEP=3600,
- LOUTAVER=           3600, ! Interval of output averaging (s)
+ LOUTSTEP=10800,
+ LOUTAVER=           10800, ! Interval of output averaging (s)
  LOUTSAMPLE=          900, ! Interval of output sampling  (s), higher stat. accuracy with shorter intervals
- ITSPLIT=        99999999, ! Interval of particle splitting (s) 
+ ITSPLIT=        999999999, ! Interval of particle splitting (s)
  LSYNCTIME=           900, ! All processes are synchronized to this time interval (s)
  CTL=          -5.0000000, ! CTL>1, ABL time step = (Lagrangian timescale (TL))/CTL, uses LSYNCTIME if CTL<0
  IFINE=                 4, ! Reduction for time step in vertical transport, used only if CTL>1 
