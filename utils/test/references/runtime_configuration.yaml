@@ -6,7 +6,7 @@
     IBTIME: "000000"
     IEDATE: "20241210"
     IETIME: "050000"
-    LOUTSTEP: 3600
+    LOUTSTEP: 10800
   releases:
     NSPEC: 1
     SPECNUM_REL: 16
