@@ -5,12 +5,12 @@
 !*                                                                            *
 !******************************************************************************
 &COMMAND
- LDIRECT=               1, ! Simulation direction in time   ; 1 (forward) or -1 (backward)
- IBDATE=         20241210, ! Start date of the simulation   ; YYYYMMDD: YYYY=year, MM=month, DD=day  
- IBTIME=           000000, ! Start time of the simulation   ; HHMISS: HH=hours, MI=min, SS=sec; UTC
- IEDATE=         20241210, ! End date of the simulation     ; same format as IBDATE 
- IETIME=           050000, ! End  time of the simulation    ; same format as IBTIME
- LOUTSTEP=          10800, ! Interval of model output; average concentrations calculated every LOUTSTEP (s)  
+ LDIRECT=1,
+ IBDATE=20241210,
+ IBTIME=000000,
+ IEDATE=20241210,
+ IETIME=050000,
+ LOUTSTEP=10800,
  LOUTAVER=          10800, ! Interval of output averaging (s)
  LOUTSAMPLE=          900, ! Interval of output sampling  (s), higher stat. accuracy with shorter intervals
  ITSPLIT=       999999999, ! Interval of particle splitting (s)
