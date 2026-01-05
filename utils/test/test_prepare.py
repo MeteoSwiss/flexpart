@@ -192,7 +192,7 @@ def test_prepare_job_directory(tmp_path: Path, references):
     
     flexpart_dir = Path(os.getenv('FLEXPART_PREFIX'))
 
-    data_paths: list[Path] = [ data_dir / f"data-lfff-{step}" for step in range(3,27) ]
+    data_paths: list[Path] = [ data_dir / f"dispf-{step}" for step in range(3,27) ]
 
     for file in data_paths:
         file.touch()
