@@ -9,4 +9,4 @@ CONFIG = ServiceSettings('settings.yaml', os.path.join(os.path.dirname(__file__)
 # Configure logger
 logger.apply_logging_settings(CONFIG.logging)
 
-INPUT_DATA_PATTERNS = ('dispf*')
+INPUT_DATA_PATTERNS = ('dispf*',)

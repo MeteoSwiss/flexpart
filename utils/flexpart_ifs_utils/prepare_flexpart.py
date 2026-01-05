@@ -23,6 +23,42 @@ from flexpart_ifs_utils import s3_utils, grib_utils, INPUT_DATA_PATTERNS
 _logger = logging.getLogger(__name__)
 
 
+def _init_job_dirs(jobs_dir: Path, name: str) -> tuple[Path, Path, Path, Path]:
+    job_dir = jobs_dir / name
+    input_dir = job_dir / "input"
+    output_dir = job_dir / "output"
+    job_data_dir = job_dir / "data"
+    os.makedirs(job_dir)
+    os.makedirs(output_dir)
+    return job_dir, input_dir, output_dir, job_data_dir
+
+
+def _populate_input_dir(flexpart_dir: Path, input_dir: Path) -> None:
+    options_dir = flexpart_dir / "share" / "options"
+    mch_options_dir = flexpart_dir / "share" / "options.meteoswiss"
+    shutil.copytree(mch_options_dir, options_dir, dirs_exist_ok=True)
+    shutil.copytree(options_dir, input_dir)
+    shutil.copy(options_dir / "OUTGRID.f", input_dir / "OUTGRID")
+
+
+def _collect_data_paths(data_dir: Path) -> list[Path]:
+    data_paths: list[Path] = []
+    for ftype in INPUT_DATA_PATTERNS:
+        data_paths.extend(sorted(data_dir.glob(ftype)))
+    return data_paths
+
+
+def _write_pathnames(job_dir: Path, input_dir: Path, output_dir: Path, job_data_dir: Path, available_path: Path) -> None:
+    lines = [
+        f"{input_dir}/\n",
+        f"{output_dir}/\n",
+        f"{job_data_dir}/\n",
+        f"{available_path}\n",
+        "============================================\n",
+    ]
+    (job_dir / "pathnames").write_text("".join(lines), encoding="utf-8")
+
+
 def validate_env(data: dict[str, str | None]) -> None:
     violations: list[str] = []
     for parameter in EnvironmentParameters:
@@ -42,70 +78,22 @@ def parse_env() -> dict[str, str | None]:
             "IETIME": os.getenv("IETIME")}
 
 
-def prepare_job_directory(
-        configuration: dict,
-        jobs_dir: Path,
-        flexpart_dir: Path,
-        data_dir: Path,
-        openmp_config: OpenMPConfig) -> Path:
-    """Prepares the job directory with all the input data, namelists, job script etc required to run Flexpart."""
+def prepare_job_directory(configuration: dict, jobs_dir: Path, flexpart_dir: Path, data_dir: Path, openmp_config: OpenMPConfig) -> Path:
+    job_dir, input_dir, output_dir, job_data_dir = _init_job_dirs(jobs_dir, configuration["name"])
 
-    job_dir: Path = jobs_dir / configuration['name']
-    input_dir: Path = job_dir / 'input'
-    output_dir: Path = job_dir / 'output'
-    job_data_dir: Path = job_dir / 'data'
-    os.makedirs( job_dir )
-    os.makedirs( output_dir )
+    _populate_input_dir(flexpart_dir, input_dir)
 
-    options_dir: Path = flexpart_dir / 'share' / 'options'
-    mch_options_dir: Path = flexpart_dir / 'share' / 'options.meteoswiss'
+    namelists: list[Path] = [input_dir / "COMMAND", *input_dir.glob("RELEASES*")]
+    for nl in namelists:
+        _configure_namelist(configuration, nl)
 
-    # Copy the contents of MCH options into the shared options directory
-    shutil.copytree(mch_options_dir, options_dir, dirs_exist_ok=True)
+    available_path = input_dir / "AVAILABLE"
+    _generate_available(available_path, _collect_data_paths(data_dir))
 
-    # Copy the shared options directory
-    shutil.copytree(options_dir, input_dir)
-
-    # Copy OUTGRID
-    shutil.copy(options_dir / 'OUTGRID.f', input_dir / 'OUTGRID')
-
-    # Configure COMMAND and RELEASES file
-    for namelist in (['COMMAND'] + list(input_dir.glob('RELEASES*'))):
-        _configure_namelist(configuration, input_dir / namelist)
-
-    # Create AVAILABLE file from data paths
-    available_path: Path = input_dir / 'AVAILABLE'
-
-    data_paths = []
-    for ftype in INPUT_DATA_PATTERNS:
-        data_paths.extend(sorted(data_dir.glob(ftype)))
-
-    _generate_available(available_path, data_paths)
-
-    # Symlink model input data to job directory
     os.symlink(data_dir, job_data_dir)
+    _write_pathnames(job_dir, input_dir, output_dir, job_data_dir, available_path)
 
-    # Generate pathnames
-    lines = [
-        f"{input_dir}/\n",
-        f"{output_dir}/\n",
-        f"{job_data_dir}/\n",
-        f"{available_path}\n",
-        "============================================\n",
-    ]
-
-    # Define the file path using Path
-    pathnames_file = job_dir / 'pathnames'
-
-    # Write to the file
-    with pathnames_file.open('w') as file:
-        file.writelines(lines)
-
-    _write_job_script(
-        job_dir / 'job',
-        flexpart_dir / 'bin' / 'FLEXPART',
-        openmp_config)
-
+    _write_job_script(job_dir / "job", flexpart_dir / "bin" / "FLEXPART", openmp_config)
     return job_dir
 
 
@@ -226,67 +214,25 @@ def _configure_namelist(config: dict, namelist: Path) -> None:
         file.write(filedata)
 
 
-def select_files(
-        config: dict,
-        table: DBTable,
-        forecast_datetime: str,
-        step_unit: str) -> list[str]:
-    """ 
-    Select the range of files needed based on the 
-    start and end date/time of the Flexpart simulation.
-    """
+def _list_objects(table: DBTable, forecast_date: str, forecast_time: str) -> dict[str, grib_utils.GribMetadata]:
+    if table.backend_type == "dynamodb":
+        return s3_utils.list_objs_in_bucket_via_dynamodb(table=table, date=forecast_date, time=forecast_time)
+    if table.backend_type == "sqlite":
+        return s3_utils.list_objs_in_bucket_via_sqlite(table=table, date=forecast_date, time=forecast_time)
+    raise ValueError(f"Unsupported backend type: {table.backend_type}")
 
-    if step_unit.lower() not in ('minutes', 'hours'):
-        raise ValueError(f"Steps must be provided in either minutes or hours, not {step_unit.lower()}")
 
-    forecast_date = forecast_datetime[:8]
-    forecast_time = forecast_datetime[8:12]
-
-    if table.backend_type == 'dynamodb':
-        objs = s3_utils.list_objs_in_bucket_via_dynamodb(
-            table=table,
-            date=forecast_date,
-            time=forecast_time,
-        )
-    elif table.backend_type == 'sqlite':
-        objs = s3_utils.list_objs_in_bucket_via_sqlite(
-            table=table,
-            date=forecast_date,
-            time=forecast_time)
-    else:
-        raise ValueError(f"Unsupported backend type: {table.backend_type}")
-    
-    if not objs:
-        msg = f"""
-        There is no data in S3 matching the filter 
-        forecast datetime: {forecast_datetime}"""
-
-        raise RuntimeError(msg)
-
-    start_dt, end_dt = _get_start_end(config)
-
-    # If simulation start time is later than the forecast reference time,
-    # we need to include the previous step to simulation start time
-    # in order for Flexpart to correctly deaccumulate the precipitation.
-    if start_dt > datetime.strptime(forecast_date+forecast_time, '%Y%m%d%H%M'):
-        start_dt -= timedelta(hours=1)
-
-    _logger.info("Matching objects between the validity times: %s, %s", start_dt, end_dt)
-
-    subset = []
-
+def _select_keys_in_window(
+    objs: dict[str, grib_utils.GribMetadata],
+    start_dt: datetime,
+    end_dt: datetime,
+    step_unit: str,
+) -> list[str]:
+    subset: list[str] = []
     for key, metadata in objs.items():
-        file_validtime = _get_valid_datetime(Path(key), metadata, step_unit.lower())
-        if file_validtime >= start_dt and file_validtime <= end_dt:
-            file_validtime_str = file_validtime.strftime("%Y%m%d%H")
-            new_key = f"dispf{file_validtime_str}"
-            subset.append(new_key)
-
-    if not subset:
-        msg = f'No S3 objects had metadata with valididity time between {start_dt} and {end_dt}.'
-        _logger.error(msg)
-        raise RuntimeError(msg)
-    
+        file_validtime = _get_valid_datetime(Path(key), metadata, step_unit)
+        if start_dt <= file_validtime <= end_dt:
+            subset.append(f"dispf{file_validtime.strftime('%Y%m%d%H')}")
     return subset
 
 
@@ -299,3 +245,30 @@ def _get_start_end(config: dict) -> tuple[datetime, datetime]:
     end_dt = datetime.strptime(end, '%Y%m%d%H%M%S')
 
     return start_dt, end_dt
+
+
+def select_files(config: dict, table: DBTable, forecast_datetime: str, step_unit: str) -> list[str]:
+    step_unit = step_unit.lower()
+    if step_unit not in ("minutes", "hours"):
+        raise ValueError(f"Steps must be provided in either minutes or hours, not {step_unit}")
+
+    forecast_date = forecast_datetime[:8]
+    forecast_time = forecast_datetime[8:12]
+
+    objs = _list_objects(table, forecast_date, forecast_time)
+    if not objs:
+        raise RuntimeError(f"There is no data in S3 matching the filter forecast datetime: {forecast_datetime}")
+
+    start_dt, end_dt = _get_start_end(config)
+
+    forecast_ref = datetime.strptime(forecast_date + forecast_time, "%Y%m%d%H%M")
+    if start_dt > forecast_ref:
+        start_dt -= timedelta(hours=1)
+
+    subset = _select_keys_in_window(objs, start_dt, end_dt, step_unit)
+
+    if not subset:
+        raise RuntimeError(f"No S3 objects had metadata with validity time between {start_dt} and {end_dt}.")
+
+    return subset
+
