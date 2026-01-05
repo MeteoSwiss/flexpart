@@ -80,7 +80,7 @@ if __name__ == '__main__':
                     type=Path,
                     )
     p2.add_argument('-d', '--datetime',
-                    help='Specify the forecast datetime, in format YYYYMMDDhhmm.',
+                    help='Specify the forecast datetime, in format YYYYMMDDHH.',
                     required=True
                     )
     p2.add_argument('-s', '--site',
