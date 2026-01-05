@@ -6,8 +6,10 @@ from datetime import datetime as dt
 from pathlib import Path
 
 import boto3
+from botocore.client import BaseClient
 from botocore.config import Config
 from botocore.exceptions import ClientError
+from boto3.resources.base import ServiceResource
 
 from flexpart_ifs_utils import CONFIG
 from flexpart_ifs_utils.config.service_settings import Bucket, DBTable
@@ -21,7 +23,11 @@ from flexpart_ifs_utils.grib_utils import (
 _logger = logging.getLogger(__name__)
 
 
-def get_s3_resource(endpoint_url: str, access_key: str, secret_key: str):
+def get_s3_resource(
+    endpoint_url: str,
+    access_key: str,
+    secret_key: str,
+) -> ServiceResource:
     """Get a boto3 S3 resource."""
     return boto3.resource(
         "s3",
@@ -133,19 +139,16 @@ def list_objs_in_bucket_via_dynamodb(
 
     dynamodb = boto3.resource("dynamodb", region_name=table.region)
 
-    filter_expression = " ForecastDate = :forecastdate AND ForecastTime = :forecasttime"
-    expression_attributes_values = {
-        ":forecastdate": date,
-        ":forecasttime": time,
+    scan_parameters = {
+        "FilterExpression": " ForecastDate = :forecastdate AND ForecastTime = :forecasttime",
+        "ExpressionAttributeValues": {
+            ":forecastdate": date,
+            ":forecasttime": time,
+        },
     }
 
     dynamo_db_table = dynamodb.Table(table.name)
     items: list[dict] = []
-
-    scan_parameters = {
-        "FilterExpression": filter_expression,
-        "ExpressionAttributeValues": expression_attributes_values,
-    }
 
     response = dynamo_db_table.scan(**scan_parameters)
     items.extend(response.get("Items", []))
@@ -157,14 +160,15 @@ def list_objs_in_bucket_via_dynamodb(
         )
         items.extend(response.get("Items", []))
 
-    matching_objects = {
-        item.get("ObjectKey"): GribMetadata(
-            time=item.get("ForecastTime"),
-            date=item.get("ForecastDate"),
-            step=item.get("Step"),
+    matching_objects: dict[str, GribMetadata] = {}
+    for item in items:
+        if not all(k in item for k in ("ObjectKey", "ForecastTime", "ForecastDate", "Step")):
+            continue
+        matching_objects[item["ObjectKey"]] = GribMetadata(
+            time=item["ForecastTime"],
+            date=item["ForecastDate"],
+            step=item["Step"],
         )
-        for item in items
-    }
 
     _logger.info("S3 objects matching search: %s", matching_objects.keys())
     return matching_objects
@@ -225,7 +229,7 @@ def download_keys_from_bucket(
         client.download_file(bucket.name, key, str(path))
 
 
-def _create_s3_client(bucket: Bucket):
+def _create_s3_client(bucket: Bucket) -> BaseClient:
     """
     Creates and configures the S3 client based on the bucket's platform.
     """

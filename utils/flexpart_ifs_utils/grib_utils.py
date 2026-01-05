@@ -12,7 +12,7 @@ class RunMetadata(BaseModel):
     time: str
 
 class GribMetadata(RunMetadata):
-    step: int
+    step: float
 
 
 def extract_metadata_from_grib_file(path: Path) -> GribMetadata:
@@ -33,7 +33,7 @@ def extract_metadata_from_grib_file(path: Path) -> GribMetadata:
         # If step units is in minutes convert to hours.
         # See https://github.com/ecmwf/eccodes/blob/develop/definitions/stepUnits.table
         if step_units == 'm':
-            step_hr = int(step)/60
+            step_hr = int(step)/60.0
         elif step_units == 'h':
             step_hr = float(step)
         else:
