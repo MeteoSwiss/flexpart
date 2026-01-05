@@ -157,7 +157,7 @@ def test_upload_directory(s3, model_data: Path):
     for path in model_data.iterdir():
 
         # check the files were uploaded as expected
-        actual = s3.get_object(Bucket = bucket.name, Key = f"{md.date}_{md.time}/{site}/{path.name}")["Body"].read()
+        actual = s3.get_object(Bucket = bucket.name, Key = f"{md.date}_{md.time[:2]}/{site}/{path.name}")["Body"].read()
         with open(path, mode='rb') as f:
             assert actual == f.read()
 
