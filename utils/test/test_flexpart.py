@@ -33,7 +33,7 @@ def mock_environment(monkeypatch):
     monkeypatch.setenv("IEDATE", '20241210')
     monkeypatch.setenv("IETIME", '05')
     # Below vars are used in entrypoint.sh
-    monkeypatch.setenv("FORECAST_DATETIME", '202412100000')
+    monkeypatch.setenv("FORECAST_DATETIME", '2024121000')
     monkeypatch.setenv("RELEASE_SITE_NAME", 'BEZ')
 
 
@@ -69,7 +69,7 @@ def test_flexpart_run(mock_s3_endpoint, mock_environment):
     # assert that output files are uploaded to S3 (moto3)
     in_mem_client = boto3.client("s3")
     for path in path_list:
-        key = f"{md.date}_{md.time}/{os.getenv('RELEASE_SITE_NAME')}/{path.name}"
+        key = f"{md.date}_{md.time[:2]}/{os.getenv('RELEASE_SITE_NAME')}/{path.name}"
         actual = in_mem_client.get_object(Bucket = CONFIG.main.aws.s3.output.name, Key = key)["Body"].read()
         with open(path, mode='rb') as f:
             assert actual == f.read()

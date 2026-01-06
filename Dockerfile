@@ -7,7 +7,7 @@ RUN cd /scratch \
     && poetry export --without-hashes -o requirements.txt \
     && poetry export --without-hashes --with dev -o requirements_dev.txt
 
-FROM docker-all-nexus.meteoswiss.ch/dispersionmodelling/flexpart-ifs-base:1b358038c96c48a14ff9c893ff5697c552aa2779 as spack-builder
+FROM docker-all-nexus.meteoswiss.ch/dispersionmodelling/flexpart-ifs-base:42257e1fb0493b64fcf85d76deda7e69f7816e8c as spack-builder
 
 ARG TOKEN
 ENV TOKEN=$TOKEN 

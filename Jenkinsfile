@@ -8,7 +8,6 @@ class Globals {
     static final String IMAGE_NAME = 'docker-intern-nexus.meteoswiss.ch/dispersionmodelling/flexpart-ifs'
     static final String IMAGE_NAME_PUBLIC = 'docker-public-nexus.meteoswiss.ch/dispersionmodelling/flexpart-ifs'
     static final String IMAGE_NAME_PUBLIC_PULL = 'container-registry.meteoswiss.ch/dispersionmodelling/flexpart-ifs'
-    static final String AWS_REGION = 'eu-central-2'
 
     // sets the pipeline to execute all steps related to building the service
     static boolean build = false
@@ -16,29 +15,8 @@ class Globals {
     // sets to abort the pipeline if the Sonarqube QualityGate fails
     static boolean qualityGateAbortPipeline = false
 
-    // sets the pipeline to execute all steps related to releasing the service
-    static boolean release = false
-
     // sets the pipeline to execute all steps related to deployment of the service
     static boolean deploy = false
-
-    // sets the pipeline to execute all steps related to restart the service
-    static boolean restart = false
-
-    // sets the pipeline to execute all steps related to delete the service from the container platform
-    static boolean deleteContainer = false
-
-    // sets the pipeline to execute all steps related to trigger the trivy scan
-    static boolean runTrivyScan = false
-
-    // the project name in container platform
-    static String cpProjectName = ''
-
-    // the target deployment infrastructure
-    static String deploymentTarget = 'mch'
-
-    // OpenShift cluster to deploy container (e.g. "api.cpdepl.meteoswiss.ch:6443"), empty to skip'
-    static String ocpHostName = ''
 
     // the image tag used for tagging the image
     static String imageTag = ''
@@ -52,21 +30,6 @@ class Globals {
     // the service version
     static String version = ''
 
-    // the AWS container registry image tag
-    static String awsEcrImageTag = ''
-
-    // the AWS container image version used in the tag
-    static String awsEcrImageTagVersion = ''
-
-    // the AWS ECR repository name
-    static String awsEcrRepo = ''
-
-    // the AWS image name
-    static String awsImageName = ''
-
-    // the target environment to deploy (e.g., devt, depl, prod)
-    static String deployEnv = ''
-
     // the Vault credititalId
     static String vaultCredentialId = ''
 
@@ -79,18 +42,9 @@ pipeline {
     agent {label 'podman'}
 
     parameters {
-
-        choice(choices: ['Build', 'Deploy', 'Release', 'Restart', 'Delete', 'Trivy-Scan'],
+        choice(choices: ['Build', 'Deploy'],
             description: 'Build type',
             name: 'buildChoice')
-
-        choice(choices: ['devt', 'depl', 'prod'],
-               description: 'Environment',
-               name: 'environment')
-
-        choice(choices: ['aws-icon-sandbox'],
-               description: 'AWS Account',
-               name: 'awsAccount')
 
         booleanParam(name: 'BUILD_BASE_IMAGE', defaultValue: false, description: 'Rebuilds the base image containing Spack dependencies')
     }
@@ -109,86 +63,63 @@ pipeline {
         scannerHome = tool name: 'Sonarqube-certs-PROD', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
         DOCKER_CONFIG = "$workspace/.docker"
         REGISTRY_AUTH_FILE = "$workspace/.containers/auth.json"
-        PATH = "/opt/maker/tools/aws:$PATH"
     }
 
     stages {
         stage('Preflight') {
             steps {
                 updateGitlabCommitStatus name: 'Build', state: 'running'
-
                 script {
                     echo 'Starting with Preflight'
 
-                    Globals.deployEnv = params.environment
-
-                    if (params.awsAccount == 'aws-icon-sandbox') {
-                        Globals.vaultCredentialId = "iwf2-poc-approle"
-                        Globals.vaultPath = "iwf2-poc/dispersionmodelling-${Globals.deployEnv}-secrets"
-                        Globals.awsImageName = "dispersionmodelling/flexpart-ifs-${Globals.deployEnv}"
+                    // Determine the type of build
+                    switch (params.buildChoice) {
+                        case 'Build':
+                            Globals.build = true
+                            break
+                        case 'Deploy':
+                            Globals.deploy = true
+                            break
                     }
 
-                    withVault(
-                        configuration: [vaultUrl: 'https://vault.apps.cp.meteoswiss.ch',
-                                        vaultCredentialId: Globals.vaultCredentialId,
-                                        engineVersion: 2],
-                        vaultSecrets: [
-                            [
-                                path: Globals.vaultPath, engineVersion: 2, secretValues: [
-                                    [envVar: 'AWS_ACCOUNT_ID', vaultKey: 'aws-account-id']
-                                ]
-                            ]
-                        ]) {
-                            // Determine the type of build
-                            switch (params.buildChoice) {
-                                case 'Build':
-                                    Globals.build = true
-                                    break
-                                case 'Deploy':
-                                    Globals.deploy = true
-                                    break
-                                case 'Release':
-                                    Globals.release = true
-                                    Globals.build = true
-                                    break
-                                case 'Restart':
-                                    Globals.restart = true
-                                    break
-                                case 'Delete':
-                                    Globals.deleteContainer = true
-                                    break
-                                case 'Trivy-Scan':
-                                    Globals.runTrivyScan = true
-                                    break
-                            }
+                    if (Globals.build || Globals.deploy) {
+                        echo 'Starting with calculating version'
 
-                            if (Globals.build || Globals.deploy || Globals.runTrivyScan) {
-                                echo 'Starting with calulating version'
-                                def shortBranchName = env.BRANCH_NAME.replaceAll("[^a-zA-Z0-9]+", "").take(30).toLowerCase()
-                                try {
-                                    Globals.version = sh(script: "git describe --tags --match v[0-9]*", returnStdout: true).trim()
-                                } catch (err) {
-                                    def version = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
-                                    Globals.version = "${shortBranchName}-${version}"
-                                }
-                                echo "Using version ${Globals.version}"
-                                if (env.BRANCH_NAME == 'main') {
-                                    Globals.imageTag = "${Globals.IMAGE_NAME}:latest"
-                                    Globals.imageTagPublic = "${Globals.IMAGE_NAME_PUBLIC}:latest"
-                                    Globals.imageTagPublicPull = "${Globals.IMAGE_NAME_PUBLIC_PULL}:latest"
-                                } else {
-                                    Globals.imageTag = "${Globals.IMAGE_NAME}:${shortBranchName}"
-                                    Globals.imageTagPublic = "${Globals.IMAGE_NAME_PUBLIC}:${shortBranchName}"
-                                    Globals.imageTagPublicPull = "${Globals.IMAGE_NAME_PUBLIC_PULL}:${shortBranchName}"
-                                }
-                                Globals.awsEcrRepo = "${env.AWS_ACCOUNT_ID}.dkr.ecr.${Globals.AWS_REGION}.amazonaws.com"
-                                Globals.awsEcrImageTag = "${Globals.awsEcrRepo}/${Globals.awsImageName}:${shortBranchName}"
-                                echo "Using container version ${Globals.imageTag}"
-                            }
-                        } 
+                        def shortBranchName = env.BRANCH_NAME
+                            .replaceAll("[^a-zA-Z0-9]+", "")
+                            .take(30)
+                            .toLowerCase()
+
+                        try {
+                            Globals.version = sh(
+                                script: "git describe --tags --match 'v[0-9]*'",
+                                returnStdout: true
+                            ).trim()
+                        } catch (err) {
+                            def version = sh(
+                                script: "git rev-parse --short HEAD",
+                                returnStdout: true
+                            ).trim()
+                            Globals.version = "${shortBranchName}-${version}"
+                        }
+
+                        echo "Using version ${Globals.version}"
+
+                        if (env.BRANCH_NAME == 'main') {
+                            Globals.imageTag = "${Globals.IMAGE_NAME}:latest"
+                            Globals.imageTagPublic = "${Globals.IMAGE_NAME_PUBLIC}:latest"
+                            Globals.imageTagPublicPull = "${Globals.IMAGE_NAME_PUBLIC_PULL}:latest"
+                        } else {
+                            Globals.imageTag = "${Globals.IMAGE_NAME}:${shortBranchName}"
+                            Globals.imageTagPublic = "${Globals.IMAGE_NAME_PUBLIC}:${shortBranchName}"
+                            Globals.imageTagPublicPull = "${Globals.IMAGE_NAME_PUBLIC_PULL}:${shortBranchName}"
+                        }
+
+                        echo "Using container version ${Globals.imageTag}"
                     }
                 }
             }
+        }
 
         stage('Build Base dependencies image') {
             when { expression { params.BUILD_BASE_IMAGE } }
@@ -218,12 +149,11 @@ pipeline {
             post {
                 cleanup {
                     sh "podman logout ${Globals.IMAGE_REPO} || true"
-                    sh 'oc logout || true'
                 }
             }
         }
 
-        stage('Build') {
+        stage('Test') {
             when { expression { Globals.build } }
             environment {
                 TEST_NODE = 'balfrin-ln003'
@@ -265,6 +195,9 @@ pipeline {
                 always {
                     junit keepLongStdio: true, testResults: 'test_reports/junit.xml'
                 }
+                cleanup {
+                    sh "podman logout ${Globals.IMAGE_REPO_PUBLIC} || true"
+                }
             }
         }
 
@@ -303,13 +236,20 @@ pipeline {
             when { expression { Globals.build || Globals.deploy } }
             steps {
                 script {
-                    if (expression { Globals.build || Globals.deploy }) {
-                        withCredentials([usernamePassword(credentialsId: 'github app credential for the meteoswiss github organization (limited to repositories used by APN)',
-                            usernameVariable: 'GITHUB_APP',
-                            passwordVariable: 'GITHUB_ACCESS_TOKEN')]) {
-                            echo "---- CREATE IMAGE ----"
-                            sh "podman build --pull --build-arg TOKEN=${GITHUB_ACCESS_TOKEN} --build-arg COMMIT=${GIT_COMMIT} --target runner --build-arg VERSION=${Globals.version} -t ${Globals.imageTag} ."
-                        } 
+                    withCredentials([usernamePassword(
+                        credentialsId: 'github app credential for the meteoswiss github organization (limited to repositories used by APN)',
+                        usernameVariable: 'GITHUB_APP',
+                        passwordVariable: 'GITHUB_ACCESS_TOKEN'
+                    )]) {
+                        echo "---- CREATE IMAGE ----"
+                        sh """
+                            podman build --pull \
+                            --build-arg TOKEN=${GITHUB_ACCESS_TOKEN} \
+                            --build-arg COMMIT=${GIT_COMMIT} \
+                            --build-arg VERSION=${Globals.version} \
+                            --target runner \
+                            -t ${Globals.imageTag} .
+                        """
                     }
                 }
             }
@@ -319,72 +259,19 @@ pipeline {
             when { expression { Globals.deploy } }
             steps {
                 script {
-                    if (expression { Globals.deploy }) {
-                        echo "---- PUBLISH IMAGE ----"
-                        withCredentials([usernamePassword(credentialsId: 'openshift-nexus',
-                            passwordVariable: 'NXPASS', usernameVariable: 'NXUSER')]) {
-                            sh """
-                            echo $NXPASS | podman login ${Globals.IMAGE_REPO} -u $NXUSER --password-stdin
-                            podman push ${Globals.imageTag}
-                            """
-                        }
+                    echo "---- PUBLISH IMAGE ----"
+                    withCredentials([usernamePassword(credentialsId: 'openshift-nexus',
+                        passwordVariable: 'NXPASS', usernameVariable: 'NXUSER')]) {
+                        sh """
+                        echo $NXPASS | podman login ${Globals.IMAGE_REPO} -u $NXUSER --password-stdin
+                        podman push ${Globals.imageTag}
+                        """
                     }
                 }
             }
             post {
                 cleanup {
                     sh "podman logout ${Globals.IMAGE_REPO} || true"
-                    sh 'oc logout || true'
-                }
-            }
-        }
-
-        stage('Deploy') {
-            when { expression { Globals.deploy } }
-            environment {
-                HTTPS_PROXY="http://proxy.meteoswiss.ch:8080"
-                AWS_DEFAULT_OUTPUT="json"
-                AWS_CA_BUNDLE="/etc/ssl/certs/MCHRoot.crt"
-                PATH = "/opt/maker/tools/aws:$PATH"
-            }
-            steps {
-                script {
-                    withCredentials([usernamePassword(credentialsId: 'github app credential for the meteoswiss github organization (limited to repositories used by APN)',
-                                usernameVariable: 'GITHUB_APP',
-                                passwordVariable: 'GITHUB_ACCESS_TOKEN')]) {
-                        withVault(
-                            configuration: [vaultUrl: 'https://vault.apps.cp.meteoswiss.ch',
-                                            vaultCredentialId: Globals.vaultCredentialId,
-                                            engineVersion: 2],
-                            vaultSecrets: [
-                                [
-                                    path: Globals.vaultPath, engineVersion: 2, secretValues: [
-                                        [envVar: 'AWS_ACCESS_KEY_ID', vaultKey: 'jenkins-aws-access-key'],
-                                        [envVar: 'AWS_SECRET_ACCESS_KEY', vaultKey: 'jenkins-aws-secret-key']
-                                    ]
-                                ]
-                            ]
-                        ) {
-                            sh """
-                                if test -f /etc/ssl/certs/ca-certificates.crt; then
-                                    export AWS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
-                                else
-                                    export AWS_CA_BUNDLE=/etc/ssl/certs/ca-bundle.crt
-                                fi
-
-                                export AWS_ACCESS_KEY_ID=${env.AWS_ACCESS_KEY_ID}
-                                export AWS_SECRET_ACCESS_KEY=${env.AWS_SECRET_ACCESS_KEY}
-
-                                echo "Logging into AWS ECR..."
-                                aws ecr get-login-password --region ${Globals.AWS_REGION} > ecr_password.txt
-                                cat ecr_password.txt | podman login -u AWS --password-stdin ${Globals.awsEcrRepo}
-
-                                echo "Building and pushing Docker image to AWS ECR..."
-                                podman build --pull --target runner --build-arg COMMIT=${GIT_COMMIT} --build-arg VERSION=${Globals.version} -t ${Globals.awsEcrImageTag} .
-                                podman push ${Globals.awsEcrImageTag}
-                            """
-                        }
-                    }
                 }
             }
         }
@@ -396,7 +283,6 @@ pipeline {
             sh "podman image rm -f ${Globals.imageTagPublic}-tester || true"
             sh "podman image rm -f ${Globals.imageTag} || true"
             sh "podman image rm -f ${Globals.IMAGE_NAME}-base || true"
-            sh "podman image rm -f ${Globals.awsEcrImageTag} || true"
         }
         success {
             echo 'Build succeeded'
