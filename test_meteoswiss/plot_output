@@ -40,6 +40,7 @@ Usage: $tag [OPTION]... JOBDIR
 Mandatory arguments to long options are mandatory for short options too.
   -c, --clean            delete existing plots before invoking pyflexplot
   -d, --debug            print out additional debug output
+  -e, --ensemble         create ensemble plots
   -f, --force            invoke pyflexplot even if plots already exist
   -h, --help             display this help and exit
   -n, --dry-run          print commands without executing them
@@ -90,6 +91,9 @@ while (( $# > 0 )) ; do
             ;;
         -D | --dry-wet)
             dry_wet=yes
+            ;;
+        -e | --ensemble)
+            ensemble=yes
             ;;
         -f | --force)
             force=yes
@@ -183,7 +187,7 @@ echo $tag: "Producing plots in: $plotdir"
 # Derive variables 'job' (job name or number) and 'resol' (resolution)
 # from test-fp.log
 if [[ ! -e test-fp.log ]] ; then
-    $tag: "ERROR: Cannot derive resolution due to missing logfile: $pwd/test-fp.log"
+    echo $tag: "ERROR: Cannot derive resolution due to missing logfile: $pwd/test-fp.log"
     exit 1
 fi
 eval $(tail -n 1 test-fp.log | sed 's/.*\(resol=[a-z0-9]*\) .*/\1/')
@@ -195,14 +199,24 @@ echo $tag: "Resolution as determined from $PWD/test-fp.log: $resol"
 # Define preset, use pyflexplot --preset=? to obtain the list of presets
 if [[ -z $preset ]] ; then
     case "$resol" in
-        i1) preset=opr/icon-ch1-ctrl/all_pdf ;;
-#        i2) preset=opr/icon-ch2-eps/all_pdf  ;; # would need ensemble output
-        i2) preset=opr/icon-ch1-ctrl/all_pdf ;;
-        1e) preset=opr/cosmo-1e-ctrl/all_pdf ;;
-#        2e) preset=opr/cosmo-2e/all_pdf      ;; # would need ensemble output
-        2e) preset=opr/cosmo-1e-ctrl/all_pdf ;;
-        f)  preset=opr/ifs-hres-eu/all_pdf   ;;
-        g)  preset=opr/ifs-hres/all_pdf      ;;
+        i1) preset=opr/icon-ch1-ctrl/all_* ;;
+        i2)
+            if [[ -n $ensemble ]] ; then
+                preset=opr/icon-ch2-eps/all_*
+            else
+                preset=opr/icon-ch1-ctrl/all_*
+            fi
+        ;;
+        1e) preset=opr/cosmo-1e-ctrl/all_* ;;
+        2e)
+            if [[ -n $ensemble ]] ; then
+                preset=opr/cosmo-2e/all_*
+            else
+                preset=opr/cosmo-1e-ctrl/all_*
+            fi
+        ;;
+        f)  preset=opr/ifs-hres-eu/all_*   ;;
+        g)  preset=opr/ifs-hres/all_*      ;;
         *)  echo $tag: "Unknown resolution: $resol"
             exit 1 ;;
     esac
@@ -220,7 +234,7 @@ else
 fi
 
 # Determine executable
-if [[ -n $operational ]] ; then
+if [[ -z $operational ]] ; then
     pyflexplot=$(which pyflexplot)
     if [[ ! -e $pyflexplot ]] ; then
         echo $tag: "No pyflexplot executable found in PATH, exiting."
@@ -249,9 +263,19 @@ if [[ -n $steps ]] ; then
     integrate_opt="--setup integrate false"
 fi
 
+# Not implemented: automatic submission for ensemble plots
+if [[ -n $ensemble ]] ; then
+    echo $tag: "Link ensemble output into $jobdir/output," \
+    "replace ensemble number in infile by {ens_member:03}," \
+    "add quotes around infile and a backslash before the \$," \
+    "and submit job manually"
+    infiles=${infiles[0]}
+    exe_cmd=echo
+fi
+
 # Submit job
 for infile in ${infiles[*]} ; do
-    echo $tag: "Submitting job to plot: ${infile}"
+    [[ -z $ensemble ]] && echo $tag: "Submitting job to plot: ${infile}"
     cleanup_plot_dir $plot_dir
     # Option -w: wait for job to complete
     [[ -n $wait_opt ]] && echo $tag: "Waiting for job completion."
@@ -275,6 +299,7 @@ for infile in ${infiles[*]} ; do
                 --num-procs=\$SLURM_CPUS_PER_TASK
         done
     fi
+    [[ -n $ensemble ]] && exit 0 # exit to let user submit job manually
 done
 
 if [[ -n $jobdir ]] ; then
