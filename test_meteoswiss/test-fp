@@ -378,7 +378,7 @@ while (( $# > 0 )) ; do
                 (( $# > 1 )) && shift && member="$1"
             fi
             ;;
-        -m | --min-dt-tl*)
+        --min-dt-tl*)
             # Mandatory option argument with or without =
             if [[ "$1" == *=* ]] ; then
                 min_dt_tl="${1#*=}"

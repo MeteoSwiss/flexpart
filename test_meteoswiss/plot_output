@@ -276,7 +276,7 @@ fi
 # Submit job
 for infile in ${infiles[*]} ; do
     [[ -z $ensemble ]] && echo $tag: "Submitting job to plot: ${infile}"
-    cleanup_plot_dir $plot_dir
+    cleanup_plot_dir $plotdir
     # Option -w: wait for job to complete
     [[ -n $wait_opt ]] && echo $tag: "Waiting for job completion."
     $exe_cmd batchPP -t 1 -T 5 -n pfp_$jobdir $wait_opt -- \
