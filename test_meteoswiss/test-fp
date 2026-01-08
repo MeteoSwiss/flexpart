@@ -71,6 +71,8 @@ resolutions+=( "i1: ICON-CH1-EPS (Cent. Europe 1 km)" )
 nwp_model_i1=icon
 nwp_max_range_i1=33
 lt_inc_i1=1
+lsynctime_i1=60   # Empa recommendation: 30
+loutsample_i1=60  # must be multiple of lsynctime
 nwp_source_list_i1=(
     "Operational LADM cache (interp) in: $OPR_OPR_DIR/cache/LADM/FLEXPART-I1E-CTRL/dispc*"
     "Operational fcst wd    (interp) in: $OPR_OPR_DIR/wd/<yymmddhh>_6<ex>/fxshare/_FXINP_lfrf<ddhh>0000_<mem>,_FXINP_lfrf00000000_000c"
@@ -89,6 +91,8 @@ resolutions+=( "i2: ICON-CH2-EPS (Cent. Europe 2 km)" )
 nwp_model_i2=icon
 nwp_max_range_i2=120
 lt_inc_i2=1
+lsynctime_i2=90   # Empa recommendation: 60
+loutsample_i2=90  # must be multiple of lsynctime
 nwp_source_list_i2=(
     "Operational LADM cache (interp) in: $OPR_OPR_DIR/cache/LADM/FLEXPART-I2E/<yymmddhh>/dispc*_<mem>"
     "Operational fcst wd    (interp) in: $OPR_OPR_DIR/wd/<yymmddhh>_7<ex>/_FXINP_lfrf<ddhh>0000_<mem>,_FXINP_lfrf00000000_000c"
@@ -104,6 +108,8 @@ resolutions+=( "f: IFS-HRES-EUROPE (Europe 0.1°)" )
 nwp_model_f=ifs
 nwp_max_range_f=90
 lt_inc_f=1
+lsynctime_f=900
+loutsample_f=900  # must be multiple of lsynctime
 nwp_source_list_f=(
     "Operational LADM cache     in: $OPR_OPR_DIR/cache/LADM/FLEXPART-IFS-EUROPE/dispf*"
     "Cases in operational store in: /store/mch/msopr/flexpart_data/test-input/ifs-europe/<yyyymmddhh>/dispf*"
@@ -117,6 +123,8 @@ resolutions+=( "g: IFS-HRES-GLOBAL (global 0.5°)" )
 nwp_model_g=ifs
 nwp_max_range_g=144
 lt_inc_g=3
+lsynctime_g=900
+loutsample_g=900  # must be multiple of lsynctime
 nwp_source_list_g=(
     "Operational LADM cache     in: $OPR_OPR_DIR/cache/LADM/FLEXPART-IFS-GLOBAL/disp*"
     "User cache on scratch      in: $SCRATCH/FLEXPART-IFS-GLOBAL/disp*"
@@ -154,13 +162,19 @@ job_out=job.log
 
 # Defaults for arguments
 # ----------------------
-# Base time
+# Argument 1: Base time
 basetime=$(date --utc --date="12 yesterday" +%Y%m%d%H)           # Yesterday 12 UTC
-# Simulation mode
+# Argument 3: Simulation mode
 mode=1
 
 # Defaults for options
 # --------------------
+# Options affecting input file INPUT_PHY
+# FLEXPART-COSMO-ICON Turbulence scheme (option --turb-scheme)
+turb_scheme="cosmo1stlw"   # Empa recommendation, opr: "hanna82"
+min_dt_tl=0.5              # Empa recommendation: 0
+
+# Options affecting input file RELEASES
 # Defaults depending on release site rel_site (option --rel-site)
 rel_lon_bez=8.2284 ; rel_lat_bez=47.5519 ; rel_height_bez=100 ; rel_name_bez=Beznau
 rel_lon_bug=5.2700 ; rel_lat_bug=45.7992 ; rel_height_bug=100 ; rel_name_bug=Bugey
@@ -172,7 +186,9 @@ rel_lon_bushehr=50.8872 ; rel_lat_bushehr=28.8289 ; rel_height_bushehr=100 ; rel
 rel_lon_cherno=30.0997   ; rel_lat_cherno=51.3897  ; rel_height_cherno=100  ; rel_name_cherno=Chernobyl
 rel_lon_punggye=129.0900 ; rel_lat_punggye=41.2800 ; rel_height_punggye=100 ; rel_name_punggye=Punggye-ri
 rel_lon_segula=178.1400  ; rel_lat_segula=52.0200  ; rel_height_segula=100  ; rel_name_segula=Segula
-# Default ensemble member (-m, --member)
+
+# Other options
+# Ensemble member (-m, --member)
 member=000
 # Output gid (-O, --outgrid-tag), default: resolution (-r, --resol)
 outgrid_tag=
@@ -249,7 +265,10 @@ Options:
   -h, --help            show this help and exit
   -I, --iout=I          Set IOUT to I (1 binary, 9 NetCDF output)
   -j, --job=NAME        manually set job name (default: consecutive number)
+  --loutsample=N        sampling time for output in seconds
+  --lsynctime=N         synchronization time step in seconds
   -m, --member=MEM      3-digit ensemble member MEM (default: $member)
+  --min-dt-tl=RATIO     minimal ratio between time step and Lagrangian time scale
   -N, --ncpus=N         numbers of cpus to allocate to OpenMP parallel run
   -O, --outgrid-tag=TAG output grid tag, selects file OUTGRID.TAG
   -p, --partition=PART  partition, one of postproc (may be abbreviated as pp),
@@ -264,7 +283,8 @@ Options:
       --rel-site=SITE   release site, selects SITE from predefined sites
   -t, --rel-time=T1,T2  release from T1 to T2 (lead times [hours]).
                         (Default: $t1,$t2)
-      --run-mode=MODE   run code in MODE, one of serial or parallel
+  --run-mode=MODE       run code in MODE, one of serial or parallel
+  --turb-scheme=NAME    Turbulence scheme option for FLEXPART-COSMO-ICON
   -s, --source=PATTERN  search pattern for NWP data files
   -S, --source-no=N     select source no N from list of NWP data sources
   -N, --species-no=N    select species no N according to definition
@@ -334,12 +354,36 @@ while (( $# > 0 )) ; do
                 (( $# > 1 )) && shift && job_name="$1"
             fi
             ;;
+        --loutsample*)
+            # Mandatory option argument with or without =
+            if [[ "$1" == *=* ]] ; then
+                loutsample="${1#*=}"
+            else
+                (( $# > 1 )) && shift && loutsample="$1"
+            fi
+            ;;
+        --lsynctime*)
+            # Mandatory option argument with or without =
+            if [[ "$1" == *=* ]] ; then
+                lsynctime="${1#*=}"
+            else
+                (( $# > 1 )) && shift && lsynctime="$1"
+            fi
+            ;;
         -m | --member*)
             # Mandatory option argument with or without =
             if [[ "$1" == *=* ]] ; then
                 member="${1#*=}"
             else
                 (( $# > 1 )) && shift && member="$1"
+            fi
+            ;;
+        --min-dt-tl*)
+            # Mandatory option argument with or without =
+            if [[ "$1" == *=* ]] ; then
+                min_dt_tl="${1#*=}"
+            else
+                (( $# > 1 )) && shift && min_dt_tl="$1"
             fi
             ;;
         --rel-lon*)
@@ -448,6 +492,14 @@ while (( $# > 0 )) ; do
                 (( $# > 1 )) && shift && rel_site="$1"
             fi
             ;;
+        --turb-scheme*)
+            # Mandatory option argument with or without =
+            if [[ "$1" == *=* ]] ; then
+                turb_scheme="${1#*=}"
+            else
+                (( $# > 1 )) && shift && turb_scheme="$1"
+            fi
+            ;;
         -s | --stop)
             no_submit=yes
             ;;
@@ -515,6 +567,7 @@ while (( $# > 0 )) ; do
                     basetime="$1"
                     # Y2K compatibility for 2000 - 2099
                     [[ ${#basetime} == 8 ]] && basetime=20$basetime
+
                     ;;
                 2)  # FC_RANGE
                     fc_range="$1"
@@ -644,6 +697,8 @@ echo $tag: "Search pattern for NWP files: $nwp_source"
 # Check time arguments (depends on resolution)
 eval nwp_max_range=\$nwp_max_range_$resol
 eval lt_inc=\$lt_inc_$resol
+[[ -z $loutsample ]] && eval loutsample=\$loutsample_$resol
+[[ -z $lsynctime ]] && eval lsynctime=\$lsynctime_$resol
 [[ -z $t1 ]] && eval t1=\$t1_$resol
 [[ -z $t2 ]] && eval t2=\$t2_$resol
 [[ -z $species_no ]] && eval species_no=\$species_no_$resol
@@ -1145,6 +1200,14 @@ $exe_cmd gres "^ *LOUTSTEP *=.*!" \
     "$(printf   " LOUTSTEP =%14s" $avg_s), !"     $flex_input/COMMAND
 $exe_cmd gres "^ *LOUTAVER *=.*!" \
     "$(printf   " LOUTAVER =%14s" $avg_s), !"     $flex_input/COMMAND
+# Sampling time step LOUTSAMPLE
+echo $tag: "  Sampling time step: $loutsample"
+$exe_cmd gres "^ *LOUTSAMPLE *=.*!" \
+    "$(printf   " LOUTSAMPLE =%13s" $loutsample), !"     $flex_input/COMMAND
+# Synchronisation time step LSYNCTIME
+echo $tag: "  Synchronisation time step: $lsynctime"
+$exe_cmd gres "^ *LSYNCTIME *=.*!" \
+    "$(printf   " LSYNCTIME =%13s" $lsynctime), !"     $flex_input/COMMAND
 # Output format (-I, --iout)
 $exe_cmd gres "^ *IOUT *=.*!" \
     "$(printf   " IOUT =%18s" $iout), !"          $flex_input/COMMAND
@@ -1155,13 +1218,17 @@ echo $tag: Adapting RELEASES input file: $flex_input/RELEASES
 
 # RELEASES namelist input
 # Replace species number (option --species-no)
-echo $tag: "  Number of species: ${#species_no[*]}"
-$exe_cmd gres "^ *NSPEC *=.*!" \
-"$(printf   "  NSPEC       = %9d" ${#species_no[*]}), !" $flex_input/RELEASES
-[[ -z $species_no_str ]] && species_no_str=$(IFS=, ; echo "${species_no[*]}")
-echo $tag: "  Species number(s): $species_no_str"
-$exe_cmd gres "^ *SPECNUM_REL *=.*!" \
-"$(printf   "  SPECNUM_REL = %9s" $species_no_str), !" $flex_input/RELEASES
+if [[ -n $rel_tag ]] ; then
+    echo $tag: "Option --rel-tag set, not modifying species definitions in RELEASES"
+else
+    echo $tag: "  Number of species: ${#species_no[*]}"
+    $exe_cmd gres "^ *NSPEC *=.*!" \
+    "$(printf   "  NSPEC       = %9d" ${#species_no[*]}), !" $flex_input/RELEASES
+    [[ -z $species_no_str ]] && species_no_str=$(IFS=, ; echo "${species_no[*]}")
+    echo $tag: "  Species number(s): $species_no_str"
+    $exe_cmd gres "^ *SPECNUM_REL *=.*!" \
+    "$(printf   "  SPECNUM_REL = %9s" $species_no_str), !" $flex_input/RELEASES
+fi
 # Beginning date/time of release
 echo $tag: "  Beginning date/time of release: ${release_start[*]}"
 $exe_cmd gres "^ *IDATE1 *=.*!" \
@@ -1175,79 +1242,88 @@ $exe_cmd gres "^ *IDATE2 *=.*!" \
 $exe_cmd gres "^ *ITIME2 *=.*!" \
 "$(printf   " ITIME2  = %14s" ${release_end[1]}), !"    $flex_input/RELEASES
 # Longitude of release
-if [[ -n $rel_lon ]] ; then
-    echo $tag: "  Longitude of release: $rel_lon"
-    $exe_cmd gres "^ *LON1 *=.*!" \
-        "$(printf   " LON1    = %14s" $rel_lon), !" \
-        $flex_input/RELEASES
-    $exe_cmd gres "^ *LON2 *=.*!" \
-        "$(printf   " LON2    = %14s" $rel_lon), !" \
-        $flex_input/RELEASES
+if [[ -n $rel_tag ]] ; then
+    echo $tag: "Option --rel-tag set, not modifying release site, mass emitted, comment in RELEASES"
+else
+    if [[ -n $rel_lon ]] ; then
+        echo $tag: "  Longitude of release: $rel_lon"
+        $exe_cmd gres "^ *LON1 *=.*!" \
+            "$(printf   " LON1    = %14s" $rel_lon), !" \
+            $flex_input/RELEASES
+        $exe_cmd gres "^ *LON2 *=.*!" \
+            "$(printf   " LON2    = %14s" $rel_lon), !" \
+            $flex_input/RELEASES
+    fi
+    # Latitude of release
+    if [[ -n $rel_lat ]] ; then
+        echo $tag: "  Latitude of release: $rel_lat"
+        $exe_cmd gres "^ *LAT1 *=.*!" \
+            "$(printf   " LAT1    = %14s" $rel_lat), !" \
+            $flex_input/RELEASES
+        $exe_cmd gres "^ *LAT2 *=.*!" \
+            "$(printf   " LAT2    = %14s" $rel_lat), !" \
+            $flex_input/RELEASES
+    fi
+    # Height above ground of release
+    if [[ -n $rel_height ]] ; then
+        echo $tag: "  Height above ground: $rel_height"
+        $exe_cmd gres "^ *Z1 *=.*!" \
+            "$(printf   " Z1      = %14s" $rel_height), !" \
+            $flex_input/RELEASES
+        $exe_cmd gres "^ *Z2 *=.*!" \
+            "$(printf   " Z2      = %14s" $rel_height), !" \
+            $flex_input/RELEASES
+    fi
+    # Replace total mass emitted (option --rel-mass)
+    [[ -z $rel_mass_str ]] && rel_mass_str=$(IFS=, ; echo "${rel_mass[*]}")
+    if (( ${#species_no[*]} > 1 && ${#rel_mass[*]} == 1 )) ; then
+        i=1
+        while (( $i < ${#species_no[*]} )) ; do
+            rel_mass_str+=", $rel_mass"
+            (( ++i ))
+        done
+    elif (( ${#species_no[*]} != ${#rel_mass[*]} )) ; then
+        echo $tag: "ERROR: Number of species (${#species_no[*]})" \
+            "and number of released mass values (${#rel_mass[*]}) do not match"
+        exit 1
+    fi
+    echo $tag: "  Total mass emitted: $rel_mass_str"
+    $exe_cmd gres "^ *MASS *=.*!" \
+        "$(printf   " MASS    = %14s" $rel_mass_str), !" $flex_input/RELEASES
+    # Comment
+    if [[ -n $rel_name ]] ; then
+        echo $tag: "  Comment: $rel_name"
+        $exe_cmd gres "^ *COMMENT *=.*!" \
+            "$(printf   " COMMENT = %14s" '"'$rel_name'"'), !" $flex_input/RELEASES
+    fi
 fi
-# Latitude of release
-if [[ -n $rel_lat ]] ; then
-    echo $tag: "  Latitude of release: $rel_lat"
-    $exe_cmd gres "^ *LAT1 *=.*!" \
-        "$(printf   " LAT1    = %14s" $rel_lat), !" \
-        $flex_input/RELEASES
-    $exe_cmd gres "^ *LAT2 *=.*!" \
-        "$(printf   " LAT2    = %14s" $rel_lat), !" \
-        $flex_input/RELEASES
-fi
-# Height above ground of release
-if [[ -n $rel_height ]] ; then
-    echo $tag: "  Height above ground: $rel_height"
-    $exe_cmd gres "^ *Z1 *=.*!" \
-        "$(printf   " Z1      = %14s" $rel_height), !" \
-        $flex_input/RELEASES
-    $exe_cmd gres "^ *Z2 *=.*!" \
-        "$(printf   " Z2      = %14s" $rel_height), !" \
-        $flex_input/RELEASES
-fi
-# Replace total mass emitted (option --rel-mass)
-[[ -z $rel_mass_str ]] && rel_mass_str=$(IFS=, ; echo "${rel_mass[*]}")
-if (( ${#species_no[*]} > 1 && ${#rel_mass[*]} == 1 )) ; then
-    i=1
-    while (( $i < ${#species_no[*]} )) ; do
-        rel_mass_str+=", $rel_mass"
-        (( ++i ))
-    done
-elif (( ${#species_no[*]} != ${#rel_mass[*]} )) ; then
-    echo $tag: "ERROR: Number of species (${#species_no[*]})" \
-        "and number of released mass values (${#rel_mass[*]}) do not match"
-    exit 1
-fi
-echo $tag: "  Total mass emitted: $rel_mass_str"
-$exe_cmd gres "^ *MASS *=.*!" \
-    "$(printf   " MASS    = %14s" $rel_mass_str), !" $flex_input/RELEASES
-# Comment
-if [[ -n $rel_name ]] ; then
-    echo $tag: "  Comment: $rel_name"
-    $exe_cmd gres "^ *COMMENT *=.*!" \
-        "$(printf   " COMMENT = %14s" '"'$rel_name'"'), !" $flex_input/RELEASES
-fi
-
 # Adapt INPUT_PHY
 # ---------------
 if [[ -e $flex_input/INPUT_PHY ]] ; then
     echo $tag: "Adapting INPUT_PHY input file: $flex_input/INPUT_PHY"
+    echo $tag: " Turbulence scheme: $turb_scheme"
+    $exe_cmd gres "^ *turb_scheme *=.*!" \
+        "$(printf  '  turb_scheme = "%s", !' "$turb_scheme")" $flex_input/INPUT_PHY
+    echo $tag: " Ratio btw. time step and Lagrangian time scale: $min_dt_tl"
+    $exe_cmd gres "^ *min_dt_tl *=.*!" \
+        "$(printf  '  min_dt_tl = %s, !' "$min_dt_tl")" $flex_input/INPUT_PHY
     # Replace institution name
     user_record=$(getent passwd $USER | cut -d: -f5)
     author=$(echo $user_record | cut -d, -f1)
     institution=$(echo $user_record | cut -d, -f2)
-    [[ institution =~ \ *MCH\ * ]] && institution=MeteoSwiss
+    [[ $institution =~ \ *MCH\ * ]] && institution=MeteoSwiss
     echo $tag: " Institution: $institution"
     $exe_cmd gres "^ *INSTITUTION *=.*!" \
-        "$(printf  "  INSTITUTION = %s" '"'$institution'"'), !" $flex_input/INPUT_PHY
+        "$(printf  '  INSTITUTION = "%s", !' "$institution")" $flex_input/INPUT_PHY
     echo $tag: " Author: $author"
     $exe_cmd gres "^ *AUTHOR *=.*!" \
-        "$(printf  "  AUTHOR = %s" '"'$author'"'), !" $flex_input/INPUT_PHY
+        "$(printf  '  AUTHOR = "%s", !' "$author")" $flex_input/INPUT_PHY
     echo $tag: " Login name: $USER"
     $exe_cmd gres "^ *LOGIN_NAME *=.*!" \
-        "$(printf  "  LOGIN_NAME = %s" '"'$USER'"'), !" $flex_input/INPUT_PHY
+        "$(printf  '  LOGIN_NAME = "%s", !' "$USER")" $flex_input/INPUT_PHY
     echo $tag: " Host name: $HOST"
     $exe_cmd gres "^ *HOST_NAME *=.*!" \
-        "$(printf  "  HOST_NAME = %s" '"'$HOST'"'), !" $flex_input/INPUT_PHY
+        "$(printf  '  HOST_NAME = "%s", !' "$HOST")" $flex_input/INPUT_PHY
 fi
 
 
