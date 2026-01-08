@@ -125,7 +125,7 @@ pipeline {
             when { expression { params.BUILD_BASE_IMAGE } }
             steps {
                 withCredentials([usernamePassword(
-                                    credentialsId: 'github app credential for the meteoswiss github organization (limited to repositories used by APN)',
+                                    credentialsId: 'github app credential for the meteoswiss github organization',
                                     usernameVariable: 'GITHUB_APP',
                                     passwordVariable: 'GITHUB_ACCESS_TOKEN'),
                                 usernamePassword(
@@ -160,7 +160,7 @@ pipeline {
             }
             steps {
                 withCredentials([usernamePassword(
-                                    credentialsId: 'github app credential for the meteoswiss github organization (limited to repositories used by APN)',
+                                    credentialsId: 'github app credential for the meteoswiss github organization',
                                     usernameVariable: 'GITHUB_APP',
                                     passwordVariable: 'GITHUB_ACCESS_TOKEN'),
                                 usernamePassword(
@@ -237,7 +237,7 @@ pipeline {
             steps {
                 script {
                     withCredentials([usernamePassword(
-                        credentialsId: 'github app credential for the meteoswiss github organization (limited to repositories used by APN)',
+                        credentialsId: 'github app credential for the meteoswiss github organization',
                         usernameVariable: 'GITHUB_APP',
                         passwordVariable: 'GITHUB_ACCESS_TOKEN'
                     )]) {
