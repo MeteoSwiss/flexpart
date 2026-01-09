@@ -49,7 +49,7 @@ function gammp(a,x)
 
   if(x .lt. 0. .or. a .le. 0.) then
      print*, 'gammp'
-     stop
+     stop 1
   end if
   if(x.lt.a+1.)then
     call gser(gamser,a,x,gln)
@@ -68,7 +68,7 @@ function gammq(a,x)
 
   if(x.lt.0..or.a.le.0.) then
      print*, 'gammq'
-     stop
+     stop 1
   end if
   if(x.lt.a+1.)then
     call gser(gamser,a,x,gln)
@@ -94,7 +94,7 @@ subroutine gser(gamser,a,x,gln)
   if(x.le.0.)then
     if(x.lt.0.) then
        print*, 'gser'
-       stop
+       stop 1
     end if
     gamser=0.
     return
@@ -109,7 +109,7 @@ subroutine gser(gamser,a,x,gln)
     if(abs(del).lt.abs(summ)*eps)go to 1
   end do
   print*, 'gser: a too large, itmax too small'
-  stop
+  stop 1
 1   gamser=summ*exp(-x+a*log(x)-gln)
 end subroutine gser
 
@@ -147,7 +147,7 @@ subroutine gcf(gammcf,a,x,gln)
     endif
   end do
   print*, 'gcf: a too large, itmax too small'
-  stop
+  stop 1
 1   gammcf=exp(-x+a*alog(x)-gln)*g
 end subroutine gcf
 

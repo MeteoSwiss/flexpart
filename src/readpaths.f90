@@ -83,11 +83,11 @@ subroutine readpaths
 
 998   write(*,*) ' #### TRAJECTORY MODEL ERROR! ERROR WHILE     #### '
   write(*,*) ' #### READING FILE PATHNAMES.                 #### '
-  stop
+  stop 1
 
 999   write(*,*) ' #### TRAJECTORY MODEL ERROR! FILE "pathnames"#### '
   write(*,*) ' #### CANNOT BE OPENED IN THE CURRENT WORKING #### '
   write(*,*) ' #### DIRECTORY.                              #### '
-  stop
+  stop 1
 
 end subroutine readpaths

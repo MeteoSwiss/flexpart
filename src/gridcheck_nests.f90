@@ -211,7 +211,7 @@ subroutine gridcheck_nests
   endif
   if(parId .ne. isec1(6) .and. parId .ne. 77) then !added by mc to make it consistent with new gridchek.f90
     write(*,*) 'parId',parId, 'isec1(6)',isec1(6)
-!    stop
+!    stop 1
   endif
 
   endif
@@ -248,7 +248,7 @@ subroutine gridcheck_nests
   write(*,*) 'for nesting level ',l
   write(*,*) 'Or change parameter settings in file par_mod.'
   write(*,*) nxn(l),nxmaxn
-  stop
+  stop 1
   endif
 
   if (nyn(l).gt.nymaxn) then
@@ -257,7 +257,7 @@ subroutine gridcheck_nests
   write(*,*) 'for nesting level ',l
   write(*,*) 'Or change parameter settings in file par_mod.'
   write(*,*) nyn(l),nymaxn
-  stop
+  stop 1
   endif
 
   !HSO  get the second part of the grid dimensions only from GRiB1 messages
@@ -328,7 +328,7 @@ subroutine gridcheck_nests
   if (gotGrib.eq.0) then
     print*,'***ERROR: input file needs to contain GRiB1 formatted'// &
          'messages'
-    stop
+    stop 1
   endif
 
   nuvzn=iumax
@@ -339,7 +339,7 @@ subroutine gridcheck_nests
   write(*,*) 'FLEXPART error: Nested wind fields have too many'// &
        'vertical levels.'
   write(*,*) 'Problem was encountered for nesting level ',l
-  stop
+  stop 1
   endif
 
 
@@ -385,7 +385,7 @@ subroutine gridcheck_nests
     write(*,*) 'shift the mother domain into x-direction'
     write(*,*) 'by setting nxshift (file par_mod) to a'
     write(*,*) 'positive value. Execution is terminated.'
-    stop
+    stop 1
   endif
 
 
@@ -424,19 +424,19 @@ subroutine gridcheck_nests
 
     do i=1,nuvz
       if ((akzn(i).ne.akz(i)).or.(bkzn(i).ne.bkz(i))) then
-  write(*,*) 'FLEXPART error: The wind fields of nesting level',l
-  write(*,*) 'are not consistent with the mother domain:'
-  write(*,*) 'Differences in vertical levels detected.'
-        stop
+        write(*,*) 'FLEXPART error: The wind fields of nesting level',l
+        write(*,*) 'are not consistent with the mother domain:'
+        write(*,*) 'Differences in vertical levels detected.'
+        stop 1
       endif
     end do
 
     do i=1,nwz
       if ((akmn(i).ne.akm(i)).or.(bkmn(i).ne.bkm(i))) then
-  write(*,*) 'FLEXPART error: The wind fields of nesting level',l
-  write(*,*) 'are not consistent with the mother domain:'
-  write(*,*) 'Differences in vertical levels detected.'
-        stop
+        write(*,*) 'FLEXPART error: The wind fields of nesting level',l
+        write(*,*) 'are not consistent with the mother domain:'
+        write(*,*) 'Differences in vertical levels detected.'
+        stop 1
       endif
     end do
 
@@ -452,6 +452,6 @@ subroutine gridcheck_nests
   write(*,*) ' FOR NESTING LEVEL ',k
   write(*,*) ' ###########################################'// &
        '###### '
-  stop
+  stop 1
 
 end subroutine gridcheck_nests

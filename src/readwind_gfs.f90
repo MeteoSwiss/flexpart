@@ -282,8 +282,14 @@ subroutine readwind_gfs(indj,n,uuh,vvh,wwh)
 
   ! CHECK GRID SPECIFICATIONS
 
-    if(isec2(2).ne.nxfield) stop 'READWIND: NX NOT CONSISTENT'
-    if(isec2(3).ne.ny) stop 'READWIND: NY NOT CONSISTENT'
+    if(isec2(2).ne.nxfield) then
+      write (*,*) 'READWIND: NX NOT CONSISTENT'
+      stop 1
+    endif
+    if(isec2(3).ne.ny) then
+      write (*,*) 'READWIND: NY NOT CONSISTENT'
+      stop 1
+    endif
     if(xaux.eq.0.) xaux=-179.0     ! NCEP DATA
     xaux0=xlon0
     yaux0=ylat0
@@ -291,10 +297,14 @@ subroutine readwind_gfs(indj,n,uuh,vvh,wwh)
     if(yaux.lt.0.) yaux=yaux+360.
     if(xaux0.lt.0.) xaux0=xaux0+360.
     if(yaux0.lt.0.) yaux0=yaux0+360.
-    if(abs(xaux-xaux0).gt.eps) &
-         stop 'READWIND: LOWER LEFT LONGITUDE NOT CONSISTENT'
-    if(abs(yaux-yaux0).gt.eps) &
-         stop 'READWIND: LOWER LEFT LATITUDE NOT CONSISTENT'
+    if(abs(xaux-xaux0).gt.eps) then
+      write (*,*) 'READWIND: LOWER LEFT LONGITUDE NOT CONSISTENT'
+      stop 1
+    endif
+    if(abs(yaux-yaux0).gt.eps) then
+      write (*,*) 'READWIND: LOWER LEFT LATITUDE NOT CONSISTENT'
+      stop 1
+    endif
   endif
   !HSO end of edits
 
@@ -720,17 +730,25 @@ subroutine readwind_gfs(indj,n,uuh,vvh,wwh)
     end do
   endif
 
-  if(iumax.ne.nuvz) stop 'READWIND: NUVZ NOT CONSISTENT'
-  if(iumax.ne.nwz)    stop 'READWIND: NWZ NOT CONSISTENT'
+  if(iumax.ne.nuvz) then
+    write (*,*) 'READWIND: NUVZ NOT CONSISTENT'
+    stop 1
+  endif
+  if(iumax.ne.nwz) then
+    write (*,*) 'READWIND: NWZ NOT CONSISTENT'
+    stop 1
+  endif
 
   return
 888   write(*,*) ' #### FLEXPART MODEL ERROR! WINDFIELD         #### '
   write(*,*) ' #### ',wfname(indj),'                    #### '
   write(*,*) ' #### IS NOT GRIB FORMAT !!!                  #### '
-  stop 'Execution terminated'
+  write (*,*) 'Execution terminated'
+  stop 1
 999   write(*,*) ' #### FLEXPART MODEL ERROR! WINDFIELD         #### '
   write(*,*) ' #### ',wfname(indj),'                    #### '
   write(*,*) ' #### CANNOT BE OPENED !!!                    #### '
-  stop 'Execution terminated'
+  write (*,*) 'Execution terminated'
+  stop 1
 
 end subroutine readwind_gfs

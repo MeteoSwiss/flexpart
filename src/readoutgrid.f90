@@ -106,7 +106,7 @@ subroutine readoutgrid
     write(*,*) ' #### GRID IS OUTSIDE MODEL DOMAIN. CHANGE    ####'
     write(*,*) ' #### FILE OUTGRID IN DIRECTORY               ####'
     write(*,'(a)') path(1)(1:length(1))
-    stop
+    stop 1
   endif
 
   ! 2. Count Vertical levels of output grid
@@ -215,11 +215,11 @@ subroutine readoutgrid
 999 write(*,*) ' #### FLEXPART MODEL ERROR! FILE "OUTGRID"    #### '
   write(*,*) ' #### CANNOT BE OPENED IN THE DIRECTORY       #### '
   write(*,'(a)') path(1)(1:length(1))
-  stop
+  stop 1
 
 1000 write(*,*) ' #### FLEXPART MODEL ERROR! FILE "OUTGRID"    #### '
   write(*,*) ' #### CANNOT BE OPENED IN THE DIRECTORY       #### '
   write(*,'(a)') path(2)(1:length(2))
-  stop
+  stop 1
 
 end subroutine readoutgrid

@@ -105,7 +105,7 @@ subroutine readoutgrid_nest
     write(*,*) ' #### NEST IS OUTSIDE MODEL DOMAIN. CHANGE    ####'
     write(*,*) ' #### FILE OUTGRID IN DIRECTORY               ####'
     write(*,'(a)') path(1)(1:length(1))
-    stop
+    stop 1
   endif
 
   xoutshiftn=xlon0-outlon0n
@@ -115,11 +115,11 @@ subroutine readoutgrid_nest
 999 write(*,*) ' #### FLEXPART MODEL ERROR! FILE "OUTGRID"    #### '
   write(*,*) ' #### CANNOT BE OPENED IN THE DIRECTORY       #### '
   write(*,'(a)') path(1)(1:length(1))
-  stop
+  stop 1
 
 1000 write(*,*) ' #### FLEXPART MODEL ERROR! FILE "OUTGRID"    #### '
   write(*,*) ' #### CANNOT BE OPENED IN THE DIRECTORY       #### '
   write(*,'(a)') path(2)(1:length(2))
-  stop
+  stop 1
 
 end subroutine readoutgrid_nest

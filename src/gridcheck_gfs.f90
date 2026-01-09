@@ -92,11 +92,11 @@ subroutine gridcheck_gfs
   character(len=20) :: gribFunction = 'gridcheckwind_gfs'
   !
   if (numbnests.ge.1) then
-  write(*,*) ' ###########################################'
-  write(*,*) ' FLEXPART ERROR SUBROUTINE GRIDCHECK:'
-  write(*,*) ' NO NESTED WINDFIELDAS ALLOWED FOR GFS!      '
-  write(*,*) ' ###########################################'
-  stop
+    write(*,*) ' ###########################################'
+    write(*,*) ' FLEXPART ERROR SUBROUTINE GRIDCHECK:'
+    write(*,*) ' NO NESTED WINDFIELDAS ALLOWED FOR GFS!      '
+    write(*,*) ' ###########################################'
+    stop 1
   endif
 
   iumax=0
@@ -252,14 +252,18 @@ subroutine gridcheck_gfs
     if (xauxa.lt.0.001) then
       nx=nxfield+1                 ! field is cyclic
       xglobal=.true.
-      if (abs(nxshift).ge.nx) &
-           stop 'nxshift in file par_mod is too large'
+      if (abs(nxshift).ge.nx) then
+        write (*,*) 'nxshift in file par_mod is too large'
+        stop 1
+      endif
       xlon0=xlon0+real(nxshift)*dx
     else
       nx=nxfield
       xglobal=.false.
-      if (nxshift.ne.0) &
-           stop 'nxshift (par_mod) must be zero for non-global domain'
+      if (nxshift.ne.0) then
+        write (*,*) 'nxshift (par_mod) must be zero for non-global domain'
+        stop 1
+      endif
     endif
     nxmin1=nx-1
     nymin1=ny-1
@@ -294,8 +298,14 @@ subroutine gridcheck_gfs
     endif
   endif ! ifield.eq.1
 
-  if (nxshift.lt.0) stop 'nxshift (par_mod) must not be negative'
-  if (nxshift.ge.nxfield) stop 'nxshift (par_mod) too large'
+  if (nxshift.lt.0) then
+    write (*,*) 'nxshift (par_mod) must not be negative'
+    stop 1
+  endif
+  if (nxshift.ge.nxfield) then
+    write (*,*) 'nxshift (par_mod) too large'
+    stop 1
+  endif
 
   ! NCEP ISOBARIC LEVELS
   !*********************
@@ -370,7 +380,7 @@ subroutine gridcheck_gfs
     write(*,*) 'Reduce resolution of wind fields.'
     write(*,*) 'Or change parameter settings in file par_mod.'
     write(*,*) nx,nxmax
-    stop
+    stop 1
   endif
 
   if (ny.gt.nymax) then
@@ -378,7 +388,7 @@ subroutine gridcheck_gfs
     write(*,*) 'Reduce resolution of wind fields.'
     write(*,*) 'Or change parameter settings in file par_mod.'
     write(*,*) ny,nymax
-    stop
+    stop 1
   endif
 
   if (nuvz.gt.nuvzmax) then
@@ -387,7 +397,7 @@ subroutine gridcheck_gfs
     write(*,*) 'Reduce resolution of wind fields.'
     write(*,*) 'Or change parameter settings in file par_mod.'
     write(*,*) nuvz,nuvzmax
-    stop
+    stop 1
   endif
 
   if (nwz.gt.nwzmax) then
@@ -396,7 +406,7 @@ subroutine gridcheck_gfs
     write(*,*) 'Reduce resolution of wind fields.'
     write(*,*) 'Or change parameter settings in file par_mod.'
     write(*,*) nwz,nwzmax
-    stop
+    stop 1
   endif
 
   ! If desired, shift all grids by nxshift grid cells
@@ -471,7 +481,10 @@ subroutine gridcheck_gfs
   !*****************************************************************************
 
   nz=nuvz
-  if (nz.gt.nzmax) stop 'nzmax too small'
+  if (nz.gt.nzmax) then
+    write (*,*) 'nzmax too small'
+    stop 1
+  endif
   do i=1,nuvz
     aknew(i)=akz(i)
     bknew(i)=bkz(i)
@@ -480,7 +493,10 @@ subroutine gridcheck_gfs
   ! Switch on following lines to use doubled vertical resolution
   !*************************************************************
   !nz=nuvz+nwz-1
-  !if (nz.gt.nzmax) stop 'nzmax too small'
+  !if (nz.gt.nzmax) then
+  !  write (*,*) 'nzmax too small'
+  !  stop 1
+  !endif
   !do 100 i=1,nwz
   !  aknew(2*(i-1)+1)=akm(i)
   !00     bknew(2*(i-1)+1)=bkm(i)
@@ -522,7 +538,7 @@ subroutine gridcheck_gfs
   write(*,*)
   read(*,'(a)') opt
   if(opt.eq.'X') then
-    stop
+    stop 1
   else
     goto 5
   endif

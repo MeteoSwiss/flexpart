@@ -45,7 +45,7 @@ function juldate(yyyymmdd,hhmiss)
 
   if (yyyy.eq.0) then
      print*, 'there is no year zero.'
-     stop
+     stop 1
   end if
   if (yyyy.lt.0) yyyy=yyyy+1
   if (mm.gt.2) then

@@ -178,7 +178,7 @@ subroutine getfields(itime,nstop,memstat,metdata_format)
       else
         write(*,*) '#### getfields_mpi.f90> ERROR: ', &
              & 'unknown mind3, exiting.', mind3,' ####'
-        stop
+        stop 1
       end if
       mind3=memstat
       memtime(1)=memtime(2)

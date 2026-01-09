@@ -122,6 +122,6 @@ subroutine readdepo
 
 999   write(*,*) '### FLEXPART ERROR! FILE              ###'
   write(*,*) '### surfdepo.t DOES NOT EXIST.        ###'
-  stop
+  stop 1
 
 end subroutine readdepo

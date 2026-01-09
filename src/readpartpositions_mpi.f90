@@ -85,7 +85,7 @@ subroutine readpartpositions
       write(*,*) ' #### FLEXPART MODEL WARNING IN READPARTPOSITIONS#### '
       write(*,*) ' #### NUMBER OF RELEASE LOCATIONS DOES NOT     #### '
       write(*,*) ' #### AGREE WITH CURRENT SETTINGS!             #### '
-!  stop
+!  stop 1
       goto 999 
     end if
 
@@ -197,23 +197,23 @@ subroutine readpartpositions
   call caldate(bdate,id2,it2)
   write(*,*) 'julin: ',julin,id1,it1
   write(*,*) 'bdate: ',bdate,id2,it2
-  stop
+  stop 1
 
 996   write(*,*) ' #### FLEXPART MODEL ERROR IN READPARTPOSITIONS#### '
   write(*,*) ' #### SPECIES NAMES TO BE READ IN DO NOT       #### '
   write(*,*) ' #### AGREE WITH CURRENT SETTINGS!             #### '
-  stop
+  stop 1
 
 997   write(*,*) ' #### FLEXPART MODEL ERROR IN READPARTPOSITIONS#### '
   write(*,*) ' #### THE NUMBER OF SPECIES TO BE READ IN DOES #### '
   write(*,*) ' #### NOT AGREE WITH CURRENT SETTINGS!         #### '
-  stop
+  stop 1
 
 998   write(*,*) ' #### FLEXPART MODEL ERROR!   THE FILE         #### '
   write(*,*) ' #### '//path(2)(1:length(2))//'grid'//' #### '
   write(*,*) ' #### CANNOT BE OPENED. IF A FILE WITH THIS    #### '
   write(*,*) ' #### NAME ALREADY EXISTS, DELETE IT AND START #### '
   write(*,*) ' #### THE PROGRAM AGAIN.                       #### '
-  stop
+  stop 1
 
 end subroutine readpartpositions

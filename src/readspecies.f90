@@ -280,11 +280,13 @@ subroutine readspecies(id_spec,pos_spec)
       if (density(pos_spec) .gt. 0) then
         write(*,'(a)') '  Dry deposition is turned         :   ON'
         if (reldiff(pos_spec).gt.0) then
-           stop 'density>0 (SPECIES is a particle) implies reldiff <=0  '
+          write (*,*) 'density>0 (SPECIES is a particle) implies reldiff <=0  '
+          stop 1
         endif
       else
         if (reldiff(pos_spec).le.0) then
-           stop 'density<=0 (SPECIES is a gas) implies reldiff >0  '
+          write (*,*) 'density<=0 (SPECIES is a gas) implies reldiff >0  '
+          stop 1
         endif      
         write(*,'(a)') '  Dry deposition is (density<0)    :   OFF'
       end if
@@ -343,7 +345,7 @@ subroutine readspecies(id_spec,pos_spec)
     write(*,*) '#### if dsigma was < 1                          ####' 
     write(*,*) '#### use the reciprocal of the old dsigma       ####'  
     if (.not.debug_mode) then 
-       stop
+       stop 1
     else
        write(*,*) 'debug mode: continue'
     endif
@@ -354,7 +356,7 @@ subroutine readspecies(id_spec,pos_spec)
     write(*,*) '#### IS CORRUPT. SPECIES CANNOT BE BOTH      ####'
     write(*,*) '#### PARTICLE AND GAS.                       ####'
     write(*,*) '#### SPECIES NUMBER',aspecnumb
-    stop
+    stop 1
   endif
 20 continue
 
@@ -376,7 +378,7 @@ subroutine readspecies(id_spec,pos_spec)
   write(*,*) '#### CONSTANT IS SET                            ####'
   write(*,*) '#### PLEASE MODIFY SPECIES DESCR. FILE!        #### '
   write(*,*) '#####################################################'
-  stop
+  stop 1
 
 
 997 write(*,*) '#####################################################'
@@ -386,7 +388,7 @@ subroutine readspecies(id_spec,pos_spec)
   write(*,*) '#### PLEASE CHANGE ORDER IN RELEASES OR ADD     #### '
   write(*,*) '#### THE ASSOCIATED SPECIES IN RELEASES         #### '
   write(*,*) '#####################################################'
-  stop
+  stop 1
 
 
 998 write(*,*) '#####################################################'
@@ -395,11 +397,11 @@ subroutine readspecies(id_spec,pos_spec)
   write(*,*) '#### CANNOT BE FOUND: CREATE FILE'
   write(*,*) '#### ',path(1)(1:length(1)),'SPECIES/SPECIES_',aspecnumb
   write(*,*) '#####################################################'
-  stop
+  stop 1
 
 1000 write(*,*) ' #### FLEXPART MODEL ERROR! FILE "SPECIES_',aspecnumb,'.namelist'
   write(*,*) ' #### CANNOT BE OPENED IN THE DIRECTORY       #### '
   write(*,'(a)') path(2)(1:length(2))
-  stop
+  stop 1
 
 end subroutine readspecies

@@ -87,7 +87,7 @@ subroutine readavailable
        write(*,*) 'Number of wind fields needed is too great.'
        write(*,*) 'Reduce modelling period (file "COMMAND") or'
        write(*,*) 'reduce number of wind fields (file "AVAILABLE").'
-       stop
+       stop 1
       endif
 
       wfname1(numbwf)=fname(1:index(fname,' '))
@@ -124,7 +124,7 @@ subroutine readavailable
        write(*,*) 'Number of nested wind fields is too great.'
        write(*,*) 'Reduce modelling period (file "COMMAND") or'
        write(*,*) 'reduce number of wind fields (file "AVAILABLE").'
-          stop
+          stop 1
         endif
 
         wfname1n(k,numbwfn(k))=fname(1:index(fname,' '))
@@ -145,7 +145,7 @@ subroutine readavailable
   if (numbwf.eq.0) then
     write(*,*) ' #### FLEXPART MODEL ERROR! NO WIND FIELDS    #### '
     write(*,*) ' #### AVAILABLE FOR SELECTED TIME PERIOD.     #### '
-    stop
+    stop 1
   endif
 
   do i=2,numbwf
@@ -153,7 +153,7 @@ subroutine readavailable
       write(*,*) 'FLEXPART ERROR: FILE AVAILABLE IS CORRUPT.'
       write(*,*) 'THE WIND FIELDS ARE NOT IN TEMPORAL ORDER.'
       write(*,*) 'PLEASE CHECK FIELD ',wfname1(i)
-      stop
+      stop 1
     endif
   end do
 
@@ -165,7 +165,7 @@ subroutine readavailable
     if (numbwfn(k).eq.0) then
       write(*,*) '#### FLEXPART MODEL ERROR! NO WIND FIELDS  ####'
       write(*,*) '#### AVAILABLE FOR SELECTED TIME PERIOD.   ####'
-      stop
+      stop 1
     endif
 
     do i=2,numbwfn(k)
@@ -174,7 +174,7 @@ subroutine readavailable
       write(*,*) 'THE NESTED WIND FIELDS ARE NOT IN TEMPORAL ORDER.'
       write(*,*) 'PLEASE CHECK FIELD ',wfname1n(k,i)
       write(*,*) 'AT NESTING LEVEL ',k
-      stop
+      stop 1
       endif
     end do
 
@@ -237,7 +237,7 @@ subroutine readavailable
       write(*,*) 'NESTED WIND FIELDS ARE NOT CONSISTENT WITH'
       write(*,*) 'THE AVAILABLE FILE OF THE MOTHER DOMAIN.  '
       write(*,*) 'ERROR AT NEST LEVEL: ',k
-      stop
+      stop 1
     endif
     do i=1,numbwf
       if (wftimen(k,i).ne.wftime(i)) then
@@ -245,7 +245,7 @@ subroutine readavailable
         write(*,*) 'NESTED WIND FIELDS ARE NOT CONSISTENT WITH'
         write(*,*) 'THE AVAILABLE FILE OF THE MOTHER DOMAIN.  '
         write(*,*) 'ERROR AT NEST LEVEL: ',k
-        stop
+        stop 1
       endif
     end do
   end do
@@ -264,11 +264,11 @@ subroutine readavailable
   write(*,'(a)') '     '//path(numpath+2*(k-1)+2) &
        (1:length(numpath+2*(k-1)+2))
   write(*,*) ' #### CANNOT BE OPENED             #### '
-  stop
+  stop 1
 
 999   write(*,*) ' #### FLEXPART MODEL ERROR! AVAILABLE FILE #### '
   write(*,'(a)') '     '//path(4)(1:length(4))
   write(*,*) ' #### CANNOT BE OPENED           #### '
-  stop
+  stop 1
 
 end subroutine readavailable

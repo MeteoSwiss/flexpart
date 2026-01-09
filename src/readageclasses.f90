@@ -84,14 +84,14 @@ subroutine readageclasses
     write(*,*) ' #### CHANGE SETTINGS IN FILE AGECLASSES OR   #### '
     write(*,*) ' #### RECOMPILE WITH LARGER MAXAGECLASS IN    #### '
     write(*,*) ' #### FILE PAR_MOD.                        #### '
-    stop
+    stop 1
   endif
 
   if (lage(1).le.0) then
     write(*,*) ' #### FLEXPART MODEL ERROR! AGE OF FIRST      #### '
     write(*,*) ' #### CLASS MUST BE GREATER THAN ZERO. CHANGE #### '
     write(*,*) ' #### SETTINGS IN FILE AGECLASSES.            #### '
-    stop
+    stop 1
   endif
 
   do i=2,nageclass
@@ -99,7 +99,7 @@ subroutine readageclasses
       write(*,*) ' #### FLEXPART MODEL ERROR! AGE CLASSES     #### '
       write(*,*) ' #### MUST BE GIVEN IN TEMPORAL ORDER.      #### '
       write(*,*) ' #### CHANGE SETTINGS IN FILE AGECLASSES.   #### '
-      stop
+      stop 1
     endif
   end do
 
@@ -108,12 +108,12 @@ subroutine readageclasses
 999   write(*,*) ' #### FLEXPART MODEL ERROR! FILE "AGECLASSES" #### '
   write(*,*) ' #### CANNOT BE OPENED IN THE DIRECTORY       #### '
   write(*,'(a)') path(1)(1:length(1))
-  stop
+  stop 1
 
 1000  write(*,*) ' #### FLEXPART MODEL ERROR! FILE "AGECLASSES" #### '
   write(*,*) ' #### CANNOT BE OPENED IN THE DIRECTORY       #### '
   write(*,'(a)') path(2)(1:length(2))
-  stop
+  stop 1
 
 
 end subroutine readageclasses

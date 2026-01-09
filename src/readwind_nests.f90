@@ -213,7 +213,7 @@ subroutine readwind_nests(indj,n,uuhn,vvhn,wwhn)
   endif
   if(parId .ne. isec1(6) .and. parId .ne. 77) then !added by mc to make it consisitent with new readwind.f90
     write(*,*) 'parId',parId, 'isec1(6)',isec1(6)  !
-!    stop
+!    stop 1
   endif
 
   endif
@@ -236,12 +236,18 @@ subroutine readwind_nests(indj,n,uuhn,vvhn,wwhn)
        isec2(12))
   call grib_check(iret,gribFunction,gribErrorMsg)
   ! CHECK GRID SPECIFICATIONS
-  if(isec2(2).ne.nxn(l)) stop &
-  'READWIND: NX NOT CONSISTENT FOR A NESTING LEVEL'
-  if(isec2(3).ne.nyn(l)) stop &
-  'READWIND: NY NOT CONSISTENT FOR A NESTING LEVEL'
-  if(isec2(12)/2-1.ne.nlev_ec) stop 'READWIND: VERTICAL DISCRET&
-       &IZATION NOT CONSISTENT FOR A NESTING LEVEL'
+  if (isec2(2) .ne. nxn(l)) then
+    write (*,*) 'READWIND: NX NOT CONSISTENT FOR A NESTING LEVEL'
+    stop 1
+  endif
+  if (isec2(3) .ne. nyn(l)) then
+    write (*,*) 'READWIND: NY NOT CONSISTENT FOR A NESTING LEVEL'
+    stop 1
+  endif
+  if (isec2(12)/2-1 .ne. nlev_ec) then
+    write (*,*) 'READWIND: VERTICAL DISCRETIZATION NOT CONSISTENT FOR A NESTING LEVEL'
+    stop 1
+  endif
   endif ! ifield
 
   !HSO  get the second part of the grid dimensions only from GRiB1 messages
@@ -257,10 +263,14 @@ subroutine readwind_nests(indj,n,uuhn,vvhn,wwhn)
 
     xaux=xauxin
     yaux=yauxin
-    if (abs(xaux-xlon0n(l)).gt.eps) &
-    stop 'READWIND: LOWER LEFT LONGITUDE NOT CONSISTENT FOR A NESTING LEVEL'
-    if (abs(yaux-ylat0n(l)).gt.eps) &
-    stop 'READWIND: LOWER LEFT LATITUDE NOT CONSISTENT FOR A NESTING LEVEL'
+    if (abs(xaux-xlon0n(l)).gt.eps) then
+      write (*,*) 'READWIND: LOWER LEFT LONGITUDE NOT CONSISTENT FOR A NESTING LEVEL'
+      stop 1
+    endif
+    if (abs(yaux-ylat0n(l)).gt.eps) then
+      write (*,*) 'READWIND: LOWER LEFT LATITUDE NOT CONSISTENT FOR A NESTING LEVEL'
+      stop 1
+    endif
     gotGrid=1
   endif
 
@@ -363,7 +373,7 @@ subroutine readwind_nests(indj,n,uuhn,vvhn,wwhn)
   if (gotGrid.eq.0) then
     print*,'***ERROR: input file needs to contain GRiB1 formatted'// &
          'messages'
-    stop
+    stop 1
   endif
 
 !  if(levdiff2.eq.0) then
@@ -425,22 +435,28 @@ subroutine readwind_nests(indj,n,uuhn,vvhn,wwhn)
       end do
     end do
 
-    if(iumax.ne.nuvz-1) stop &
-         'READWIND: NUVZ NOT CONSISTENT FOR A NESTING LEVEL'
-    if(iwmax.ne.nwz) stop &
-         'READWIND: NWZ NOT CONSISTENT FOR A NESTING LEVEL'
+    if (iumax.ne.nuvz-1) then
+      write (*,*) 'READWIND: NUVZ NOT CONSISTENT FOR A NESTING LEVEL'
+      stop 1
+    endif
+    if (iwmax.ne.nwz) then
+      write (*,*) 'READWIND: NWZ NOT CONSISTENT FOR A NESTING LEVEL'
+      stop 1
+    endif
 
   end do
 
   return
 888   write(*,*) ' #### FLEXPART MODEL ERROR! WINDFIELD         #### '
-  write(*,*) ' #### ',wfnamen(l,indj),' FOR NESTING LEVEL  #### '
-  write(*,*) ' #### ',l,' IS NOT GRIB FORMAT !!!           #### '
-  stop 'Execution terminated'
+  write (*,*) ' #### ',wfnamen(l,indj),' FOR NESTING LEVEL  #### '
+  write (*,*) ' #### ',l,' IS NOT GRIB FORMAT !!!           #### '
+  write (*,*) 'Execution terminated'
+  stop 1
 
 
 999   write(*,*) ' #### FLEXPART MODEL ERROR! WINDFIELD         #### '
-  write(*,*) ' #### ',wfnamen(l,indj),'                    #### '
-  write(*,*) ' #### CANNOT BE OPENED FOR NESTING LEVEL ',l,'####'
+  write (*,*) ' #### ',wfnamen(l,indj),'                    #### '
+  write (*,*) ' #### CANNOT BE OPENED FOR NESTING LEVEL ',l,'####'
+  stop 1
 
 end subroutine readwind_nests

@@ -214,7 +214,7 @@ program flexpart
     if (lroot) print *,'NCEP metdata detected'
   else
     if (lroot) print *,'Unknown metdata format'
-    stop
+    stop 1
   endif
 
 
@@ -469,7 +469,7 @@ program flexpart
   if (info_flag.eq.1) then
     print*, 'info only mode (stop)'    
     call mpif_finalize
-    stop
+    stop 1
   endif
 
 

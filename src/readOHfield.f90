@@ -47,7 +47,7 @@ subroutine readOHfield
 
   if(ierr.ne.0) then
     write(*,*) 'Cannot read binary OH fields in ',trim(ohfields_path)//'OH_FIELDS/OH_variables.bin'
-    stop
+    stop 1
   endif
 
   read(unitOH) nxOH

@@ -172,7 +172,8 @@ subroutine timemanager(metdata_format)
          call ohreaction(itime,lsynctime,loutnext)
 
     if (ASSSPEC .and. itime .ne. 0 .and. numpart .gt. 0) then
-       stop 'associated species not yet implemented!'
+      write (*,*) 'associated species not yet implemented!'
+      stop 1
   !     call transferspec(itime,lsynctime,loutnext)
     endif
 
@@ -201,7 +202,10 @@ subroutine timemanager(metdata_format)
           CALL SYSTEM_CLOCK(count_clock)
           WRITE(*,*) 'timemanager> SYSTEM CLOCK',(count_clock - count_clock0)/real(count_rate)
         endif 
-    if (nstop1.gt.1) stop 'NO METEO FIELDS AVAILABLE'
+    if (nstop1.gt.1) then
+      write (*,*) 'NO METEO FIELDS AVAILABLE'
+      stop 1
+    endif
 
   ! Get hourly OH fields if not available 
   !****************************************************

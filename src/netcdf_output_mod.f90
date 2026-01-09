@@ -224,7 +224,8 @@ subroutine nf90_err(status)
   integer, intent (in) :: status
    if(status /= nf90_noerr) then
       print *, trim(nf90_strerror(status))
-      stop 'Stopped'
+      write (*,*) 'Stopped'
+      stop 1
     end if
 end subroutine nf90_err
 
@@ -278,7 +279,7 @@ subroutine writeheader_netcdf(lnest)
        & (or failed to write there).' 
   write(*,*) 'EXITING' 
   write(*,FMT='(80("#"))')
-  stop
+  stop 1
 101 continue
 
   !************************

@@ -93,7 +93,7 @@ subroutine coordtrafo
     write(*,*) ' FLEXPART MODEL SUBROUTINE COORDTRAFO: ERROR ! '
     write(*,*) ' NO PARTICLE RELEASES ARE DEFINED!'
     write(*,*) ' CHECK FILE RELEASES...'
-    stop
+    stop 1
   endif
 
 end subroutine coordtrafo

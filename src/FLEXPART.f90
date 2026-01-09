@@ -200,7 +200,7 @@ program flexpart
     print *,'NCEP metdata detected'
   else
     print *,'Unknown metdata format'
-    stop
+    stop 1
   endif
 
 
@@ -444,7 +444,7 @@ program flexpart
      endif
      if (info_flag.eq.1) then
        print*, 'info only mode (stop)'    
-       stop
+       stop 1
      endif
      print*,'call timemanager'
   endif

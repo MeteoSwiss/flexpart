@@ -386,6 +386,6 @@ subroutine releaseparticles(itime)
   write(*,*) '#### EITHER NUMBER OF PARTICLES PER RELEASE POINT####'
   write(*,*) '#### OR REDUCE NUMBER OF RELEASE POINTS.         ####'
   write(*,*) '#####################################################'
-  stop
+  stop 1
 
 end subroutine releaseparticles

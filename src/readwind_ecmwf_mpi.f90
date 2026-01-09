@@ -248,7 +248,7 @@ subroutine readwind_ecmwf(indj,n,uuh,vvh,wwh)
     endif
     if(parId .ne. isec1(6) .and. parId .ne. 77) then
       write(*,*) 'parId',parId, 'isec1(6)',isec1(6)
-!    stop
+!    stop 1
     endif
 
   endif
@@ -268,10 +268,18 @@ subroutine readwind_ecmwf(indj,n,uuh,vvh,wwh)
     call grib_get_int(igrib,'numberOfVerticalCoordinateValues',isec2(12))
     call grib_check(iret,gribFunction,gribErrorMsg)
 ! CHECK GRID SPECIFICATIONS
-    if(isec2(2).ne.nxfield) stop 'READWIND: NX NOT CONSISTENT'
-    if(isec2(3).ne.ny) stop 'READWIND: NY NOT CONSISTENT'
-    if(isec2(12)/2-1.ne.nlev_ec) &
-         stop 'READWIND: VERTICAL DISCRETIZATION NOT CONSISTENT'
+    if (isec2(2).ne.nxfield) then
+      write (*,*) 'READWIND: NX NOT CONSISTENT'
+      stop 1
+    endif
+    if (isec2(3).ne.ny) then
+      write (*,*) 'READWIND: NY NOT CONSISTENT'
+      stop 1
+    endif
+    if (isec2(12)/2-1.ne.nlev_ec) then
+      write (*,*) 'READWIND: VERTICAL DISCRETIZATION NOT CONSISTENT'
+      stop 1
+    endif
   endif ! ifield
 
 !HSO  get the second part of the grid dimensions only from GRiB1 messages
@@ -288,10 +296,14 @@ subroutine readwind_ecmwf(indj,n,uuh,vvh,wwh)
     xaux=xauxin+real(nxshift)*dx
     yaux=yauxin
     if (xaux.gt.180.) xaux=xaux-360.0
-    if(abs(xaux-xlon0).gt.eps) &
-         stop 'READWIND: LOWER LEFT LONGITUDE NOT CONSISTENT'
-    if(abs(yaux-ylat0).gt.eps) &
-         stop 'READWIND: LOWER LEFT LATITUDE NOT CONSISTENT'
+    if(abs(xaux-xlon0).gt.eps) then
+      write (*,*) 'READWIND: LOWER LEFT LONGITUDE NOT CONSISTENT'
+      stop 1
+    endif
+    if(abs(yaux-ylat0).gt.eps) then
+      write (*,*) 'READWIND: LOWER LEFT LATITUDE NOT CONSISTENT'
+      stop 1
+    endif
     gotGrid=1
   endif ! gotGrid
 
@@ -393,7 +405,7 @@ subroutine readwind_ecmwf(indj,n,uuh,vvh,wwh)
   if (gotGrid.eq.0) then
     print*,'***ERROR: input file needs to contain GRiB1 formatted'// &
          'messages'
-    stop
+    stop 1
   endif
 
 !  if(levdiff2.eq.0) then
@@ -506,15 +518,21 @@ subroutine readwind_ecmwf(indj,n,uuh,vvh,wwh)
     end do
   end do
 
-  if(iumax.ne.nuvz-1) stop 'READWIND: NUVZ NOT CONSISTENT'
-  if(iwmax.ne.nwz)    stop 'READWIND: NWZ NOT CONSISTENT'
+  if (iumax.ne.nuvz-1) then
+    write (*,*) 'READWIND: NUVZ NOT CONSISTENT'
+    stop 1
+  endif
+  if (iwmax.ne.nwz) then
+    write (*,*) 'READWIND: NWZ NOT CONSISTENT'
+    stop 1
+  endif
 
   return
 
 888 write(*,*) ' #### FLEXPART MODEL ERROR! WINDFIELD         #### '
   write(*,*) ' #### ',wfname(indj),'                    #### '
   write(*,*) ' #### IS NOT GRIB FORMAT !!!                  #### '
-  stop 'Execution terminated'
+  stop 1
 
 end subroutine readwind_ecmwf
 

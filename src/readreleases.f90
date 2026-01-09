@@ -297,7 +297,7 @@ subroutine readreleases
   !write(*,*) '#### FLEXPART MODEL SUBROUTINE READRELEASES:     ####'
   !write(*,*) '#### FOR BACKWARD RUNS, ONLY 1 SPECIES IS ALLOWED####'
   !write(*,*) '#####################################################'
-  !  stop
+  !  stop 1
   !endif
 
   ! Molecular weight
@@ -308,7 +308,7 @@ subroutine readreleases
       write(*,*) 'must be specified for all simulated species.'
       write(*,*) 'Check table SPECIES or choose concentration'
       write(*,*) 'output instead if molar weight is not known.'
-      stop
+      stop 1
     endif
 
   ! Radioactive decay
@@ -500,7 +500,7 @@ subroutine readreleases
     write(*,*) 'RELEASES file is corrupt.'
     write(*,*) 'At least for one release point, there are zero'
     write(*,*) 'particles released. Make changes to RELEASES.'
-    stop
+    stop 1
   endif
 
   ! If FLEXPART is run for backward deposition force zpoint
@@ -539,7 +539,7 @@ subroutine readreleases
     write(*,*) 'FLEXPART MODEL ERROR'
     write(*,*) 'Release stops before it begins.'
     write(*,*) 'Make changes to file RELEASES.'
-    stop
+    stop 1
   endif
   if (mdomainfill.eq.0) then   ! no domain filling
     if (ldirect.eq.1) then
@@ -548,7 +548,7 @@ subroutine readreleases
         write(*,*) 'Release starts before simulation begins or ends'
         write(*,*) 'after simulation stops.'
         write(*,*) 'Make files COMMAND and RELEASES consistent.'
-        stop
+        stop 1
       endif
       if (npart(numpoint).gt.num_min_discrete) then
         ireleasestart(numpoint)=int((jul1-bdate)*86400.)
@@ -566,7 +566,7 @@ subroutine readreleases
         write(*,*) 'Release starts before simulation begins or ends'
         write(*,*) 'after simulation stops.'
         write(*,*) 'Make files COMMAND and RELEASES consistent.'
-        stop
+        stop 1
       endif
       if (npart(numpoint).gt.num_min_discrete) then
         ireleasestart(numpoint)=int((jul1-bdate)*86400.)
@@ -674,7 +674,7 @@ subroutine readreleases
   write(*,*) '#### ERROR - MAXIMUM NUMBER OF EMITTED SPECIES IS####'
   write(*,*) '#### TOO LARGE. PLEASE REDUCE NUMBER OF SPECIES. ####'
   write(*,*) '#####################################################'
-  stop
+  stop 1
 
 998 write(*,*) '#####################################################'
   write(*,*) '#### FLEXPART MODEL SUBROUTINE READRELEASES:     ####'
@@ -684,7 +684,7 @@ subroutine readreleases
   write(*,*) '#### MISTAKES OR GET A NEW "RELEASES"-           ####'
   write(*,*) '#### FILE ...                                    ####'
   write(*,*) '#####################################################'
-  stop
+  stop 1
 
 
 999 write(*,*) '#####################################################'
@@ -694,11 +694,11 @@ subroutine readreleases
   write(*,*) 'POINTS IS NOT AVAILABLE OR YOU ARE NOT'
   write(*,*) 'PERMITTED FOR ANY ACCESS'
   write(*,*) '#####################################################'
-  stop
+  stop 1
 
 1000 write(*,*) ' #### FLEXPART MODEL ERROR! FILE "RELEASES"    #### '
   write(*,*) ' #### CANNOT BE OPENED IN THE DIRECTORY       #### '
   write(*,'(a)') path(2)(1:length(2))
-  stop
+  stop 1
 
 end subroutine readreleases
