@@ -62,7 +62,7 @@ To clean up all object, module, and executable files
 Test FLEXPART
 -------------
 
-See the `README.md` file in the [flexpart-test](../flexpart-test) repository 
+See the `README.md` file in the [flexpart-test](https://github.com/MeteoSwiss/flexpart-test) repository 
 for testing instructions.
 
 
