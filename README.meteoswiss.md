@@ -62,7 +62,7 @@ To clean up all object, module, and executable files
 Test FLEXPART
 -------------
 
-See the [README.md](test_meteoswiss/README.md) file in the `test_meteoswiss` directory 
+See the `README.md` file in the [flexpart-test](../flexpart-test) repository 
 for testing instructions.
 
 
@@ -73,7 +73,9 @@ To run flexpart, it may be necessary to unlimit the stacksize:
 
     ulimit -s unlimited
 
-To run without spack, load modules as provided in `CSCS.env`.
+If the executable has been produced without `spack`,
+you need to load the same modules as during compilation,
+as provided in `CSCS.env`.
 
     . CSCS.env
 
