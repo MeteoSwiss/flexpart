@@ -44,4 +44,4 @@ spack-*
 *.log
 
 # Test artefacts
-test_meteoswiss/job
+flexpart-test
