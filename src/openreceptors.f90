@@ -65,11 +65,11 @@ subroutine openreceptors
 997   write(*,*) ' #### FLEXPART MODEL ERROR! THE FILE           #### '
   write(*,*) ' ####              receptor_conc               #### '
   write(*,*) ' #### CANNOT BE OPENED.                        #### '
-  stop
+  stop 1
 
 998   write(*,*) ' #### FLEXPART MODEL ERROR! THE FILE           #### '
   write(*,*) ' ####              receptor_pptv               #### '
   write(*,*) ' #### CANNOT BE OPENED.                        #### '
-  stop
+  stop 1
 
 end subroutine openreceptors

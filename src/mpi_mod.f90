@@ -210,7 +210,7 @@ contains
       if (lroot.and.verbosity>0) write(*,*) 'Using single precision for deposition fields'
     else
       write(*,*) 'ERROR: something went wrong setting MPI real precision'
-      stop
+      stop 1
     end if
 
 ! Check for sensible combination of parameters
@@ -224,7 +224,7 @@ contains
         write(*,FMT='(80("#"))')
       end if
       call MPI_FINALIZE(mp_ierr)
-      stop
+      stop 1
     else if (lmp_sync.and.numwfmem.ne.2.and.lroot) then
       write(*,FMT='(80("#"))')
       write(*,*) '#### mpi_mod::mpif_init> WARNING: ', &
@@ -268,7 +268,7 @@ contains
     if (read_grp_min.lt.2) then
       write(*,*) '#### mpi_mod::mpif_init> ERROR ####', &
            & 'read_grp_min should be at least 2. Exiting'
-      stop
+      stop 1
     end if
 
     if (mp_np.ge.read_grp_min) then
@@ -300,7 +300,7 @@ contains
         if (mp_partgroup_np.ne.mp_np-1) then
           write(*,*)  '#### mpi_mod:: mpif_init> ERROR ####&
                & mp_partgroup_np.ne.mp_np-1'
-          stop
+          stop 1
         endif
 
       else
@@ -360,7 +360,7 @@ contains
     goto 101
 
 100 write(*,*) '#### mpi_mod::mpif_init> ERROR ####', mp_ierr
-    stop
+    stop 1
 
 101 end subroutine mpif_init
 
@@ -395,7 +395,7 @@ contains
     goto 101
 
 100 write(*,*) '#### mpi_mod::mpif_mpi_barrier> ERROR ####', mp_ierr
-    stop
+    stop 1
 
 101 end subroutine mpif_mpi_barrier
 
@@ -496,7 +496,7 @@ contains
       write(*,*) '#### OR INCREASE MAXPART.                        ####'
       write(*,*) '#####################################################'
 !      call MPI_FINALIZE(mp_ierr)
-      stop
+      stop 1
     end if
 
 
@@ -545,7 +545,7 @@ contains
     goto 601
 
 600 write(*,*) "mpi_mod> mp_ierr \= 0", mp_ierr
-    stop
+    stop 1
 
 ! After the transfer of particles it it possible that the value of
 ! "numpart" is larger than the actual used, so we reduce it if there are
@@ -685,7 +685,7 @@ contains
  if (src_proc.eq.dest_proc) then
    write(*,*) '<mpi_mod::mpif_redist_part>: Error: &
         &src_proc.eq.dest_proc' 
-   stop
+   stop 1
  end if
 
 ! Measure time for MPI communications
@@ -845,7 +845,7 @@ contains
     else
 ! This routine should only be called by the two participating processes
       write(*,*) "ERROR: wrong process has entered mpi_mod::mpif_redist_part"
-      stop
+      stop 1
       return
     end if
 
@@ -1003,7 +1003,7 @@ contains
     goto 601
 
 600 write(*,*) "mpi_mod> mp_ierr \= 0", mp_ierr
-    stop
+    stop 1
 601 end subroutine mpif_tm_send_vars
 
 
@@ -1251,7 +1251,7 @@ contains
     goto 601
 
 600 write(*,*) "mpi_mod> mp_ierr \= 0", mp_ierr
-    stop
+    stop 1
 601 end subroutine mpif_tm_collect_vars
 
 
@@ -1318,7 +1318,7 @@ contains
     else
       write(*,*) '#### mpi_mod::mpif_gf_send_vars> ERROR: ', &
            & 'wrong value of memstat, exiting ####', memstat
-      stop
+      stop 1
     end if
 
 
@@ -1422,7 +1422,7 @@ contains
     goto 601
 
 600 write(*,*) "mpi_mod> mp_ierr \= 0", mp_ierr
-    stop
+    stop 1
 
 601 end subroutine mpif_gf_send_vars
 
@@ -1490,7 +1490,7 @@ contains
     else
       write(*,*) '#### mpi_mod::mpif_gf_send_vars_nest> ERROR: ', &
            & 'wrong value of memstat, exiting ####', memstat
-      stop
+      stop 1
     end if
 
 
@@ -1590,7 +1590,7 @@ contains
     goto 601
 
 600 write(*,*) "mpi_mod> mp_ierr \= 0",mp_ierr
-    stop
+    stop 1
 
 601 end subroutine mpif_gf_send_vars_nest
 
@@ -1639,7 +1639,7 @@ contains
 ! last read was synchronous, to indices 1 and 2, 3 is free
       write(*,*) "#### mpi_mod::mpif_gf_send_vars_async> ERROR: &
            & memstat>=32 should never happen here."
-      stop
+      stop 1
     else if (memstat.eq.17) then
 ! old fields on 1,2, send 3
       mind=3
@@ -1653,7 +1653,7 @@ contains
       write(*,*) "#### mpi_mod::mpif_gf_send_vars_async> ERROR: &
            & invalid memstat"
       mind=-1
-      stop
+      stop 1
     end if
 
     if (mp_dev_mode) then
@@ -1771,7 +1771,7 @@ contains
     goto 601
 
 600 write(*,*) "#### mpi_mod::mpif_gf_send_vars_async> mp_ierr \= 0", mp_ierr
-    stop
+    stop 1
 
 601 end subroutine mpif_gf_send_vars_async
 
@@ -1825,7 +1825,7 @@ contains
     else
 ! illegal state
       write(*,*) 'mpi_mod> FLEXPART ERROR: Illegal memstat value. Exiting.'
-      stop
+      stop 1
     end if
 
     if (mp_dev_mode) then
@@ -1966,7 +1966,7 @@ contains
     goto 601
 
 600 write(*,*) "#### mpi_mod::mpif_gf_recv_vars_async> MPI ERROR ", mp_ierr
-    stop
+    stop 1
 
 601 end subroutine mpif_gf_recv_vars_async
 
@@ -2016,7 +2016,7 @@ contains
 ! last read was synchronous, to indices 1 and 2, 3 is free
       write(*,*) "#### mpi_mod::mpif_gf_send_vars_nest_async> ERROR: &
            & memstat>=32 should never happen here."
-      stop
+      stop 1
     else if (memstat.eq.17) then
 ! old fields on 1,2, send 3
       mind=3
@@ -2030,7 +2030,7 @@ contains
       write(*,*) "#### mpi_mod::mpif_gf_send_vars_nest_async> ERROR: &
            & invalid memstat"
       mind=-1
-      stop
+      stop 1
     end if
 
     if (mp_dev_mode) then
@@ -2144,7 +2144,7 @@ contains
     goto 601
 
 600 write(*,*) "#### mpi_mod::mpif_gf_send_vars_nest_async> mp_ierr \= 0", mp_ierr
-    stop
+    stop 1
 
 601 end subroutine mpif_gf_send_vars_nest_async
 
@@ -2197,7 +2197,7 @@ contains
     else
 ! illegal state
       write(*,*) 'mpi_mod> FLEXPART ERROR: Illegal memstat value. Exiting.'
-      stop
+      stop 1
     end if
 
     if (mp_dev_mode) then
@@ -2331,7 +2331,7 @@ contains
     goto 601
 
 600 write(*,*) "#### mpi_mod::mpif_gf_recv_vars_nest_async> MPI ERROR ", mp_ierr
-    stop
+    stop 1
 
 601 end subroutine mpif_gf_recv_vars_nest_async
 
@@ -2387,7 +2387,7 @@ contains
     goto 601
 
 600 write(*,*) "#### mpi_mod::mpif_gf_request> MPI ERROR ", mp_ierr
-    stop
+    stop 1
 
 601 end subroutine mpif_gf_request
 
@@ -2498,7 +2498,7 @@ contains
     goto 601
 
 600 write(*,*) "mpi_mod> mp_ierr \= 0", mp_ierr
-    stop
+    stop 1
 
 601 end subroutine mpif_tm_reduce_grid
 
@@ -2574,7 +2574,7 @@ contains
     goto 601
 
 600 write(*,*) "mpi_mod> mp_ierr \= 0", mp_ierr
-    stop
+    stop 1
 
 601 end subroutine mpif_tm_reduce_grid_nest
 
@@ -2839,7 +2839,7 @@ contains
     call MPI_FINALIZE(mp_ierr)
     if (mp_ierr /= 0) then
       write(*,*) '#### mpif_finalize::MPI_FINALIZE> MPI ERROR ', mp_ierr, ' ####'
-      stop
+      stop 1
     end if
 
 

@@ -136,18 +136,18 @@ subroutine readreceptors
   write(*,*) ' #### POINTS ARE GIVEN.                       #### '
   write(*,*) ' #### MAXIMUM NUMBER IS ',maxreceptor,'       #### '
   write(*,*) ' #### PLEASE MAKE CHANGES IN FILE RECEPTORS   #### '
-  stop
+  stop 1
 
 999 continue
   write(*,*) ' #### FLEXPART MODEL ERROR! FILE "RECEPTORS"  #### '
   write(*,*) ' #### CANNOT BE OPENED IN THE DIRECTORY       #### '
   write(*,'(a)') path(1)(1:length(1))
-  stop
+  stop 1
 
 1000 continue
   write(*,*) ' #### FLEXPART MODEL ERROR! FILE "RECEPTORS"  #### '
   write(*,*) ' #### CANNOT BE OPENED IN THE DIRECTORY       #### '
   write(*,'(a)') path(2)(1:length(2))
-  stop
+  stop 1
 
 end subroutine readreceptors

@@ -62,6 +62,6 @@ subroutine openouttraj
   write(*,*) ' #### CANNOT BE OPENED. IF A FILE WITH THIS    #### '
   write(*,*) ' #### NAME ALREADY EXISTS, DELETE IT AND START #### '
   write(*,*) ' #### THE PROGRAM AGAIN.                       #### '
-  stop
+  stop 1
 
 end subroutine openouttraj

@@ -97,7 +97,7 @@ subroutine assignland
            if (xi.lt.0) then
               write (*,*) 'problem with landuseinv sampling: ', &
                    xlon,xlon0lu,ix,iix,xlon0,dx,nxmax
-              stop
+              stop 1
            endif
            do k=1,numclass
               xlanduse(ix,jy,k)= &
@@ -142,7 +142,7 @@ subroutine assignland
   !56    continue
   ! close(4)
   ! write (*,*) 'landuse written'
-  !stop
+  !stop 1
   !  open(4,file='landseatest'//ck,form='formatted')
   ! do 57 ix=0,nxmin1
   !57       write (4,*) (lsm(ix,jy),jy=0,nymin1)

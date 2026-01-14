@@ -132,10 +132,10 @@ subroutine readlanduse
 
 998   write(*,*) ' #### FLEXPART ERROR! FILE CONTAINING          ####'
   write(*,*) ' #### LANDUSE INVENTORY DOES NOT EXIST         ####'
-  stop
+  stop 1
 
 999   write(*,*) ' #### FLEXPART ERROR! FILE CONTAINING          ####'
   write(*,*) ' #### RELATION LANDUSE,z0 DOES NOT EXIST       ####'
-  stop
+  stop 1
 
 end subroutine readlanduse

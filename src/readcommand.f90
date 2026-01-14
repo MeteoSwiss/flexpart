@@ -350,7 +350,7 @@ subroutine readcommand
   if ((linit_cond.lt.0).or.(linit_cond.gt.2)) then
     write(*,*) ' #### FLEXPART MODEL ERROR! INVALID OPTION    #### '
     write(*,*) ' #### FOR LINIT_COND IN FILE "COMMAND".       #### '
-    stop
+    stop 1
   endif
 
   ! Check input dates
@@ -361,14 +361,14 @@ subroutine readcommand
     write(*,*) ' #### IS LARGER THAN ENDING DATE. CHANGE      #### '
     write(*,*) ' #### EITHER POINT 2 OR POINT 3 IN FILE       #### '
     write(*,*) ' #### "COMMAND".                              #### '
-    stop
+    stop 1
   else if (iedate.eq.ibdate) then
     if (ietime.lt.ibtime) then
     write(*,*) ' #### FLEXPART MODEL ERROR! BEGINNING TIME    #### '
     write(*,*) ' #### IS LARGER THAN ENDING TIME. CHANGE      #### '
     write(*,*) ' #### EITHER POINT 2 OR POINT 3 IN FILE       #### '
     write(*,*) ' #### "COMMAND".                              #### '
-    stop
+    stop 1
     endif
   endif
 
@@ -392,7 +392,7 @@ subroutine readcommand
 #ifndef USE_NCF
      write(*,*) 'ERROR: netcdf output not activated during compile time but used in COMMAND file!'
      write(*,*) 'Please recompile with netcdf library (`make [...] ncf=yes`) or use standard output format.'
-     stop
+     stop 1
 #endif
   endif
 
@@ -404,7 +404,7 @@ subroutine readcommand
     write(*,*) ' #### IOUT MUST BE 1, 2, 3, 4 OR 5 FOR        #### '
     write(*,*) ' #### STANDARD FLEXPART OUTPUT OR  9 - 13     #### '
     write(*,*) ' #### FOR NETCDF OUTPUT                       #### '
-    stop
+    stop 1
   endif
 
   !AF check consistency between units and volume mixing ratio
@@ -413,7 +413,7 @@ subroutine readcommand
     write(*,*) ' #### FLEXPART MODEL ERROR! FILE COMMAND:     #### '
     write(*,*) ' #### VOLUME MIXING RATIO ONLY SUPPORTED      #### '
     write(*,*) ' #### FOR MASS UNITS (at the moment)          #### '
-    stop
+    stop 1
   endif
 
 
@@ -424,7 +424,7 @@ subroutine readcommand
       write(*,*) '#### FLEXPART MODEL ERROR! FILE COMMAND:     ####'
       write(*,*) '#### OUTPUTFOREACHRELEASE AND QUASILAGRANGIAN####'
       write(*,*) '#### MODE IS NOT POSSIBLE   !                ####'
-      stop
+      stop 1
   endif
 
 
@@ -435,7 +435,7 @@ subroutine readcommand
       write(*,*) '#### FLEXPART MODEL ERROR! FILE COMMAND:     ####'
       write(*,*) '#### FOR BACKWARD RUNS, QUASILAGRANGIAN MODE ####'
       write(*,*) '#### IS NOT POSSIBLE   !                     ####'
-      stop
+      stop 1
   endif
 
 
@@ -447,7 +447,7 @@ subroutine readcommand
       write(*,*) '#### FLEXPART MODEL ERROR! FILE COMMAND:     ####'
       write(*,*) '#### FOR BACKWARD RUNS, IOUTPUTFOREACHRLEASE ####'
       write(*,*) '#### MUST BE SET TO ONE!                     ####'
-      stop
+      stop 1
   endif
 
 
@@ -459,7 +459,7 @@ subroutine readcommand
       write(*,*) '#### FLEXPART MODEL ERROR! FILE COMMAND:     ####'
       write(*,*) '#### FOR DOMAIN FILLING RUNS OUTPUT FOR      ####'
       write(*,*) '#### EACH RELEASE IS FORBIDDEN !             ####'
-      stop
+      stop 1
   endif
 
   ! Inversion output format only for backward runs
@@ -469,7 +469,7 @@ subroutine readcommand
       write(*,*) '#### FLEXPART MODEL ERROR! FILE COMMAND:     ####'
       write(*,*) '#### INVERSION OUTPUT FORMAT ONLY FOR        ####'
       write(*,*) '#### BACKWARD RUNS                           ####'
-      stop
+      stop 1
   endif
 
 
@@ -482,7 +482,7 @@ subroutine readcommand
     if ((iout.eq.2).or.(iout.eq.3)) then
       write(*,*) '#### FLEXPART MODEL ERROR! FILE COMMAND:     ####'
       write(*,*) '#### FOR BACKWARD RUNS, IOUT MUST BE 1,4,OR 5####'
-      stop
+      stop 1
     endif
   endif
 
@@ -496,7 +496,7 @@ subroutine readcommand
       write(*,*) '#### FLEXPART MODEL ERROR! FILE COMMAND:     ####'
       write(*,*) '#### FOR DOMAIN-FILLING TRAJECTORY OPTION,   ####'
       write(*,*) '#### IOUT MUST NOT BE SET TO 4 OR 5.         ####'
-      stop
+      stop 1
     endif
   endif
 
@@ -508,7 +508,7 @@ subroutine readcommand
   if ((ipout.ne.0).and.(ipout.ne.1).and.(ipout.ne.2).and.(ipout.ne.3)) then
     write(*,*) ' #### FLEXPART MODEL ERROR! FILE COMMAND:     #### '
     write(*,*) ' #### IPOUT MUST BE 0, 1, 2 OR 3!             #### '
-    stop
+    stop 1
   endif
 
   if(lsubgrid.ne.1.and.verbosity.eq.0) then
@@ -525,7 +525,7 @@ subroutine readcommand
   if ((lconvection.ne.0).and.(lconvection.ne.1)) then
     write(*,*) ' #### FLEXPART MODEL ERROR! FILE COMMAND:     #### '
     write(*,*) ' #### LCONVECTION MUST BE SET TO EITHER 1 OR 0#### '
-    stop
+    stop 1
   endif
 
 
@@ -536,7 +536,7 @@ subroutine readcommand
     write(*,*) ' #### FLEXPART MODEL ERROR! SYNCHRONISATION   #### '
     write(*,*) ' #### TIME IS TOO LONG. MAKE IT SHORTER.      #### '
     write(*,*) ' #### MINIMUM HAS TO BE: ', idiffnorm/2
-    stop
+    stop 1
   endif
 
 
@@ -548,7 +548,7 @@ subroutine readcommand
     write(*,*) ' #### CONCENTRATION FIELD OUTPUT MUST NOT BE  #### '
     write(*,*) ' #### ZERO.                                   #### '
     write(*,*) ' #### CHANGE INPUT IN FILE COMMAND.           #### '
-    stop
+    stop 1
   endif
 
   if (loutaver.gt.loutstep) then
@@ -556,7 +556,7 @@ subroutine readcommand
     write(*,*) ' #### CONCENTRATION FIELD OUTPUT MUST NOT BE  #### '
     write(*,*) ' #### GREATER THAN INTERVAL OF OUTPUT.        #### '
     write(*,*) ' #### CHANGE INPUT IN FILE COMMAND.           #### '
-    stop
+    stop 1
   endif
 
   if (loutsample.gt.loutaver) then
@@ -564,56 +564,56 @@ subroutine readcommand
     write(*,*) ' #### CONCENTRATION FIELD OUTPUT MUST NOT BE  #### '
     write(*,*) ' #### GREATER THAN TIME AVERAGE OF OUTPUT.    #### '
     write(*,*) ' #### CHANGE INPUT IN FILE COMMAND.           #### '
-    stop
+    stop 1
   endif
 
   if (mod(loutaver,lsynctime).ne.0) then
     write(*,*) ' #### FLEXPART MODEL ERROR! AVERAGING TIME OF #### '
     write(*,*) ' #### CONCENTRATION FIELD MUST BE A MULTIPLE  #### '
     write(*,*) ' #### OF THE SYNCHRONISATION INTERVAL         #### '
-    stop
+    stop 1
   endif
 
   if ((loutaver/lsynctime).lt.2) then
     write(*,*) ' #### FLEXPART MODEL ERROR! AVERAGING TIME OF #### '
     write(*,*) ' #### CONCENTRATION FIELD MUST BE AT LEAST    #### '
     write(*,*) ' #### TWICE THE SYNCHRONISATION INTERVAL      #### '
-    stop
+    stop 1
   endif
 
   if (mod(loutstep,lsynctime).ne.0) then
     write(*,*) ' #### FLEXPART MODEL ERROR! INTERVAL BETWEEN  #### '
     write(*,*) ' #### CONCENTRATION FIELDS MUST BE A MULTIPLE #### '
     write(*,*) ' #### OF THE SYNCHRONISATION INTERVAL         #### '
-    stop
+    stop 1
   endif
 
   if ((loutstep/lsynctime).lt.2) then
     write(*,*) ' #### FLEXPART MODEL ERROR! INTERVAL BETWEEN  #### '
     write(*,*) ' #### CONCENTRATION FIELDS MUST BE AT LEAST   #### '
     write(*,*) ' #### TWICE THE SYNCHRONISATION INTERVAL      #### '
-    stop
+    stop 1
   endif
 
   if (mod(loutsample,lsynctime).ne.0) then
     write(*,*) ' #### FLEXPART MODEL ERROR! SAMPLING TIME OF  #### '
     write(*,*) ' #### CONCENTRATION FIELD MUST BE A MULTIPLE  #### '
     write(*,*) ' #### OF THE SYNCHRONISATION INTERVAL         #### '
-    stop
+    stop 1
   endif
 
   if (itsplit.lt.loutaver) then
     write(*,*) ' #### FLEXPART MODEL ERROR! SPLITTING TIME FOR#### '
     write(*,*) ' #### PARTICLES IS TOO SHORT. PLEASE INCREASE #### '
     write(*,*) ' #### SPLITTING TIME CONSTANT.                #### '
-    stop
+    stop 1
   endif
 
   if ((mquasilag.eq.1).and.(iout.ge.4)) then
     write(*,*) ' #### FLEXPART MODEL ERROR! CONFLICTING       #### '
     write(*,*) ' #### OPTIONS: IF MQUASILAG=1, PLUME          #### '
     write(*,*) ' #### TRAJECTORY OUTPUT IS IMPOSSIBLE.        #### '
-    stop
+    stop 1
   endif
 
   ! Compute modeling time in seconds and beginning date in Julian date
@@ -635,7 +635,7 @@ subroutine readcommand
   else
     write(*,*) ' #### FLEXPART MODEL ERROR! DIRECTION IN      #### '
     write(*,*) ' #### FILE "COMMAND" MUST BE EITHER -1 OR 1.  #### '
-    stop
+    stop 1
   endif
 
   return
@@ -643,10 +643,10 @@ subroutine readcommand
 999   write(*,*) ' #### FLEXPART MODEL ERROR! FILE "COMMAND"    #### '
   write(*,*) ' #### CANNOT BE OPENED IN THE DIRECTORY       #### '
   write(*,'(a)') path(1)(1:length(1))
-  stop
+  stop 1
 
 1000   write(*,*) ' #### FLEXPART MODEL ERROR! FILE "COMMAND"    #### '
   write(*,*) ' #### CANNOT BE OPENED IN THE DIRECTORY       #### '
   write(*,'(a)') path(2)(1:length(2))
-  stop
+  stop 1
 end subroutine readcommand

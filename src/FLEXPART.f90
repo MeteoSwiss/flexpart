@@ -61,7 +61,7 @@ program flexpart
 
   ! FLEXPART version string
   flexversion_major = '10' ! Major version number, also used for species file names
-  flexversion='Version '//trim(flexversion_major)//'.4.7 (2025-08-29)'
+  flexversion='Version '//trim(flexversion_major)//'.4.8 (2026-01-13)'
   verbosity=0
 
   ! Read the pathnames where input/output files are stored
@@ -200,7 +200,7 @@ program flexpart
     print *,'NCEP metdata detected'
   else
     print *,'Unknown metdata format'
-    stop
+    stop 1
   endif
 
 
@@ -444,7 +444,7 @@ program flexpart
      endif
      if (info_flag.eq.1) then
        print*, 'info only mode (stop)'    
-       stop
+       stop 1
      endif
      print*,'call timemanager'
   endif

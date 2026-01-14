@@ -183,7 +183,8 @@ subroutine timemanager(metdata_format)
     end if
 
     if (assspec .and. itime .ne. 0 .and. numpart .gt. 0) then
-      stop 'associated species not yet implemented!'
+      write (*,*) 'associated species not yet implemented!'
+      stop 1
 !     call transferspec(itime,lsynctime,loutnext)
     endif
 
@@ -273,7 +274,10 @@ subroutine timemanager(metdata_format)
 
 !*******************************************************************************
 
-    if (lmpreader.and.nstop1.gt.1) stop 'NO METEO FIELDS AVAILABLE'
+    if (lmpreader.and.nstop1.gt.1) then
+      write (*,*) 'NO METEO FIELDS AVAILABLE'
+      stop 1
+    endif
 
 ! Reader process goes back to top of time loop (unless simulation end)
 !*********************************************************************

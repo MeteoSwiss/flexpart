@@ -87,7 +87,7 @@ subroutine sort2(n,arr,brr)
     jstack=jstack+2
     if(jstack.gt.nstack) then
        print*, 'nstack too small in sort2'
-       stop
+       stop 1
     end if
     if(ir-i+1.ge.j-l)then
       istack(jstack)=ir

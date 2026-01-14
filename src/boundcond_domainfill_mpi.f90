@@ -363,8 +363,10 @@ subroutine boundcond_domainfill(itime,loutend)
                 goto 73      ! Storage space has been found, stop searching
               endif
             end do
-            if (ipart.gt.tmp_size) &
-                 stop 'boundcond_domainfill_mpi.f90: too many particles required'
+            if (ipart.gt.tmp_size) then
+              write (*,*) 'boundcond_domainfill_mpi.f90: too many particles required'
+              stop 1
+            endif
 73          minpart=ipart+1
 71          continue
           end do
@@ -594,8 +596,10 @@ subroutine boundcond_domainfill(itime,loutend)
                 goto 173      ! Storage space has been found, stop searching
               endif
             end do
-            if (ipart.gt.tmp_size) &
-                 stop 'boundcond_domainfill.f: too many particles required'
+            if (ipart.gt.tmp_size) then
+              write (*,*) 'boundcond_domainfill.f: too many particles required'
+              stop 1
+            endif
 173         minpart=ipart+1
 171         continue
           end do
