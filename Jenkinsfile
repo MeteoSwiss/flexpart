@@ -181,7 +181,7 @@ pipeline {
                 REGISTRY_AUTH_FILE = "$workspace/.containers/auth.json"
             }
             steps {
-// TODO: figure out if we need to retag the public image as intern image
+                // TODO: figure out if we need to retag the public image as intern image
                 echo "---- PUBLISHING CONTAINER IMAGES ----"
                 withCredentials([usernamePassword(credentialsId: 'openshift-nexus',
                                                   passwordVariable: 'NXPASS',
@@ -192,6 +192,7 @@ pipeline {
                 }
             }
         }
+    }
 
     post {
         cleanup {
