@@ -42,7 +42,6 @@ default:
                 - COMMIT=${var.commit}
                 - --secret=id=spack_buildcache_user,env=NXUSER
                 - --secret=id=spack_buildcache_password,env=NXPASS
-                - --secret=id=github-token,env=GITHUB_ACCESS_TOKEN
               pullAlways: false
   - test:
       - unit:

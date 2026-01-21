@@ -4,7 +4,7 @@
 # ==============================================================
 
 # =============================================================
-# Build Flexpart with spack
+# Build spack
 # =============================================================
 
 FROM docker-all-nexus.meteoswiss.ch/mch/ubuntu-noble AS spack-builder
@@ -18,15 +18,32 @@ RUN apt-get update && apt-get install -y -q --no-install-recommends \
     lsb-release patch python3 tar unzip xz-utils zstd curl rsync make cmake m4 \
     && rm -rf /var/lib/apt/lists/*
 
-# Note: releases/v1.1 has a bug in the OCI registry auth for build caches;
-#       we should switch to 1.2 once released
-ARG SPACK_TAG=develop
-
-# spack checkout
+# Spack checkout
 # Note: Use spack v1.2 once released, and clone with '--depth 1'. In the meantime, we need a specific commit
 #       that fixes an authentication bug for using the spack build cache on nexus.
-RUN git clone --shallow-exclude v1.1.0 --branch "${SPACK_TAG}" https://github.com/spack/spack.git /opt/spack \
-    && git -C /opt/spack checkout 8ca06d
+RUN curl -L https://github.com/spack/spack/archive/8ca06da.tar.gz -o repo.tar.gz && \
+    mkdir -p /opt/spack && \
+    tar -xzf repo.tar.gz -C /opt/spack --strip-components=1 && \
+    rm -f repo.tar.gz
+
+# Spack setup: Update builtin repo, find externals and add the Nexus mirror (buildcache)
+# Notes: * For the builtin repo, a newer commit is used that includes eccodes-cosmo-resources,
+#          eccodes 2.36.4, and a compiler wrapper bugfix. This will be included in spack 1.2, once released.
+#        * For pushing to the spack buildcache, we do not use '--autopush' since this triggers a spack bug
+#          related to multiprocessing (fixed in next release). Instead, we do a manual push after the installs.
+#        * The oci username & password environment variables need to be set whenever spack should push, see below.
+RUN . /opt/spack/share/spack/setup-env.sh && \
+    spack repo update --commit a5ec6ab0dbf87f671a917bce29bf16284ebf0dac builtin && \
+    spack external find && \
+    spack mirror add spack-build-cache \
+        --unsigned \
+        --oci-username-variable BUILDCACHE_USER \
+        --oci-password-variable BUILDCACHE_PASSWORD \
+        oci://docker-intern-nexus.meteoswiss.ch/numericalweatherpredictions/spack-build-cache
+
+# =============================================================
+# Build flexpart
+# =============================================================
 
 # copy flexpart code, including spack recipes and spack.yaml
 COPY . /opt/
@@ -39,16 +56,8 @@ RUN --mount=type=secret,id=spack_buildcache_user,target=/run/secrets/spack_build
     export BUILDCACHE_USER="$(cat /run/secrets/spack_buildcache_user)" && \
     export BUILDCACHE_PASSWORD="$(cat /run/secrets/spack_buildcache_password)" && \
     . /opt/spack/share/spack/setup-env.sh && \
-    spack repo add spack_repo && \
     spack env activate spack_env && \
     spack repo list && \
-    ver=$(spack -V | awk '{print $1}' | cut -d. -f1,2) && \
-    spack mirror add spack-build-cache \
-        --unsigned \
-        --oci-username-variable BUILDCACHE_USER \
-        --oci-password-variable BUILDCACHE_PASSWORD \
-        oci://docker-intern-nexus.meteoswiss.ch/numericalweatherpredictions/spack-build-cache && \
-    spack external find && \
     spack concretize -f && \
     spack install --fail-fast && \
     # pushing the fieldextra spec with --only=dependencies means everything except fieldextra
