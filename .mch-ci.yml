@@ -1,0 +1,106 @@
+default:
+  - build:
+      - checkGivenSemanticVersion:
+          checkSemanticVersion:
+      - getSemanticVersion:
+          gitCalculateSemanticVersion:
+      - getImageName:
+          containerConstructImageName:
+      - getImageNamePublic:
+          - containerConstructImageName:
+              containerRegistries:
+                - docker-public-nexus.meteoswiss.ch
+              primaryRegistry:
+                docker-public-nexus.meteoswiss.ch
+      - getImageNameCSCS:
+          - containerConstructImageName:
+              containerRegistries:
+                - container-registry.meteoswiss.ch
+              primaryRegistry:
+                container-registry.meteoswiss.ch
+      - artifacts:
+          - containerBuildImage:
+              imageName: ${var.containerImageName}-tester
+              imageTag: ${var.semanticVersion}
+              target: tester
+              extraArgs:
+                - --build-arg
+                - VERSION=${var.semanticVersion}
+                - --build-arg
+                - COMMIT=${var.commit}
+                - --secret=id=spack_buildcache_user,env=NXUSER
+                - --secret=id=spack_buildcache_password,env=NXPASS
+                - --secret=id=github-token,env=GITHUB_ACCESS_TOKEN
+          - containerBuildImage:
+              imageName: ${var.containerImageName}-aws
+              imageTag: ${var.semanticVersion}
+              target: runner
+              extraArgs:
+                - --build-arg
+                - VERSION=${var.semanticVersion}
+                - --build-arg
+                - COMMIT=${var.commit}
+                - --secret=id=spack_buildcache_user,env=NXUSER
+                - --secret=id=spack_buildcache_password,env=NXPASS
+                - --secret=id=github-token,env=GITHUB_ACCESS_TOKEN
+              pullAlways: false
+  - test:
+      - unit:
+          - script: mkdir -p test_reports
+          - pythonContainerTest: // TODO CHANGE THIS WHOLE SECTION TO A SCRIPT SECTION 
+              imageName: ${var.containerImageName}-tester
+              imageTag: ${var.semanticVersion}
+              testDirectory: tests
+              packageManager: ''
+              pullAlways: false
+              withCoverage: true
+              removeLocalImage: false
+      - lint:
+          - script: mkdir -p test_reports
+          - pythonContainerLint:
+              imageName: ${var.containerImageName}-tester
+              imageTag: ${var.semanticVersion}
+              packageManager: ''
+              pullAlways: false
+              removeLocalImage: false
+          - pythonContainerTypeCheck:
+              imageName: ${var.containerImageName}-tester
+              imageTag: ${var.semanticVersion}
+              packageManager: ''
+              pullAlways: false
+              removeLocalImage: false
+  - verify:
+      - publishSbom:
+          - securityPublishSbom:
+  - publish:
+      - testArtifacts:
+          - containerPublishImage:
+              imageName: ${var.containerImageName}-tester
+              imageTag: ${var.semanticVersion}
+              removeLocalImage: false
+      - artifacts:
+          - containerPublishImage:
+              imageName: ${var.containerImageName}-aws
+              imageTag: ${var.semanticVersion}
+              removeLocalImage: false
+
+  - deploy:
+      - pypi:
+          pythonPublishPackage:
+            setPackageVersion: False
+            pythonImageName: '3.10'
+            pullAlways: false
+  - clean:
+      - images:
+          script: |
+            if test -n "${var.semanticVersion}"; then
+              podman image rm -f $(podman image ls -q \
+                -f "label=ch.meteoswiss.project=${var.project}-${var.semanticVersion}") || :
+            fi
+
+variables:
+  project: flexpart
+  # default full image name, useful when running tasks locally
+  image: ${var.containerImageName}:${var.semanticVersion}
+  solution: dispersionmodelling
+  notifyOnNightlyFailure: p_dispersionmodelling@meteoswiss.ch

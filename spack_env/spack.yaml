@@ -1,0 +1,23 @@
+# This is a Spack Environment file.
+#
+# It describes a set of packages to be installed, along with
+# configuration settings.
+spack:
+  develop:
+    flexpart-ifs:
+      spec: flexpart-ifs@main target=x86_64
+      path: ..
+  # add package specs to the `specs` list
+  specs:
+  - flexpart-ifs
+  - eccodes@2.19.0+aec jp2k=none
+  - hdf5~mpi
+  view: /scratch/spack-view
+  concretizer:
+    unify: true
+  repos:
+    flexpart-custom: ../spack_repo
+  config:
+    install_tree:
+      root: /scratch/spack-root
+    install_path_scheme: '{name}'

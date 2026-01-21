@@ -1,4 +1,73 @@
-# Dockerfile to build Flexpart-IFS into an image, also containing the python module to prepare the input data.
+# ==============================================================
+# Dockerfile to build an image with the dependencies of 
+# Flexpart-IFS installed in an environment via spack.
+# ==============================================================
+
+# =============================================================
+# Build Flexpart with spack
+# =============================================================
+
+FROM docker-all-nexus.meteoswiss.ch/mch/ubuntu-noble AS spack-builder
+
+
+WORKDIR /opt
+
+# Basics: spack dependencies
+RUN apt-get update && apt-get install -y -q --no-install-recommends \
+    file bzip2 ca-certificates g++-11 gcc-11 gfortran-11 build-essential git gzip \
+    lsb-release patch python3 tar unzip xz-utils zstd curl rsync make cmake m4 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Note: releases/v1.1 has a bug in the OCI registry auth for build caches;
+#       we should switch to 1.2 once released
+ARG SPACK_TAG=develop
+
+# Configure git
+RUN --mount=type=secret,id=github-token,target=/run/secrets/github-token \
+    TOKEN="$(cat /run/secrets/github-token)" && \
+    git config --global url."https://x-access-token:${TOKEN}@github.com/COSMO-ORG/".insteadOf "https://github.com/COSMO-ORG/" --replace-all && \
+    git config --global url."https://x-access-token:${TOKEN}@github.com/COSMO-ORG/".insteadOf "git@github.com:COSMO-ORG/" --add
+
+# spack checkout
+# Note: Use spack v1.2 once released, and clone with '--depth 1'. In the meantime, we need a specific commit
+#       that fixes an authentication bug for using the spack build cache on nexus.
+RUN git clone --shallow-exclude v1.1.0 --branch "${SPACK_TAG}" https://github.com/spack/spack.git /opt/spack \
+    && git -C /opt/spack checkout 8ca06d
+
+# copy flexpart code, including spack recipes and spack.yaml
+COPY . /opt/
+
+# Install
+# Note: For pushing to the spack buildcache, we do not use '--autopush' since this seems to trigger
+#       a weird bug in spack related to multiprocessing. Instead, we do a manual push after the install
+RUN --mount=type=secret,id=spack_buildcache_user,target=/run/secrets/spack_buildcache_user \
+    --mount=type=secret,id=spack_buildcache_password,target=/run/secrets/spack_buildcache_password \
+    export BUILDCACHE_USER="$(cat /run/secrets/spack_buildcache_user)" && \
+    export BUILDCACHE_PASSWORD="$(cat /run/secrets/spack_buildcache_password)" && \
+    . /opt/spack/share/spack/setup-env.sh && \
+    spack repo add spack_repo && \
+    spack env activate spack_env && \
+    spack repo list && \
+    ver=$(spack -V | awk '{print $1}' | cut -d. -f1,2) && \
+    spack mirror add spack-build-cache \
+        --unsigned \
+        --oci-username-variable BUILDCACHE_USER \
+        --oci-password-variable BUILDCACHE_PASSWORD \
+        oci://docker-intern-nexus.meteoswiss.ch/numericalweatherpredictions/spack-build-cache && \
+    spack external find && \
+    spack concretize -f && \
+    spack install --fail-fast && \
+    # pushing the fieldextra spec with --only=dependencies means everything except fieldextra
+    (spack buildcache push --update-index --only=dependencies --fail-fast spack-build-cache fieldextra \
+     || echo "Spack buildcache push failed, continuing anyway") && \
+    spack gc -y && \
+    spack clean -a
+
+
+##########################################
+# Python builder stage to prepare requirements files
+##########################################
+
 FROM dockerhub.apps.cp.meteoswiss.ch/mch/python/builder AS python-builder
 
 COPY utils/poetry.lock utils/pyproject.toml /scratch
@@ -7,27 +76,12 @@ RUN cd /scratch \
     && poetry export --without-hashes -o requirements.txt \
     && poetry export --without-hashes --with dev -o requirements_dev.txt
 
-FROM docker-all-nexus.meteoswiss.ch/dispersionmodelling/flexpart-ifs-base:42257e1fb0493b64fcf85d76deda7e69f7816e8c as spack-builder
 
-ARG TOKEN
-ENV TOKEN=$TOKEN 
-RUN git config --global url."https://x-access-token:${TOKEN}@github.com/MeteoSwiss/".insteadOf "git@github.com:MeteoSwiss/"
-ARG COMMIT
-ENV COMMIT=$COMMIT
+##########################################
+# Runner stage to run Flexpart-IFS with the built spack environment 
+##########################################
 
-# Add Flexpart-IFS source code
-RUN git clone git@github.com:MeteoSwiss/flexpart.git /scratch/flexpart && cd /scratch/flexpart && git checkout $COMMIT 
-RUN chmod -R 777 /scratch/flexpart
-RUN cd /scratch
-
-# Install Flexpart-IFS
-RUN cd spack-env && \
-    . $SPACK_ROOT/share/spack/setup-env.sh && \
-    spack -e . -vv install -j1 --fail-fast && \
-    spack gc -y
-
-
-FROM docker-all-nexus.meteoswiss.ch/mch/ubuntu-jammy AS runner
+FROM docker-all-nexus.meteoswiss.ch/mch/ubuntu-noble AS runner
 
 RUN apt-get -yqq update \
     && apt-get -yqq install --no-install-recommends \
@@ -53,7 +107,6 @@ RUN mkdir -p \
 COPY --from=python-builder /scratch/requirements.txt /scratch/requirements.txt
 COPY --from=spack-builder /scratch/spack-root/ /scratch/spack-root/
 COPY --from=spack-builder /scratch/spack-view/ /scratch/spack-view/
-
 
 ENV PATH="/scratch/spack-view/bin:$PATH"
 ENV JOBS_DIR=/scratch/jobs
@@ -84,6 +137,10 @@ USER $USERNAME
 ENTRYPOINT ["/bin/bash", "/scratch/entrypoint.sh"]
 
 CMD [""]
+
+##########################################
+# Tester stage to run tests on the built image
+##########################################
 
 FROM runner AS tester
 
