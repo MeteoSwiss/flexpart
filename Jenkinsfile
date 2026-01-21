@@ -97,17 +97,13 @@ pipeline {
         stage('Build') {
             steps {
                 withCredentials([usernamePassword(
-                                    credentialsId: 'github app credential for the meteoswiss github organization',
-                                    usernameVariable: 'GITHUB_APP',
-                                    passwordVariable: 'GITHUB_ACCESS_TOKEN'),
-                                usernamePassword(
                                     credentialsId: 'openshift-nexus',
                                     passwordVariable: 'NXPASS',
                                     usernameVariable: 'NXUSER')
                             ]) {
                     echo '---- BUILDING CONTAINER IMAGES ----'
                     sh """
-                        export NXUSER NXPASS GITHUB_ACCESS_TOKEN
+                        export NXUSER NXPASS
                         mchbuild -s commit=${GIT_COMMIT} -s semanticVersion=${Globals.semanticVersion} -s containerImageName=${Globals.containerImageNamePublic} build.artifacts
                     """
                 }
