@@ -26,8 +26,9 @@ default:
               extraArgs:
                 - --build-arg
                 - VERSION=${var.semanticVersion}
-                - --secret=id=spack_buildcache_user,env=NXUSER
-                - --secret=id=spack_buildcache_password,env=NXPASS
+                # - --secret id=spack_buildcache_user,env=NXUSER
+                # - --secret id=spack_buildcache_password,env=NXPASS
+                #- --runtime=${var.crunPath}
           - containerBuildImage:
               imageName: ${var.containerImageName}-aws
               imageTag: ${var.semanticVersion}
@@ -35,8 +36,9 @@ default:
               extraArgs:
                 - --build-arg
                 - VERSION=${var.semanticVersion}
-                - --secret=id=spack_buildcache_user,env=NXUSER
-                - --secret=id=spack_buildcache_password,env=NXPASS
+                # - --secret id=spack_buildcache_user,env=NXUSER
+                # - --secret id=spack_buildcache_password,env=NXPASS
+                # - --runtime=${var.crunPath}
               pullAlways: false
   - test:
       - unit:

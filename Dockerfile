@@ -21,10 +21,11 @@ RUN apt-get update && apt-get install -y -q --no-install-recommends \
 # Spack checkout
 # Note: Use spack v1.2 once released, and clone with '--depth 1'. In the meantime, we need a specific commit
 #       that fixes an authentication bug for using the spack build cache on nexus.
-RUN curl -L https://github.com/spack/spack/archive/8ca06da.tar.gz -o repo.tar.gz && \
+RUN curl -L https://github.com/spack/spack/archive/8ca06da.zip -o repo.zip && \
     mkdir -p /opt/spack && \
-    tar -xzf repo.tar.gz -C /opt/spack --strip-components=1 && \
-    rm -f repo.tar.gz
+    unzip -q repo.zip -d /opt && \
+    mv /opt/spack-8ca06da*/* /opt/spack/ && \
+    rm -rf /opt/spack-8ca06da* repo.zip
 
 # Spack setup: Update builtin repo, find externals and add the Nexus mirror (buildcache)
 # Notes: * For the builtin repo, a newer commit is used that includes eccodes-cosmo-resources,
