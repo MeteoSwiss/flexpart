@@ -49,3 +49,4 @@ flexpart-test
 # Spack environment files
 .spack-env
 __pycache__
+.venv*

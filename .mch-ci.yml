@@ -26,11 +26,8 @@ default:
               extraArgs:
                 - --build-arg
                 - VERSION=${var.semanticVersion}
-                - --build-arg
-                - COMMIT=${var.commit}
                 - --secret=id=spack_buildcache_user,env=NXUSER
                 - --secret=id=spack_buildcache_password,env=NXPASS
-                - --secret=id=github-token,env=GITHUB_ACCESS_TOKEN
           - containerBuildImage:
               imageName: ${var.containerImageName}-aws
               imageTag: ${var.semanticVersion}
@@ -38,8 +35,6 @@ default:
               extraArgs:
                 - --build-arg
                 - VERSION=${var.semanticVersion}
-                - --build-arg
-                - COMMIT=${var.commit}
                 - --secret=id=spack_buildcache_user,env=NXUSER
                 - --secret=id=spack_buildcache_password,env=NXPASS
               pullAlways: false
