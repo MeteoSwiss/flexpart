@@ -114,7 +114,6 @@ pipeline {
             }
         }
 
-
         stage('Publish Test Artifacts') {
             environment {
                 REGISTRY_AUTH_FILE = "$workspace/.containers/auth.json"
@@ -138,7 +137,6 @@ pipeline {
                 sh """
                     mchbuild -s semanticVersion=${Globals.semanticVersion} -s containerImageName=${Globals.containerImageNameCSCS} test.unit
                 """
-                }
             }
             post {
                 always {

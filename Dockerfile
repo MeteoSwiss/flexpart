@@ -1,5 +1,5 @@
 # ==============================================================
-# Dockerfile to build an image with the dependencies of 
+# Dockerfile to build an image with the dependencies of
 # Flexpart-IFS installed in an environment via spack.
 # ==============================================================
 
@@ -21,12 +21,6 @@ RUN apt-get update && apt-get install -y -q --no-install-recommends \
 # Note: releases/v1.1 has a bug in the OCI registry auth for build caches;
 #       we should switch to 1.2 once released
 ARG SPACK_TAG=develop
-
-# Configure git
-RUN --mount=type=secret,id=github-token,target=/run/secrets/github-token \
-    TOKEN="$(cat /run/secrets/github-token)" && \
-    git config --global url."https://x-access-token:${TOKEN}@github.com/COSMO-ORG/".insteadOf "https://github.com/COSMO-ORG/" --replace-all && \
-    git config --global url."https://x-access-token:${TOKEN}@github.com/COSMO-ORG/".insteadOf "git@github.com:COSMO-ORG/" --add
 
 # spack checkout
 # Note: Use spack v1.2 once released, and clone with '--depth 1'. In the meantime, we need a specific commit
@@ -78,7 +72,7 @@ RUN cd /scratch \
 
 
 ##########################################
-# Runner stage to run Flexpart-IFS with the built spack environment 
+# Runner stage to run Flexpart-IFS with the built spack environment
 ##########################################
 
 FROM docker-all-nexus.meteoswiss.ch/mch/ubuntu-noble AS runner
@@ -151,7 +145,7 @@ RUN python3.11 -m pip install -r /scratch/requirements_dev.txt
 
 RUN mkdir test_reports && chmod -R a+rwx test_reports
 COPY utils/pyproject.toml utils/test_ci.sh /scratch/
-RUN chmod +x /scratch/test_ci.sh 
+RUN chmod +x /scratch/test_ci.sh
 COPY utils/test /scratch/test
 
 # This environment tells pytest that the tests are occuring in a container.
