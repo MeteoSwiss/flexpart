@@ -47,7 +47,7 @@ default:
   - test:
       - unit:
           - script: mkdir -p test_reports
-          - pythonContainerTest: // TODO CHANGE THIS WHOLE SECTION TO A SCRIPT SECTION 
+          - pythonContainerTest:
               imageName: ${var.containerImageName}-tester
               imageTag: ${var.semanticVersion}
               testDirectory: tests
