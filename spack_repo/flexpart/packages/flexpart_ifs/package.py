@@ -1,5 +1,6 @@
-from spack import *
 
+from spack_repo.builtin.build_systems.makefile import MakefilePackage
+from spack.package import *
 
 class FlexpartIfs(MakefilePackage):
     """flexpart is a Lagrangian dispersion model"""
@@ -7,8 +8,8 @@ class FlexpartIfs(MakefilePackage):
     homepage = 'https://github.com/MeteoSwiss/flexpart'
     url = 'https://github.com/MeteoSwiss/flexpart/archive/refs/tags/v10.4.4.tar.gz'
     git = 'git@github.com:MeteoSwiss/flexpart.git'
-    maintainers = ['pirmink']
 
+    version("develop")
     version('main', branch='main')
     version('10.4.4', tag='10.4.4')
 

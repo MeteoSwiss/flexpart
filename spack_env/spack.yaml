@@ -5,18 +5,17 @@
 spack:
   develop:
     flexpart-ifs:
-      spec: flexpart-ifs@main target=x86_64
+      spec: flexpart-ifs
       path: ..
   # add package specs to the `specs` list
   specs:
-  - flexpart-ifs
-  - eccodes@2.19.0+aec jp2k=none
-  - hdf5~mpi
-  view: /scratch/spack-view
+  - eccodes @2.36.4 +aec jp2k=none
+  - hdf5 ~mpi
+  view: ../spack-view
   concretizer:
     unify: true
   repos:
-    flexpart-custom: ../spack_repo
+    flexpart: ../spack_repo/flexpart
     # For the builtin repo, a newer commit is used that includes
     # eccodes-cosmo-resources, eccodes 2.36.4, and a compiler wrapper bugfix.
     # Once spack 1.2 is released, we can switch back to the default repo.
@@ -25,5 +24,5 @@ spack:
       commit: a5ec6ab0dbf87f671a917bce29bf16284ebf0dac
   config:
     install_tree:
-      root: /scratch/spack-root
-    install_path_scheme: '{name}'
+      root: ../spack-root
+    # install_path_scheme: '{name}'
