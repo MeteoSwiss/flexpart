@@ -17,7 +17,7 @@ spack:
   concretizer:
     unify: true
   repos:
-    flexpart: ../spack_repo
+    flexpart: ../spack_repo/flexpart
     # For the builtin repo, a newer commit is used that includes
     # eccodes-cosmo-resources, eccodes 2.36.4, and a compiler wrapper bugfix.
     # Once spack 1.2 is released, we can switch back to the default repo.

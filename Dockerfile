@@ -7,7 +7,7 @@
 # Build spack
 # =============================================================
 
-FROM docker-all-nexus.meteoswiss.ch/mch/ubuntu-noble AS spack-builder
+FROM dockerhub.apps.cp.meteoswiss.ch/mch/ubuntu-noble AS spack-builder
 
 
 WORKDIR /opt
@@ -54,7 +54,6 @@ COPY options.meteoswiss /opt/options.meteoswiss
 COPY spack_env /opt/spack_env
 COPY spack_repo /opt/spack_repo
 COPY src /opt/src
-COPY entrypoint.sh /opt/entrypoint.sh
 COPY test_meteoswiss /opt/test_meteoswiss
 COPY pathnames /opt/pathnames
 
@@ -83,9 +82,9 @@ RUN --mount=type=secret,id=spack_buildcache_user,target=/run/secrets/spack_build
 
 FROM dockerhub.apps.cp.meteoswiss.ch/mch/python/builder AS python-builder
 
-COPY utils/poetry.lock utils/pyproject.toml /scratch
+COPY utils/poetry.lock utils/pyproject.toml /opt/
 
-RUN cd /scratch \
+RUN cd /opt \
     && poetry export --without-hashes -o requirements.txt \
     && poetry export --without-hashes --with dev -o requirements_dev.txt
 
@@ -94,7 +93,7 @@ RUN cd /scratch \
 # Runner stage to run Flexpart-IFS with the built spack environment
 ##########################################
 
-FROM docker-all-nexus.meteoswiss.ch/mch/ubuntu-noble AS runner
+FROM dockerhub.apps.cp.meteoswiss.ch/mch/ubuntu-noble AS runner
 
 RUN apt-get -yqq update \
     && apt-get -yqq install --no-install-recommends \
@@ -103,37 +102,35 @@ RUN apt-get -yqq update \
     curl \
     python3.11-minimal \
     python3.11 \
-    python3-pip \
-    libnetcdf-dev \
-    libnetcdff-dev \
-    libopenjp2-7-dev \
-    libeccodes-dev \
-    flex \
-    bison
-
-RUN mkdir -p \
-    /scratch/output/ \
-    /scratch/flexpart_ifs_utils/ \
-    /scratch/jobs/ \
-    /scratch/db/
-
-COPY --from=python-builder /scratch/requirements.txt /scratch/requirements.txt
-COPY --from=spack-builder /scratch/spack-root/ /scratch/spack-root/
-COPY --from=spack-builder /scratch/spack-view/ /scratch/spack-view/
-
-ENV PATH="/scratch/spack-view/bin:$PATH"
-ENV JOBS_DIR=/scratch/jobs
-ENV FLEXPART_PREFIX=/scratch/spack-root/flexpart-ifs
+    python3-pip
+    # libnetcdf-dev \
+    # libnetcdff-dev \
+    # libopenjp2-7-dev \
+    # libeccodes-dev \
+    # flex \
+    # bison
 
 WORKDIR /scratch
+
+RUN mkdir -p \
+    output \
+    flexpart_ifs_utils \
+    jobs \
+    db
+
+COPY --from=python-builder /opt/requirements.txt /opt/requirements.txt
+COPY --from=python-builder /etc/pip.conf /etc/pip.conf
+COPY --from=spack-builder /opt/spack-root/ /opt/spack-root/
+COPY --from=spack-builder /opt/spack-view/ /opt/spack-view/
+
+ENV PATH="/opt/spack-view/bin:$PATH"
+ENV JOBS_DIR=/scratch/jobs
+ENV FLEXPART_PREFIX=/opt/spack-view/bin
 
 COPY utils/flexpart_ifs_utils/ flexpart_ifs_utils/
 COPY entrypoint.sh entrypoint.sh
 COPY data/IGBP_int1.dat $JOBS_DIR
 
-COPY utils/pip.conf /etc/pip.conf
-
-COPY utils/pyproject.toml /scratch
 RUN python3.11 -m pip install -r requirements.txt && \
     python3.11 -m pip install .
 
@@ -147,7 +144,7 @@ RUN groupadd --gid $USER_GID $USERNAME \
     && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME
 USER $USERNAME
 
-ENTRYPOINT ["/bin/bash", "/scratch/entrypoint.sh"]
+ENTRYPOINT ["/bin/bash", "entrypoint.sh"]
 
 CMD [""]
 
@@ -159,19 +156,19 @@ FROM runner AS tester
 
 USER root
 
-COPY --from=python-builder /scratch/requirements_dev.txt /scratch/requirements_dev.txt
-RUN python3.11 -m pip install -r /scratch/requirements_dev.txt
+WORKDIR /scratch
+
+COPY --from=python-builder /opt/requirements_dev.txt /opt/requirements_dev.txt
+COPY utils/pyproject.toml utils/test_ci.sh /scratch/
+COPY utils/test test
+
+RUN python3.11 -m pip install -r /opt/requirements_dev.txt
 
 RUN mkdir test_reports && chmod -R a+rwx test_reports
-COPY utils/pyproject.toml utils/test_ci.sh /scratch/
-RUN chmod +x /scratch/test_ci.sh
-COPY utils/test /scratch/test
+RUN chmod +x test_ci.sh
 
 # This environment tells pytest that the tests are occuring in a container.
 ENV PYTEST_ENTRYPOINT=/scratch/entrypoint.sh
-ENV FLEXPART_PREFIX=/scratch/spack-root/flexpart-ifs/
-ENV PATH="/scratch/spack-view/bin:$PATH"
-ENV JOBS_DIR=/scratch/jobs/
 
 ARG USERNAME=default_user
 USER $USERNAME
