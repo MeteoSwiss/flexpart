@@ -106,8 +106,8 @@ pipeline {
                     // see https://github.com/containers/podman/blob/main/troubleshooting.md#41-a-podman-build-step-with---mounttypesecret-fails-with-operation-not-permitted
                     sh """
                         export NXUSER NXPASS
-                        export crun_path=`type -p crun`
-                        mchbuild -s commit=${GIT_COMMIT} -s semanticVersion=${Globals.semanticVersion} -s crunPath=$crun_path -s containerImageName=${Globals.containerImageNamePublic} build.artifacts
+                        export CRUNPATH=\$(type -p crun)
+                        mchbuild -s commit=${GIT_COMMIT} -s semanticVersion=${Globals.semanticVersion} -s crunPath=\$CRUNPATH -s containerImageName=${Globals.containerImageNamePublic} build.artifacts
                     """
                 }
             }
