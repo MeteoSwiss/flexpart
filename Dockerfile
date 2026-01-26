@@ -47,7 +47,16 @@ RUN . /opt/spack/share/spack/setup-env.sh && \
 # =============================================================
 
 # copy flexpart code, including spack recipes and spack.yaml
-COPY . /opt/
+# We need to copy in multiple stages because mchbuild does not preserve the folder
+# structure otherwise when it forms the .ctx directory
+COPY options /opt/options
+COPY options.meteoswiss /opt/options.meteoswiss
+COPY spack_env /opt/spack_env
+COPY spack_repo /opt/spack_repo
+COPY src /opt/src
+COPY entrypoint.sh /opt/entrypoint.sh
+COPY test_meteoswiss /opt/test_meteoswiss
+COPY pathnames /opt/pathnames
 
 # Install
 # Note: For pushing to the spack buildcache, we do not use '--autopush' since this seems to trigger
@@ -61,8 +70,8 @@ RUN --mount=type=secret,id=spack_buildcache_user,target=/run/secrets/spack_build
     spack repo list && \
     spack concretize -f && \
     spack install --fail-fast && \
-    # pushing the fieldextra spec with --only=dependencies means everything except fieldextra
-    (spack buildcache push --update-index --only=dependencies --fail-fast spack-build-cache fieldextra \
+    # pushing the fieldextra spec with --only=dependencies means everything except flexpart
+    (spack buildcache push --update-index --only=dependencies --fail-fast spack-build-cache flexpart-ifs \
      || echo "Spack buildcache push failed, continuing anyway") && \
     spack gc -y && \
     spack clean -a

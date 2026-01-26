@@ -26,9 +26,8 @@ default:
               extraArgs:
                 - --build-arg
                 - VERSION=${var.semanticVersion}
-                # - --secret id=spack_buildcache_user,env=NXUSER
-                # - --secret id=spack_buildcache_password,env=NXPASS
-                #- --runtime=${var.crunPath}
+                - --secret=id=spack_buildcache_user,env=NXUSER
+                - --secret=id=spack_buildcache_password,env=NXPASS
           - containerBuildImage:
               imageName: ${var.containerImageName}-aws
               imageTag: ${var.semanticVersion}
@@ -36,9 +35,8 @@ default:
               extraArgs:
                 - --build-arg
                 - VERSION=${var.semanticVersion}
-                # - --secret id=spack_buildcache_user,env=NXUSER
-                # - --secret id=spack_buildcache_password,env=NXPASS
-                # - --runtime=${var.crunPath}
+                - --secret=id=spack_buildcache_user,env=NXUSER
+                - --secret=id=spack_buildcache_password,env=NXPASS
               pullAlways: false
   - test:
       - unit:
@@ -100,3 +98,5 @@ variables:
   image: ${var.containerImageName}:${var.semanticVersion}
   solution: dispersionmodelling
   notifyOnNightlyFailure: p_dispersionmodelling@meteoswiss.ch
+  containerImageName: docker-public-nexus.meteoswiss.ch/test
+  semanticVersion: test

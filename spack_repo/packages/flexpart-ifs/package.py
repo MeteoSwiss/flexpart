@@ -17,7 +17,7 @@ class FlexpartIfs(MakefilePackage):
     # WORKAROUND: '%gcc' should not be necessary, but without it, spack concretizes to nvhpc.
     depends_on('netcdf-fortran %gcc')
 
-    requires('%gcc')
+    depends_on('fortran', type='build')
 
     build_directory = 'src'
 
@@ -28,6 +28,14 @@ class FlexpartIfs(MakefilePackage):
                 '-I' + self.spec['netcdf-fortran'].prefix.include)
         env.set('NETCDF_FORTRAN_LD_FLAGS',
                 self.spec['netcdf-fortran'].libs.ld_flags)
+
+    def edit(self, spec, prefix):
+        with working_dir(self.build_directory):
+            makefile = FileFilter('makefile_meteoswiss')
+            # compiler
+            makefile.filter('F90 *=.*', 'F90 = ' + spack_fc)
+
+
 
     def build(self, spec, prefix):
         with working_dir(self.build_directory):
