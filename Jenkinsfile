@@ -12,8 +12,6 @@ class Globals {
 
     // Semantic version of the artifact
     static String semanticVersion = ''
-
-    static String PIP_INDEX_URL = 'https://hub.meteoswiss.ch/nexus/repository/python-all/simple'
 }
 
 String rebuild_cron = env.BRANCH_NAME == "main" ? "@midnight" : ""
@@ -51,7 +49,7 @@ pipeline {
                     echo '---- INSTALL MCHBUILD ----'
                     sh """
                     python -m venv .venv-mchbuild
-                    PIP_INDEX_URL=${Globals.PIP_INDEX_URL} \
+                    PIP_INDEX_URL=https://hub.meteoswiss.ch/nexus/repository/python-all/simple \
                       .venv-mchbuild/bin/pip install --upgrade "${Globals.mchbuildPipPackage}"
                     """
 
@@ -107,7 +105,10 @@ pipeline {
                     sh """
                         export NXUSER NXPASS
                         export CRUNPATH=\$(type -p crun)
-                        mchbuild -s commit=${GIT_COMMIT} -s semanticVersion=${Globals.semanticVersion} -s crunPath=\$CRUNPATH -s containerImageName=${Globals.containerImageNamePublic} build.artifacts
+                        mchbuild -s commit=${GIT_COMMIT} -s semanticVersion=${Globals.semanticVersion} \
+                            -s crunPath=\$CRUNPATH \
+                            -s containerImageName=${Globals.containerImageName} \
+                            build.artifacts
                     """
                 }
             }
@@ -122,20 +123,41 @@ pipeline {
                 withCredentials([usernamePassword(credentialsId: 'openshift-nexus',
                                                   passwordVariable: 'NXPASS',
                                                   usernameVariable: 'NXUSER')]) {
+                    // TODO DT-276 extract primaryRegistry to global variable?
                     sh """
-                        mchbuild -s semanticVersion=${Globals.semanticVersion} -s containerImageName=${Globals.containerImageNamePublic} publish.testArtifacts
+                        mchbuild -s semanticVersion=${Globals.semanticVersion} \
+                            -s containerImageName=${Globals.containerImageName} \
+                            -s publicContainerImageName=${Globals.containerImageNamePublic} \
+                            -s primaryRegistry="docker-public-nexus.meteoswiss.ch" \
+                            publish.testArtifacts
                     """
                 }
             }
         }
 
         stage('Test') {
-            // CAN WE USE BALFRIN AGENT FOR THIS STAGE?
+            agent { label 'balfrin' }
+            // TODO DT-276 document "uv" in Jenkins for Administrators
+            environment {
+                PATH="$SCRATCH/mch_jenkins_node/tools/uv:$PATH"
+            }
+
             steps {
+                echo '---- INSTALL MCHBUILD ----'
+                sh """
+                python3.12 -m venv .venv-mchbuild
+                PIP_INDEX_URL=https://service.ch/nexus/repository/python-all/simple \
+                  .venv-mchbuild/bin/pip install --upgrade "${Globals.mchbuildPipPackage}"
+                """
+
                 echo("---- RUNNING UNIT TESTS & COLLECTING COVERAGE ----")
                 sh """
-                    mchbuild -s semanticVersion=${Globals.semanticVersion} -s containerImageName=${Globals.containerImageNameCSCS} test.unit
+                    mchbuild -s semanticVersion=${Globals.semanticVersion} \
+                        -s containerImageName=${Globals.containerImageNameCSCS} \
+                        test.unit
                 """
+
+                stash includes: 'test_reports/**', name: 'test_reports'
             }
             post {
                 always {
@@ -146,6 +168,8 @@ pipeline {
 
         stage('Scan') {
             steps {
+                unstash 'test_reports'
+
                 echo '---- LINT & TYPE CHECK ----'
                 sh "mchbuild -s semanticVersion=${Globals.semanticVersion} -s containerImageName=${Globals.containerImageName} test.lint"
                 script {

@@ -41,16 +41,19 @@ default:
                 - --runtime=${var.crunPath}
               pullAlways: false
   - test:
+      # TODO DT-276 create local testing task
+      # TODO DT-276 set test_data paths in Jenkinsfile?
+      # TODO DT-276 replace test_ci.sh with mchbuild tasks?
+      # TODO DT-276 make container CLI in mchbuild configurable (i.e. support sarus)
       - unit:
-          - script: mkdir -p test_reports
-          - pythonContainerTest:
-              imageName: ${var.containerImageName}-tester
-              imageTag: ${var.semanticVersion}
-              testDirectory: tests
-              packageManager: ''
-              pullAlways: false
-              withCoverage: true
-              removeLocalImage: false
+          - script: |
+              mkdir -p test_reports
+              sarus pull ${var.containerImageName}-tester:${var.semanticVersion}
+              sarus run \
+                    -e TEST_DATA=/scratch/test_data \
+                    --mount=type=bind,source=/oprusers/trajond/flexpart-ifs/test_reports,destination=/scratch/test_reports \
+                    --mount=type=bind,source=/oprusers/trajond/flexpart-ifs/test_data,destination=/scratch/test_data \
+                    ${var.containerImageName}-tester:${var.semanticVersion}-tester
       - lint:
           - script: mkdir -p test_reports
           - pythonContainerLint:
@@ -65,15 +68,14 @@ default:
               packageManager: ''
               pullAlways: false
               removeLocalImage: false
-  - verify:
-      - publishSbom:
-          - securityPublishSbom:
   - publish:
       - testArtifacts:
           - containerPublishImage:
-              imageName: ${var.containerImageName}-tester
+              imageToTag: ${var.containerImageName}-tester:${var.semanticVersion}
+              imageName: ${var.publicContainerImageName}-tester
               imageTag: ${var.semanticVersion}
               removeLocalImage: false
+              removeImageToTag: false
       - artifacts:
           - containerPublishImage:
               imageName: ${var.containerImageName}-aws
@@ -86,6 +88,8 @@ default:
             setPackageVersion: False
             pythonImageName: '3.10'
             pullAlways: false
+
+  # TODO DT-276 use cleanup task from mchbuild 0.12
   - clean:
       - images:
           script: |
@@ -100,6 +104,12 @@ variables:
   image: ${var.containerImageName}:${var.semanticVersion}
   solution: dispersionmodelling
   notifyOnNightlyFailure: p_dispersionmodelling@meteoswiss.ch
-  containerImageName: docker-public-nexus.meteoswiss.ch/test
-  semanticVersion: test
+  # TODO DT-276 extract common values
+  publicContainerImageName: docker-public-nexus.meteoswiss.ch/dispersionmodelling/flexpart-ifs
+  containerImageName: docker-intern-nexus.meteoswiss.ch/dispersionmodelling/flexpart-ifs
+  semanticVersion: 0.0.0  # is overwritten in Jenkins
+  containerRegistries: [
+    'docker-intern-nexus.meteoswiss.ch',
+    'docker-public-nexus.meteoswiss.ch'
+  ]
   crunPath: /usr/bin/crun

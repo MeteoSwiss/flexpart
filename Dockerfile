@@ -7,6 +7,8 @@
 # Build spack
 # =============================================================
 
+# TODO use python 3.13?
+# TODO use the mch debian base image instead?
 FROM dockerhub.apps.cp.meteoswiss.ch/mch/ubuntu-noble AS spack-builder
 ARG VERSION
 LABEL ch.meteoswiss.project=flexpart-ifs-${VERSION}
@@ -100,12 +102,14 @@ FROM dockerhub.apps.cp.meteoswiss.ch/mch/python-3.13:latest AS runner
 ARG VERSION
 LABEL ch.meteoswiss.project=flexpart-ifs-${VERSION}
 
-COPY --from=python-builder /src/app-root/requirements.txt /src/app-root/requirements.txt
+COPY --from=python-builder /src/app-root/requirements.txt /opt/requirements.txt
 COPY --from=spack-builder /opt/spack-root/ /opt/spack-root/
 COPY --from=spack-builder /opt/spack-view/ /opt/spack-view/
 
 RUN pip install -r /opt/requirements.txt --no-cache-dir --no-deps --root-user-action=ignore
-RUN pip install .
+
+# FIXME DT-276 this command fails
+# RUN pip install .
 
 ENV VERSION=$VERSION
 ENV PATH="/opt/spack-view/bin:$PATH"
@@ -147,8 +151,8 @@ FROM runner AS tester
 USER root
 
 WORKDIR /scratch
-
-COPY --from=builder /src/app-root/requirements_dev.txt /src/app-root/requirements_dev.txt
+# TODO DT-276 which is the root folder? app-root? scratch?
+COPY --from=python-builder /src/app-root/requirements_dev.txt /src/app-root/requirements_dev.txt
 RUN pip install -r /src/app-root/requirements_dev.txt --no-cache-dir --no-deps --root-user-action=ignore
 
 COPY utils/pyproject.toml utils/test_ci.sh /scratch/
