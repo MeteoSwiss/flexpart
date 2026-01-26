@@ -107,7 +107,7 @@ pipeline {
                     sh """
                         export NXUSER NXPASS
                         crun_path=`type -p crun`
-                        mchbuild -s commit=${GIT_COMMIT} -s semanticVersion=${Globals.semanticVersion} -s crunPath=${crun_path} -s containerImageName=${Globals.containerImageNamePublic} build.artifacts
+                        mchbuild -s commit=${GIT_COMMIT} -s semanticVersion=${Globals.semanticVersion} -s crunPath=$crun_path -s containerImageName=${Globals.containerImageNamePublic} build.artifacts
                     """
                 }
             }
