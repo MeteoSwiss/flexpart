@@ -8,7 +8,8 @@
 # =============================================================
 
 FROM dockerhub.apps.cp.meteoswiss.ch/mch/ubuntu-noble AS spack-builder
-
+ARG VERSION
+LABEL ch.meteoswiss.project=flexpart-ifs-${VERSION}
 
 WORKDIR /opt
 
@@ -80,7 +81,9 @@ RUN --mount=type=secret,id=spack_buildcache_user,target=/run/secrets/spack_build
 # Python builder stage to prepare requirements files
 ##########################################
 
-FROM dockerhub.apps.cp.meteoswiss.ch/mch/python/builder AS python-builder
+FROM dockerhub.apps.cp.meteoswiss.ch/mch/python-3.13:latest AS python-builder
+ARG VERSION
+LABEL ch.meteoswiss.project=flexpart-ifs-${VERSION}
 
 COPY utils/poetry.lock utils/pyproject.toml /opt/
 
@@ -88,27 +91,25 @@ RUN cd /opt \
     && poetry export --without-hashes -o requirements.txt \
     && poetry export --without-hashes --with dev -o requirements_dev.txt
 
-
 ##########################################
 # Runner stage to run Flexpart-IFS with the built spack environment
 ##########################################
 
-FROM dockerhub.apps.cp.meteoswiss.ch/mch/ubuntu-noble AS runner
+FROM dockerhub.apps.cp.meteoswiss.ch/mch/python-3.13:latest AS runner
+ARG VERSION
+LABEL ch.meteoswiss.project=flexpart-ifs-${VERSION}
 
-RUN apt-get -yqq update \
-    && apt-get -yqq install --no-install-recommends \
-    build-essential \
-    ca-certificates \
-    curl \
-    python3.11-minimal \
-    python3.11 \
-    python3-pip
-    # libnetcdf-dev \
-    # libnetcdff-dev \
-    # libopenjp2-7-dev \
-    # libeccodes-dev \
-    # flex \
-    # bison
+COPY --from=python-builder /opt/requirements.txt /opt/requirements.txt
+COPY --from=spack-builder /opt/spack-root/ /opt/spack-root/
+COPY --from=spack-builder /opt/spack-view/ /opt/spack-view/
+
+RUN pip install -r requirements.txt --no-cache-dir --no-deps --root-user-action=ignore
+RUN pip install .
+
+ENV VERSION=$VERSION
+ENV PATH="/opt/spack-view/bin:$PATH"
+ENV JOBS_DIR=/scratch/jobs
+ENV FLEXPART_PREFIX=/opt/spack-view/bin
 
 WORKDIR /scratch
 
@@ -118,21 +119,9 @@ RUN mkdir -p \
     jobs \
     db
 
-COPY --from=python-builder /opt/requirements.txt /opt/requirements.txt
-COPY --from=python-builder /etc/pip.conf /etc/pip.conf
-COPY --from=spack-builder /opt/spack-root/ /opt/spack-root/
-COPY --from=spack-builder /opt/spack-view/ /opt/spack-view/
-
-ENV PATH="/opt/spack-view/bin:$PATH"
-ENV JOBS_DIR=/scratch/jobs
-ENV FLEXPART_PREFIX=/opt/spack-view/bin
-
 COPY utils/flexpart_ifs_utils/ flexpart_ifs_utils/
 COPY entrypoint.sh entrypoint.sh
 COPY data/IGBP_int1.dat $JOBS_DIR
-
-RUN python3.11 -m pip install -r requirements.txt && \
-    python3.11 -m pip install .
 
 RUN chmod -R a+rwx /scratch
 
@@ -158,11 +147,11 @@ USER root
 
 WORKDIR /scratch
 
-COPY --from=python-builder /opt/requirements_dev.txt /opt/requirements_dev.txt
+COPY --from=builder /src/app-root/requirements_dev.txt /src/app-root/requirements_dev.txt
+RUN pip install -r /src/app-root/requirements_dev.txt --no-cache-dir --no-deps --root-user-action=ignore
+
 COPY utils/pyproject.toml utils/test_ci.sh /scratch/
 COPY utils/test test
-
-RUN python3.11 -m pip install -r /opt/requirements_dev.txt
 
 RUN mkdir test_reports && chmod -R a+rwx test_reports
 RUN chmod +x test_ci.sh
