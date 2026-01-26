@@ -102,6 +102,8 @@ pipeline {
                                     usernameVariable: 'NXUSER')
                             ]) {
                     echo '---- BUILDING CONTAINER IMAGES ----'
+                    // the "--runtime /usr/bin/crun" option is a workaround,
+                    // see https://github.com/containers/podman/blob/main/troubleshooting.md#41-a-podman-build-step-with---mounttypesecret-fails-with-operation-not-permitted
                     sh """
                         export NXUSER NXPASS
                         crun_path=$(type -p crun)
