@@ -85,11 +85,12 @@ FROM dockerhub.apps.cp.meteoswiss.ch/mch/python-3.13:latest AS python-builder
 ARG VERSION
 LABEL ch.meteoswiss.project=flexpart-ifs-${VERSION}
 
-COPY utils/poetry.lock utils/pyproject.toml /opt/
+COPY utils/poetry.lock utils/pyproject.toml /src/app-root/
 
-RUN cd /opt \
-    && poetry export --without-hashes -o requirements.txt \
-    && poetry export --without-hashes --with dev -o requirements_dev.txt
+WORKDIR /src/app-root
+
+RUN poetry export -o requirements.txt \
+    && poetry export --with dev -o requirements_dev.txt
 
 ##########################################
 # Runner stage to run Flexpart-IFS with the built spack environment
@@ -99,11 +100,11 @@ FROM dockerhub.apps.cp.meteoswiss.ch/mch/python-3.13:latest AS runner
 ARG VERSION
 LABEL ch.meteoswiss.project=flexpart-ifs-${VERSION}
 
-COPY --from=python-builder /opt/requirements.txt /opt/requirements.txt
+COPY --from=python-builder /src/app-root/requirements.txt /src/app-root/requirements.txt
 COPY --from=spack-builder /opt/spack-root/ /opt/spack-root/
 COPY --from=spack-builder /opt/spack-view/ /opt/spack-view/
 
-RUN pip install -r requirements.txt --no-cache-dir --no-deps --root-user-action=ignore
+RUN pip install -r /opt/requirements.txt --no-cache-dir --no-deps --root-user-action=ignore
 RUN pip install .
 
 ENV VERSION=$VERSION
