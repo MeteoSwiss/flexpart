@@ -14,7 +14,7 @@ Install dependencies & start the service locally
 .. code-block:: console
 
     poetry config --local virtualenvs.create false
-    conda create --prefix ./.conda-env python=3.11
+    conda create --prefix ./.conda-env python=3.13
     conda activate ./.conda-env
 
 3. Install packages

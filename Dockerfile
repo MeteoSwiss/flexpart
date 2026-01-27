@@ -81,7 +81,7 @@ RUN --mount=type=secret,id=spack_buildcache_user,target=/run/secrets/spack_build
 ##########################################
 # Python builder stage to prepare requirements files
 ##########################################
-FROM dockerhub.apps.cp.meteoswiss.ch/mch/python-3.11:latest AS python-builder
+FROM dockerhub.apps.cp.meteoswiss.ch/mch/python-3.13:latest AS python-builder
 ARG VERSION
 LABEL ch.meteoswiss.project=flexpart-ifs-${VERSION}
 
@@ -96,7 +96,7 @@ RUN poetry export -o requirements.txt \
 # Runner stage to run Flexpart-IFS with the built spack environment
 ##########################################
 
-FROM dockerhub.apps.cp.meteoswiss.ch/mch/python-3.11:latest-slim AS runner
+FROM dockerhub.apps.cp.meteoswiss.ch/mch/python-3.13:latest-slim AS runner
 ARG VERSION
 LABEL ch.meteoswiss.project=flexpart-ifs-${VERSION}
 

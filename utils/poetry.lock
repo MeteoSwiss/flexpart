@@ -85,7 +85,6 @@ files = [
 [package.dependencies]
 idna = ">=2.8"
 sniffio = ">=1.1"
-typing_extensions = {version = ">=4.5", markers = "python_version < \"3.13\""}
 
 [package.extras]
 doc = ["Sphinx (>=7.4,<8.0)", "packaging", "sphinx-autodoc-typehints (>=1.2.0)", "sphinx_rtd_theme"]
@@ -2112,7 +2111,7 @@ files = [
 [package.dependencies]
 astroid = ">=3.3.5,<=3.4.0-dev0"
 colorama = {version = ">=0.4.5", markers = "sys_platform == \"win32\""}
-dill = {version = ">=0.3.6", markers = "python_version >= \"3.11\""}
+dill = {version = ">=0.3.7", markers = "python_version >= \"3.12\""}
 isort = ">=4.2.5,<5.13.0 || >5.13.0,<6"
 mccabe = ">=0.6,<0.8"
 platformdirs = ">=2.2.0"
@@ -2848,7 +2847,7 @@ files = [
 ]
 
 [package.dependencies]
-astroid = {version = ">=2.7", markers = "python_version < \"3.12\""}
+astroid = {version = ">=3.0.0a1", markers = "python_version >= \"3.12\""}
 Jinja2 = "*"
 PyYAML = "*"
 sphinx = ">=6.1.0"
@@ -3234,5 +3233,5 @@ reference = "meteoswiss"
 
 [metadata]
 lock-version = "2.0"
-python-versions = "~3.11"
-content-hash = "fe4d57955b78a667ec7e5cafaec7570d65fc0319de3bfeac703e8437358026d8"
+python-versions = "~3.13"
+content-hash = "dfe05c3cff8992b7f36bd20f4048af3ffafdc59ce7bf7a49306d3b964be4d99e"
