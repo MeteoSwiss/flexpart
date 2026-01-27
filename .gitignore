@@ -51,3 +51,4 @@ flexpart-test
 __pycache__
 .venv*
 .ctx
+._spack-view/
