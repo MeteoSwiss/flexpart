@@ -11,7 +11,7 @@ spack:
   specs:
   - flexpart-ifs
   - netcdf-c ~mpi
-  - eccodes @2.19.1 +aec jp2k=none
+  - eccodes @2.36.4 +aec jp2k=none
   - hdf5 ~mpi
   view: ../spack-view
   concretizer:
