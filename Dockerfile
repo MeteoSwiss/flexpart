@@ -115,8 +115,8 @@ RUN pip install -r /opt/requirements.txt --no-cache-dir --no-deps --root-user-ac
 ENV VERSION=$VERSION
 ENV PATH="/opt/spack-view/bin:$PATH"
 ENV JOBS_DIR=/scratch/jobs
-ENV FLEXPART_PREFIX=/opt/spack-view/bin
-ENV ECCODES_DIR=/opt/spack-view/bin
+ENV FLEXPART_PREFIX=/opt/spack-view
+ENV ECCODES_DIR=/opt/spack-view
 
 WORKDIR /scratch
 
