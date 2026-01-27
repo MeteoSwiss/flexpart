@@ -51,9 +51,9 @@ default:
               sarus pull ${var.containerImageName}-tester:${var.semanticVersion}
               sarus run \
                     -e TEST_DATA=/scratch/test_data \
-                    --mount=type=bind,source=/oprusers/trajond/flexpart-ifs/test_reports,destination=/scratch/test_reports \
+                    --mount=type=bind,source=$PWD/test_reports,destination=/scratch/test_reports \
                     --mount=type=bind,source=/oprusers/trajond/flexpart-ifs/test_data,destination=/scratch/test_data \
-                    ${var.containerImageName}-tester:${var.semanticVersion}-tester
+                    ${var.containerImageName}-tester:${var.semanticVersion}
       - lint:
           - script: mkdir -p test_reports
           - pythonContainerLint:
@@ -99,7 +99,7 @@ default:
             fi
 
 variables:
-  project: flexpart
+  project: flexpart-ifs
   # default full image name, useful when running tasks locally
   image: ${var.containerImageName}:${var.semanticVersion}
   solution: dispersionmodelling

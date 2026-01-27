@@ -137,27 +137,49 @@ pipeline {
 
         stage('Test') {
             agent { label 'balfrin' }
+            options {
+                // GIT Jenkins plugin has configured the MCH Web proxy, which is not accessible from CSCS.
+                // Therefore, we need to clone the git repository manually
+                skipDefaultCheckout()
+            }
             // TODO DT-276 document "uv" in Jenkins for Administrators
             environment {
-                PATH="$SCRATCH/mch_jenkins_node/tools/uv:$PATH"
+                HTTP_PROXY = ''
+                HTTPS_PROXY = ''
+                PATH="$SCRATCH/mch_jenkins_node/tools/uv:$workspace/.venv-mchbuild/bin:$PATH"
             }
 
             steps {
-                echo '---- INSTALL MCHBUILD ----'
-                sh """
-                python3.12 -m venv .venv-mchbuild
-                PIP_INDEX_URL=https://service.ch/nexus/repository/python-all/simple \
-                  .venv-mchbuild/bin/pip install --upgrade "${Globals.mchbuildPipPackage}"
-                """
+                cleanWs()
+                script {
+                    echo '---- INSTALL MCHBUILD ----'
+                    sh """
+                    python3.12 -m venv .venv-mchbuild
+                    PIP_INDEX_URL=https://service.meteoswiss.ch/nexus/repository/python-all/simple \
+                      .venv-mchbuild/bin/pip install --upgrade "${Globals.mchbuildPipPackage}"
+                    """
 
-                echo("---- RUNNING UNIT TESTS & COLLECTING COVERAGE ----")
-                sh """
-                    mchbuild -s semanticVersion=${Globals.semanticVersion} \
-                        -s containerImageName=${Globals.containerImageNameCSCS} \
-                        test.unit
-                """
+                    echo("---- CLONNING GIT REPO ----")
+                    // Jenkins sets PR numbers as branch names if PR is tested
+                    // but we always need branch name for git fetch
+                    def always_branch = env.CHANGE_ID ? env.CHANGE_BRANCH : env.BRANCH_NAME
+                    withCredentials([gitUsernamePassword(credentialsId: 'github app credential for the meteoswiss github organization')]){
+                        sh """
+                        git init
+                        git fetch --no-tags --force --progress -- https://github.com/MeteoSwiss/flexpart.git ${always_branch}
+                        git checkout -f $GIT_COMMIT
+                        """
+                    }
 
-                stash includes: 'test_reports/**', name: 'test_reports'
+                    echo("---- RUNNING UNIT TESTS & COLLECTING COVERAGE ----")
+                    sh """
+                        mchbuild -s semanticVersion=${Globals.semanticVersion} \
+                            -s containerImageName=${Globals.containerImageNameCSCS} \
+                            test.unit
+                    """
+
+                    stash includes: 'test_reports/**', name: 'test_reports'
+                }
             }
             post {
                 always {
