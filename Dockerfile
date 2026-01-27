@@ -105,7 +105,7 @@ COPY --from=python-builder /src/app-root/requirements.txt /opt/requirements.txt
 COPY --from=spack-builder /opt/spack-root/ /opt/spack-root/
 COPY --from=spack-builder /opt/spack-view/ /opt/spack-view/
 
-RUN pip install -r /opt/requirements.txt --no-cache-dir --no-deps --root-user-action=ignore
+RUN pip install -r /opt/requirements.txt --no-cache-dir --no-deps --root-user-action=ignore --no-binary eccodes
 
 # FIXME DT-276 this command fails
 # RUN pip install .
@@ -115,6 +115,7 @@ ENV PATH="/opt/spack-view/bin:$PATH"
 ENV JOBS_DIR=/scratch/jobs
 ENV FLEXPART_PREFIX=/opt/spack-view
 ENV ECCODES_DIR=/opt/spack-view
+# we must ensure that eccodes uses the version installed with SPACK instead of the one installed with pip
 ENV FINDLIBS_DISABLE_PACKAGE=yes
 ENV FINDLIBS_DISABLE_PYTHON=yes
 
@@ -155,7 +156,7 @@ USER root
 WORKDIR /scratch
 # TODO DT-276 which is the root folder? app-root? scratch?
 COPY --from=python-builder /src/app-root/requirements_dev.txt /src/app-root/requirements_dev.txt
-RUN pip install -r /src/app-root/requirements_dev.txt --no-cache-dir --no-deps --root-user-action=ignore
+RUN pip install -r /src/app-root/requirements_dev.txt --no-cache-dir --no-deps --root-user-action=ignore --no-binary eccodes
 
 COPY utils/pyproject.toml utils/test_ci.sh /scratch/
 COPY utils/test test
