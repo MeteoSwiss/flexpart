@@ -7,7 +7,6 @@
 # Build spack
 # =============================================================
 
-# TODO use python 3.13?
 # TODO use the mch debian base image instead?
 FROM dockerhub.apps.cp.meteoswiss.ch/mch/ubuntu-noble AS spack-builder
 ARG VERSION
@@ -83,7 +82,7 @@ RUN --mount=type=secret,id=spack_buildcache_user,target=/run/secrets/spack_build
 # Python builder stage to prepare requirements files
 ##########################################
 
-FROM dockerhub.apps.cp.meteoswiss.ch/mch/python-3.11:latest AS python-builder
+FROM dockerhub.apps.cp.meteoswiss.ch/mch/python-3.13:latest AS python-builder
 ARG VERSION
 LABEL ch.meteoswiss.project=flexpart-ifs-${VERSION}
 
@@ -98,8 +97,7 @@ RUN poetry export -o requirements.txt \
 # Runner stage to run Flexpart-IFS with the built spack environment
 ##########################################
 
-# TODO DT-276 use latest python 3.13
-FROM dockerhub.apps.cp.meteoswiss.ch/mch/python-3.11:latest-slim AS runner
+FROM dockerhub.apps.cp.meteoswiss.ch/mch/python-3.13:latest-slim AS runner
 ARG VERSION
 LABEL ch.meteoswiss.project=flexpart-ifs-${VERSION}
 
@@ -117,6 +115,8 @@ ENV PATH="/opt/spack-view/bin:$PATH"
 ENV JOBS_DIR=/scratch/jobs
 ENV FLEXPART_PREFIX=/opt/spack-view
 ENV ECCODES_DIR=/opt/spack-view
+ENV FINDLIBS_DISABLE_PACKAGE=yes
+ENV FINDLIBS_DISABLE_PYTHON=yes
 
 WORKDIR /scratch
 
