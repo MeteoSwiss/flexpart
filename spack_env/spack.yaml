@@ -9,7 +9,7 @@ spack:
       path: ..
   # add package specs to the `specs` list
   specs:
-  - flexpart-ifs
+  - flexpart-ifs target=x86_64
   - netcdf-c ~mpi
   - eccodes @2.36.4 +aec jp2k=none
   - hdf5 ~mpi
@@ -27,4 +27,3 @@ spack:
   config:
     install_tree:
       root: ../spack-root
-    # install_path_scheme: '{name}'
