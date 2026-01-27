@@ -31,7 +31,7 @@ RUN curl -L https://github.com/spack/spack/archive/8ca06da.zip -o repo.zip && \
 
 # Spack setup: Update builtin repo, find externals and add the Nexus mirror (buildcache)
 # Notes: * For the builtin repo, a newer commit is used that includes eccodes-cosmo-resources,
-#          eccodes 2.36.4, and a compiler wrapper bugfix. This will be included in spack 1.2, once released.
+#          eccodes 2.19.1, and a compiler wrapper bugfix. This will be included in spack 1.2, once released.
 #        * For pushing to the spack buildcache, we do not use '--autopush' since this triggers a spack bug
 #          related to multiprocessing (fixed in next release). Instead, we do a manual push after the installs.
 #        * The oci username & password environment variables need to be set whenever spack should push, see below.
@@ -81,8 +81,7 @@ RUN --mount=type=secret,id=spack_buildcache_user,target=/run/secrets/spack_build
 ##########################################
 # Python builder stage to prepare requirements files
 ##########################################
-
-FROM dockerhub.apps.cp.meteoswiss.ch/mch/python-3.13:latest AS python-builder
+FROM dockerhub.apps.cp.meteoswiss.ch/mch/python-3.11:latest AS python-builder
 ARG VERSION
 LABEL ch.meteoswiss.project=flexpart-ifs-${VERSION}
 
@@ -97,7 +96,7 @@ RUN poetry export -o requirements.txt \
 # Runner stage to run Flexpart-IFS with the built spack environment
 ##########################################
 
-FROM dockerhub.apps.cp.meteoswiss.ch/mch/python-3.13:latest-slim AS runner
+FROM dockerhub.apps.cp.meteoswiss.ch/mch/python-3.11:latest-slim AS runner
 ARG VERSION
 LABEL ch.meteoswiss.project=flexpart-ifs-${VERSION}
 
@@ -105,7 +104,7 @@ COPY --from=python-builder /src/app-root/requirements.txt /opt/requirements.txt
 COPY --from=spack-builder /opt/spack-root/ /opt/spack-root/
 COPY --from=spack-builder /opt/spack-view/ /opt/spack-view/
 
-RUN pip install -r /opt/requirements.txt --no-cache-dir --no-deps --root-user-action=ignore --no-binary eccodes
+RUN pip install -r /opt/requirements.txt --no-cache-dir --no-deps --root-user-action=ignore
 
 # FIXME DT-276 this command fails
 # RUN pip install .
@@ -156,7 +155,7 @@ USER root
 WORKDIR /scratch
 # TODO DT-276 which is the root folder? app-root? scratch?
 COPY --from=python-builder /src/app-root/requirements_dev.txt /src/app-root/requirements_dev.txt
-RUN pip install -r /src/app-root/requirements_dev.txt --no-cache-dir --no-deps --root-user-action=ignore --no-binary eccodes
+RUN pip install -r /src/app-root/requirements_dev.txt --no-cache-dir --no-deps --root-user-action=ignore
 
 COPY utils/pyproject.toml utils/test_ci.sh /scratch/
 COPY utils/test test

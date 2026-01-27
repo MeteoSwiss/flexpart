@@ -11,7 +11,7 @@ spack:
   specs:
   - flexpart-ifs
   - netcdf-c ~mpi
-  - eccodes @2.36.4 +aec jp2k=none
+  - eccodes @2.19.1 +aec jp2k=none
   - hdf5 ~mpi
   view: ../spack-view
   concretizer:
@@ -19,7 +19,7 @@ spack:
   repos:
     flexpart: ../spack_repo/flexpart
     # For the builtin repo, a newer commit is used that includes
-    # eccodes-cosmo-resources, eccodes 2.36.4, and a compiler wrapper bugfix.
+    # eccodes-cosmo-resources, eccodes 2.19.1, and a compiler wrapper bugfix.
     # Once spack 1.2 is released, we can switch back to the default repo.
     # You need to run 'spack repo update' to make this work!
     builtin:

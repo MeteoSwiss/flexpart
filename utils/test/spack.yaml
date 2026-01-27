@@ -7,7 +7,7 @@ spack:
     - flexpart-ifs@main 
     - fdb +tools
     - eckit@1.20.2 ~mpi 
-    - eccodes@2.19.0 +aec jp2k=none 
+    - eccodes@2.19.1 +aec jp2k=none 
     - hdf5 ~mpi
   view: false
   concretizer:

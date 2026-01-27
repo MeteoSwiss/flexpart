@@ -85,6 +85,7 @@ files = [
 [package.dependencies]
 idna = ">=2.8"
 sniffio = ">=1.1"
+typing_extensions = {version = ">=4.5", markers = "python_version < \"3.13\""}
 
 [package.extras]
 doc = ["Sphinx (>=7.4,<8.0)", "packaging", "sphinx-autodoc-typehints (>=1.2.0)", "sphinx_rtd_theme"]
@@ -794,26 +795,12 @@ reference = "meteoswiss"
 
 [[package]]
 name = "eccodes"
-version = "2.37.0"
+version = "1.7.0"
 description = "Python interface to the ecCodes GRIB and BUFR decoder/encoder"
 optional = false
 python-versions = "*"
 files = [
-    {file = "eccodes-2.37.0-cp310-cp310-macosx_13_0_arm64.whl", hash = "sha256:5cdb8c8e113db2e284a43391603a6e1a1ae69b7cd4063258b2e8a23538d91f90"},
-    {file = "eccodes-2.37.0-cp310-cp310-macosx_13_0_x86_64.whl", hash = "sha256:a213138088e93cf2c17c20aafa0890d7c99d042c494836553d6b4416fd4a5235"},
-    {file = "eccodes-2.37.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:4c4f980ac4664fb8324d5195dbba833c3b45513c4451791038721af1784f46f3"},
-    {file = "eccodes-2.37.0-cp311-cp311-macosx_13_0_arm64.whl", hash = "sha256:28b6b059e5bc156e3b6814f93b291aba9c290502652fabf638972656e6ccae25"},
-    {file = "eccodes-2.37.0-cp311-cp311-macosx_13_0_x86_64.whl", hash = "sha256:ccd454d7ceecde90a092d104af9065ad7503a339b46b37719f09d9420845ee6f"},
-    {file = "eccodes-2.37.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:3b963e5f9a945fa8bca18b66bdfa32cee513a6b080effd967daf4e10ba3f741f"},
-    {file = "eccodes-2.37.0-cp312-cp312-macosx_13_0_arm64.whl", hash = "sha256:4a107567b55fa0188b7215ea0e5d78680dcd73b6b80596d38c15587fae141713"},
-    {file = "eccodes-2.37.0-cp312-cp312-macosx_13_0_x86_64.whl", hash = "sha256:1fbfad23f5f31e5f578f6a9bb46b8b5fdf6e09d033e42a600cc2212278bb7c07"},
-    {file = "eccodes-2.37.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:76d3a7dbaf5590ade2f5c45ba6d2567a7b01864a407f8be4a06bdfc9a5e2e30b"},
-    {file = "eccodes-2.37.0-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:12d1738c607289ab42be90e9246b1e6efd4f5aefd0cb2eaf341e8aebd70d01fe"},
-    {file = "eccodes-2.37.0-cp39-cp39-macosx_13_0_arm64.whl", hash = "sha256:f43c3f90be33a2362400a589d3d086eba37f118109c2d431c735b25c5c769d88"},
-    {file = "eccodes-2.37.0-cp39-cp39-macosx_13_0_x86_64.whl", hash = "sha256:964e57ac46f9b01d3ab54acdb4cfae44bbb4c24ee9d5d76eed43892c8e5dabdf"},
-    {file = "eccodes-2.37.0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:1c0b5cec6dac9d2985345e79a6d29ae7e27d0a8e5b9fcd0c571081aa0f1c76f0"},
-    {file = "eccodes-2.37.0-py3-none-any.whl", hash = "sha256:434e9e832d965f23141effa28a6997c635243d4d7cb8afb7ff453c6627014fc1"},
-    {file = "eccodes-2.37.0.tar.gz", hash = "sha256:ce9e11dba82dbdfee8803a26d03fe200307b23eac08e20c029c3e84b84757305"},
+    {file = "eccodes-1.7.0.tar.gz", hash = "sha256:0f233009eac228b99be6e40e5f7cc175b477d322bd91c0dac6bf226f0222cb17"},
 ]
 
 [package.dependencies]
@@ -2125,7 +2112,7 @@ files = [
 [package.dependencies]
 astroid = ">=3.3.5,<=3.4.0-dev0"
 colorama = {version = ">=0.4.5", markers = "sys_platform == \"win32\""}
-dill = {version = ">=0.3.7", markers = "python_version >= \"3.12\""}
+dill = {version = ">=0.3.6", markers = "python_version >= \"3.11\""}
 isort = ">=4.2.5,<5.13.0 || >5.13.0,<6"
 mccabe = ">=0.6,<0.8"
 platformdirs = ">=2.2.0"
@@ -2861,7 +2848,7 @@ files = [
 ]
 
 [package.dependencies]
-astroid = {version = ">=3.0.0a1", markers = "python_version >= \"3.12\""}
+astroid = {version = ">=2.7", markers = "python_version < \"3.12\""}
 Jinja2 = "*"
 PyYAML = "*"
 sphinx = ">=6.1.0"
@@ -3247,5 +3234,5 @@ reference = "meteoswiss"
 
 [metadata]
 lock-version = "2.0"
-python-versions = "~3.13"
-content-hash = "5a532e4b341c863843043bd408efbeb83b9b702b25f97d2354659c8e70515164"
+python-versions = "~3.11"
+content-hash = "fe4d57955b78a667ec7e5cafaec7570d65fc0319de3bfeac703e8437358026d8"
