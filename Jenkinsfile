@@ -18,7 +18,7 @@ String rebuild_cron = env.BRANCH_NAME == "main" ? "@midnight" : ""
 
 @Library('dev_tools@main') _
 pipeline {
-    agent {label 'podman'}
+    agent {label 'podman5'}
 
     triggers { cron(rebuild_cron) }
 
@@ -27,6 +27,8 @@ pipeline {
         disableConcurrentBuilds()
         // Discard old builds
         buildDiscarder(logRotator(artifactDaysToKeepStr: '7', artifactNumToKeepStr: '1', daysToKeepStr: '45', numToKeepStr: '10'))
+        // Discard old stashes
+        preserveStashes(buildCount: 7)
         // Timeout the pipeline build after 1 hour
         timeout(time: 1, unit: 'HOURS')
         gitLabConnection('CollabGitLab')
@@ -34,9 +36,6 @@ pipeline {
 
     environment {
         PATH = "$workspace/.venv-mchbuild/bin:$PATH"
-        HTTP_PROXY = 'http://proxy.meteoswiss.ch:8080'
-        HTTPS_PROXY = 'http://proxy.meteoswiss.ch:8080'
-        NO_PROXY = '.meteoswiss.ch,localhost'
         SCANNER_HOME = tool name: 'Sonarqube-certs-PROD', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
     }
 
@@ -93,6 +92,11 @@ pipeline {
         }
 
         stage('Build') {
+            environment {
+                HTTP_PROXY = 'http://proxy.meteoswiss.ch:8080'
+                HTTPS_PROXY = 'http://proxy.meteoswiss.ch:8080'
+                NO_PROXY = '.meteoswiss.ch,localhost'
+            }
             steps {
                 withCredentials([usernamePassword(
                                     credentialsId: 'openshift-nexus',
@@ -144,8 +148,6 @@ pipeline {
             }
             // TODO DT-276 document "uv" in Jenkins for Administrators
             environment {
-                HTTP_PROXY = ''
-                HTTPS_PROXY = ''
                 PATH="$SCRATCH/mch_jenkins_node/tools/uv:$workspace/.venv-mchbuild/bin:$PATH"
             }
 
@@ -190,8 +192,6 @@ pipeline {
 
         stage('Scan') {
             steps {
-                unstash 'test_reports'
-
                 echo '---- LINT & TYPE CHECK ----'
                 sh "mchbuild -s semanticVersion=${Globals.semanticVersion} -s containerImageName=${Globals.containerImageName} test.lint"
                 script {
@@ -202,6 +202,9 @@ pipeline {
                         error "Too many mypy issues, exiting now..."
                     }
                 }
+
+                // Get the tests_reports from the remote execution in balfrin
+                unstash 'test_reports'
 
                 echo("---- SONARQUBE ANALYSIS ----")
                 withSonarQubeEnv("Sonarqube-PROD") {

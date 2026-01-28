@@ -12,24 +12,9 @@
 
 set -e
 
-# First unset the proxy environment variables if running at AWS or CSCS
-if [ "$DEPLOY_SITE" == "AWS" ] || [ "$DEPLOY_SITE" == "CSCS" ]; then
-    echo "Deploy location is $DEPLOY_SITE. Unsetting proxy environment variables..."
 
-    unset http_proxy
-    unset https_proxy
-    unset ftp_proxy
-    unset no_proxy
-
-    unset HTTP_PROXY
-    unset HTTPS_PROXY
-    unset FTP_PROXY
-    unset NO_PROXY
-
-    echo "Proxy environment variables have been unset."
-else
-    echo "Deploy location is not AWS or CSCS. Proxy environment variables remain set."
-fi
+SCRIPT_DIR=$(dirname "$0")
+echo "Current working directory '$SCRIPT_DIR'"
 
 # Prepare input files for Flexpart-IFS
 python -m flexpart_ifs_utils generate \
@@ -50,6 +35,7 @@ for name in $names; do
     bash job
 done
 
+cd $SCRIPT_DIR
 # Upload output files of Flexpart-IFS to S3 bucket.
 python -m flexpart_ifs_utils upload \
     --directory $JOBS_DIR \
