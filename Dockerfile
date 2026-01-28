@@ -166,9 +166,6 @@ RUN chmod +x test_ci.sh
 # This environment tells pytest that the tests are occuring in a container.
 ENV PYTEST_ENTRYPOINT=/scratch/entrypoint.sh
 
-ARG USERNAME=default_user
-USER $USERNAME
-
 ENTRYPOINT []
 
 CMD ["/bin/bash", "-c", "source ./test_ci.sh && run_ci_tools"]
