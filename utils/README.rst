@@ -3,13 +3,19 @@
 Install dependencies & start the service locally
 ------------------------------------------------
 
-1. Enter the utils project folder:
+1. Install spack packages
+
+.. code-block:: console
+    spack env activate spack_env
+    spack install
+
+2. Enter the utils project folder:
 
 .. code-block:: console
 
     cd utils
 
-2. If running on CSCS, create a blank conda environment with your desired python version and configure poetry to install to this environment, eg.
+3. If running on CSCS, create a blank conda environment with your desired python version and configure poetry to install to this environment, eg.
 
 .. code-block:: console
 
@@ -17,7 +23,7 @@ Install dependencies & start the service locally
     conda create --prefix ./.conda-env python=3.13
     conda activate ./.conda-env
 
-3. Install packages
+4. Install packages
 
 .. code-block:: console
 
@@ -38,9 +44,9 @@ Run the tests and quality tools (locally)
 
 .. code-block::
 
-    FLEXPART_PREFIX=/path/to/flexpart/installation
-    TEST_DATA=/path/to/input/test_data
-
+    FLEXPART_PREFIX=../spack-view
+    TEST_DATA=../test_data
+    ECCODES_DIR=../spack-view
 
 1. Activate conda env (if running at CSCS)
 

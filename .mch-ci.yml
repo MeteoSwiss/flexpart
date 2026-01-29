@@ -41,10 +41,6 @@ default:
                 - --runtime=${var.crunPath}
               pullAlways: false
   - test:
-      # TODO DT-276 create local testing task
-      # TODO DT-276 set test_data paths in Jenkinsfile?
-      # TODO DT-276 replace test_ci.sh with mchbuild tasks?
-      # TODO DT-276 make container CLI in mchbuild configurable (i.e. support sarus)
       - unit:
           - script: |
               mkdir -p test_reports
@@ -62,12 +58,14 @@ default:
               packageManager: ''
               pullAlways: false
               removeLocalImage: false
+              pythonSourcePackage: utils
           - pythonContainerTypeCheck:
               imageName: ${var.containerImageName}-tester
               imageTag: ${var.semanticVersion}
               packageManager: ''
               pullAlways: false
               removeLocalImage: false
+              pythonSourcePackage: utils
   - publish:
       - testArtifacts:
           - containerPublishImage:
@@ -82,21 +80,11 @@ default:
               imageTag: ${var.semanticVersion}
               removeLocalImage: false
 
-  - deploy:
-      - pypi:
-          pythonPublishPackage:
-            setPackageVersion: False
-            pythonImageName: '3.10'
-            pullAlways: false
-
-  # TODO DT-276 use cleanup task from mchbuild 0.12
   - clean:
-      - images:
-          script: |
-            if test -n "${var.semanticVersion}"; then
-              podman image rm -f $(podman image ls -q \
-                -f "label=ch.meteoswiss.project=${var.project}-${var.semanticVersion}") || :
-            fi
+    - images:
+        - cleanupImages:
+            targets:
+              - label://ch.meteoswiss.project=${var.project}-${var.semanticVersion}
 
 variables:
   project: flexpart-ifs
@@ -104,9 +92,8 @@ variables:
   image: ${var.containerImageName}:${var.semanticVersion}
   solution: dispersionmodelling
   notifyOnNightlyFailure: p_dispersionmodelling@meteoswiss.ch
-  # TODO DT-276 extract common values
-  publicContainerImageName: docker-public-nexus.meteoswiss.ch/dispersionmodelling/flexpart-ifs
-  containerImageName: docker-intern-nexus.meteoswiss.ch/dispersionmodelling/flexpart-ifs
+  publicContainerImageName: docker-public-nexus.meteoswiss.ch/${var.solution}/${var.project}
+  containerImageName: docker-intern-nexus.meteoswiss.ch/${var.solution}/${var.project}
   semanticVersion: 0.0.0  # is overwritten in Jenkins
   containerRegistries: [
     'docker-intern-nexus.meteoswiss.ch',

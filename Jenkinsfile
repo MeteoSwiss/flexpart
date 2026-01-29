@@ -1,9 +1,12 @@
 class Globals {
     // Pin mchbuild to stable version to avoid breaking changes
-    static String mchbuildPipPackage = 'mchbuild>=0.11.3,<0.12.0'
+    static String mchbuildPipPackage = 'mchbuild>=0.12.0,<0.13.0'
 
     // sets to abort the pipeline if the Sonarqube QualityGate fails
     static boolean qualityGateAbortPipeline = false
+
+    // sets the public docker container registry
+    static String publicContainerRegistry = 'docker-public-nexus.meteoswiss.ch'
 
     // Name of the container image
     static String containerImageName = ''
@@ -127,12 +130,11 @@ pipeline {
                 withCredentials([usernamePassword(credentialsId: 'openshift-nexus',
                                                   passwordVariable: 'NXPASS',
                                                   usernameVariable: 'NXUSER')]) {
-                    // TODO DT-276 extract primaryRegistry to global variable?
                     sh """
                         mchbuild -s semanticVersion=${Globals.semanticVersion} \
                             -s containerImageName=${Globals.containerImageName} \
                             -s publicContainerImageName=${Globals.containerImageNamePublic} \
-                            -s primaryRegistry="docker-public-nexus.meteoswiss.ch" \
+                            -s primaryRegistry=${Globals.publicContainerRegistry} \
                             publish.testArtifacts
                     """
                 }
@@ -229,7 +231,6 @@ pipeline {
                 REGISTRY_AUTH_FILE = "$workspace/.containers/auth.json"
             }
             steps {
-                // TODO: figure out if we need to retag the public image as intern image
                 echo "---- PUBLISHING CONTAINER IMAGES ----"
                 withCredentials([usernamePassword(credentialsId: 'openshift-nexus',
                                                   passwordVariable: 'NXPASS',
