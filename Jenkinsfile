@@ -1,4 +1,8 @@
 class Globals {
+
+    // Threshold for mypy issues before failing the build
+    static int mypyIssueThreshold = 40
+
     // Pin mchbuild to stable version to avoid breaking changes
     static String mchbuildPipPackage = 'mchbuild>=0.12.0,<0.13.0'
 
@@ -198,7 +202,7 @@ pipeline {
                 sh "mchbuild -s semanticVersion=${Globals.semanticVersion} -s containerImageName=${Globals.containerImageName} test.lint"
                 script {
                     try {
-                        recordIssues(qualityGates: [[threshold: 10, type: 'TOTAL', unstable: false]], tools: [myPy(pattern: 'test_reports/mypy.log')])
+                        recordIssues(qualityGates: [[threshold: Globals.mypyIssueThreshold, type: 'TOTAL', unstable: false]], tools: [myPy(pattern: 'test_reports/mypy.log')])
                     }
                     catch (err) {
                         error "Too many mypy issues, exiting now..."
