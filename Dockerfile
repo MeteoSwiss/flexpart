@@ -7,42 +7,11 @@
 # Build spack
 # =============================================================
 
-# TODO DT-276 extract this to a base image? (only for flexpart?)
-FROM dockerhub.apps.cp.meteoswiss.ch/mch/ubuntu-noble AS spack-builder
+FROM dockerhub.apps.cp.meteoswiss.ch/dispersionmodelling/spack-base-image:0.1.0 AS spack-builder
 ARG VERSION
 LABEL ch.meteoswiss.project=flexpart-ifs-${VERSION}
 
 WORKDIR /opt
-
-# Basics: spack dependencies
-RUN apt-get update && apt-get install -y -q --no-install-recommends \
-    file bzip2 ca-certificates g++-11 gcc-11 gfortran-11 build-essential git gzip \
-    lsb-release patch python3 tar unzip xz-utils zstd curl rsync make cmake m4 \
-    && rm -rf /var/lib/apt/lists/*
-
-# Spack checkout
-# Note: Use spack v1.2 once released, and clone with '--depth 1'. In the meantime, we need a specific commit
-#       that fixes an authentication bug for using the spack build cache on nexus.
-RUN curl -L https://github.com/spack/spack/archive/8ca06da.zip -o repo.zip && \
-    mkdir -p /opt/spack && \
-    unzip -q repo.zip -d /opt && \
-    mv /opt/spack-8ca06da*/* /opt/spack/ && \
-    rm -rf /opt/spack-8ca06da* repo.zip
-
-# Spack setup: Update builtin repo, find externals and add the Nexus mirror (buildcache)
-# Notes: * For the builtin repo, a newer commit is used that includes eccodes-cosmo-resources,
-#          eccodes 2.19.1, and a compiler wrapper bugfix. This will be included in spack 1.2, once released.
-#        * For pushing to the spack buildcache, we do not use '--autopush' since this triggers a spack bug
-#          related to multiprocessing (fixed in next release). Instead, we do a manual push after the installs.
-#        * The oci username & password environment variables need to be set whenever spack should push, see below.
-RUN . /opt/spack/share/spack/setup-env.sh && \
-    spack repo update --commit a5ec6ab0dbf87f671a917bce29bf16284ebf0dac builtin && \
-    spack external find && \
-    spack mirror add spack-build-cache \
-        --unsigned \
-        --oci-username-variable BUILDCACHE_USER \
-        --oci-password-variable BUILDCACHE_PASSWORD \
-        oci://docker-intern-nexus.meteoswiss.ch/numericalweatherpredictions/spack-build-cache
 
 # =============================================================
 # Build flexpart
