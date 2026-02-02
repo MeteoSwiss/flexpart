@@ -152,7 +152,6 @@ pipeline {
                 // Therefore, we need to clone the git repository manually
                 skipDefaultCheckout()
             }
-            // TODO DT-276 document "uv" in Jenkins for Administrators
             environment {
                 PATH="$SCRATCH/mch_jenkins_node/tools/uv:$workspace/.venv-mchbuild/bin:$PATH"
             }
