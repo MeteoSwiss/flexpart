@@ -41,6 +41,12 @@ default:
                 - --runtime=${var.crunPath}
               pullAlways: false
   - test:
+      - unitPodman:
+          - script: |
+              podman run --rm \
+                  -e TEST_DATA=/scratch/test_data \
+                  -v $PWD/test_data:/scratch/test_data \
+                  ${var.containerImageName}-tester:${var.semanticVersion}
       - unit:
           - script: |
               mkdir -p test_reports
@@ -84,6 +90,7 @@ default:
     - images:
         - cleanupImages:
             targets:
+              - image://${var.publicContainerImageName}:${var.semanticVersion}
               - label://ch.meteoswiss.project=${var.project}-${var.semanticVersion}
 
 variables:
