@@ -6,12 +6,12 @@ class FlexpartIfs(MakefilePackage):
     """flexpart is a Lagrangian dispersion model"""
 
     homepage = 'https://github.com/MeteoSwiss/flexpart'
-    url = 'https://github.com/MeteoSwiss/flexpart/archive/refs/tags/v10.4.4.tar.gz'
+    url = 'https://github.com/MeteoSwiss/flexpart/archive/refs/tags/10.4.9.tar.gz'
     git = 'git@github.com:MeteoSwiss/flexpart.git'
 
     version("develop")
     version('main', branch='main')
-    version('10.4.4', tag='10.4.4')
+    version('10.4.9', tag='10.4.9')
 
     depends_on('eccodes +fortran')
     # WORKAROUND: '%gcc' should not be necessary, but without it, spack concretizes to nvhpc.

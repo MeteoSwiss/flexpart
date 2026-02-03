@@ -40,7 +40,7 @@ RUN --mount=type=secret,id=spack_buildcache_user,target=/run/secrets/spack_build
     spack repo list && \
     spack concretize -f && \
     spack install --fail-fast && \
-    # pushing the fieldextra spec with --only=dependencies means everything except flexpart
+    # pushing the flexpart-ifs spec with --only=dependencies means everything except flexpart-ifs
     (spack buildcache push --update-index --only=dependencies --fail-fast spack-build-cache flexpart-ifs \
      || echo "Spack buildcache push failed, continuing anyway") && \
     spack gc -y && \
@@ -88,11 +88,10 @@ WORKDIR /scratch
 
 RUN mkdir -p \
     output \
-    flexpart_ifs_utils \
     jobs \
     db
 
-COPY utils/flexpart_ifs_utils/ flexpart_ifs_utils/
+COPY utils/flexpart_ifs_utils flexpart_ifs_utils
 COPY entrypoint.sh entrypoint.sh
 COPY data/IGBP_int1.dat $JOBS_DIR
 
