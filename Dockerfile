@@ -25,7 +25,6 @@ COPY options.meteoswiss /opt/options.meteoswiss
 COPY spack_env /opt/spack_env
 COPY spack_repo /opt/spack_repo
 COPY src /opt/src
-COPY test_meteoswiss /opt/test_meteoswiss
 COPY pathnames /opt/pathnames
 
 # Install

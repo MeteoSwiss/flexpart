@@ -44,7 +44,6 @@ class FlexpartIfs(MakefilePackage):
     def install(self, spec, prefix):
         mkdir(prefix.bin)
         install(join_path(self.build_directory, 'FLEXPART'), prefix.bin)
-        install_tree('test_meteoswiss', prefix.share.test_meteoswiss)
         install_tree('options', join_path(prefix.share, 'options'))
         install_tree('options.meteoswiss',
                      join_path(prefix.share, 'options.meteoswiss'))
