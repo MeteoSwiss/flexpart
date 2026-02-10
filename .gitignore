@@ -45,3 +45,10 @@ spack-*
 
 # Test artefacts
 flexpart-test
+
+# Spack environment files
+.spack-env
+__pycache__
+.venv*
+.ctx
+._spack-view/

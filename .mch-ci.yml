@@ -1,0 +1,110 @@
+default:
+  - build:
+      - checkGivenSemanticVersion:
+          checkSemanticVersion:
+      - getSemanticVersion:
+          gitCalculateSemanticVersion:
+      - getImageName:
+          containerConstructImageName:
+      - getImageNamePublic:
+          - containerConstructImageName:
+              containerRegistries:
+                - docker-public-nexus.meteoswiss.ch
+              primaryRegistry:
+                docker-public-nexus.meteoswiss.ch
+      - getImageNameCSCS:
+          - containerConstructImageName:
+              containerRegistries:
+                - container-registry.meteoswiss.ch
+              primaryRegistry:
+                container-registry.meteoswiss.ch
+      - artifacts:
+          - containerBuildImage:
+              imageName: ${var.containerImageName}-tester
+              imageTag: ${var.semanticVersion}
+              target: tester
+              extraArgs:
+                - --build-arg
+                - VERSION=${var.semanticVersion}
+                - --secret=id=spack_buildcache_user,env=NXUSER
+                - --secret=id=spack_buildcache_password,env=NXPASS
+                - --runtime=${var.crunPath}
+          - containerBuildImage:
+              imageName: ${var.containerImageName}-aws
+              imageTag: ${var.semanticVersion}
+              target: runner
+              extraArgs:
+                - --build-arg
+                - VERSION=${var.semanticVersion}
+                - --secret=id=spack_buildcache_user,env=NXUSER
+                - --secret=id=spack_buildcache_password,env=NXPASS
+                - --runtime=${var.crunPath}
+              pullAlways: false
+  - test:
+      - unitPodman:
+          - script: |
+              podman run --rm \
+                  -e TEST_DATA=/scratch/test_data \
+                  -v $PWD/test_data:/scratch/test_data \
+                  -v $PWD/test_reports:/scratch/test_reports \
+                  ${var.containerImageName}-tester:${var.semanticVersion}
+      - unit:
+          - script: |
+              mkdir -p test_reports
+              sarus pull ${var.containerImageName}-tester:${var.semanticVersion}
+              sarus run \
+                    -e TEST_DATA=/scratch/test_data \
+                    --mount=type=bind,source=$PWD/test_reports,destination=/scratch/test_reports \
+                    --mount=type=bind,source=/oprusers/trajond/flexpart-ifs/test_data,destination=/scratch/test_data \
+                    ${var.containerImageName}-tester:${var.semanticVersion}
+      - lint:
+          - script: mkdir -p test_reports
+          - pythonContainerLint:
+              imageName: ${var.containerImageName}-tester
+              imageTag: ${var.semanticVersion}
+              packageManager: ''
+              pullAlways: false
+              removeLocalImage: false
+              pythonSourcePackage: utils
+          - pythonContainerTypeCheck:
+              imageName: ${var.containerImageName}-tester
+              imageTag: ${var.semanticVersion}
+              packageManager: ''
+              pullAlways: false
+              removeLocalImage: false
+              pythonSourcePackage: utils
+  - publish:
+      - testArtifacts:
+          - containerPublishImage:
+              imageToTag: ${var.containerImageName}-tester:${var.semanticVersion}
+              imageName: ${var.publicContainerImageName}-tester
+              imageTag: ${var.semanticVersion}
+              removeLocalImage: false
+              removeImageToTag: false
+      - artifacts:
+          - containerPublishImage:
+              imageName: ${var.containerImageName}-aws
+              imageTag: ${var.semanticVersion}
+              removeLocalImage: false
+
+  - clean:
+    - images:
+        - cleanupImages:
+            targets:
+              - image://${var.publicContainerImageName}-tester:${var.semanticVersion}
+              - label://ch.meteoswiss.project=${var.project}-${var.semanticVersion}
+
+variables:
+  project: flexpart-ifs
+  # default full image name, useful when running tasks locally
+  image: ${var.containerImageName}:${var.semanticVersion}
+  solution: dispersionmodelling
+  notifyOnNightlyFailure: p_dispersionmodelling@meteoswiss.ch
+  publicContainerImageName: docker-public-nexus.meteoswiss.ch/${var.solution}/${var.project}
+  containerImageName: docker-intern-nexus.meteoswiss.ch/${var.solution}/${var.project}
+  semanticVersion: 0.0.0  # is overwritten in Jenkins
+  containerRegistries: [
+    'docker-intern-nexus.meteoswiss.ch',
+    'docker-public-nexus.meteoswiss.ch'
+  ]
+  crunPath: /usr/bin/crun

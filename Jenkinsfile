@@ -1,277 +1,246 @@
-// MeteoSwiss Jenkinsfile to build and test a Flexpart-IFS container image.
-
 class Globals {
-    // constants
-    static final String PROJECT = 'flexpart-ifs'
-    static final String IMAGE_REPO = 'docker-intern-nexus.meteoswiss.ch'
-    static final String IMAGE_REPO_PUBLIC = 'docker-public-nexus.meteoswiss.ch'
-    static final String IMAGE_NAME = 'docker-intern-nexus.meteoswiss.ch/dispersionmodelling/flexpart-ifs'
-    static final String IMAGE_NAME_PUBLIC = 'docker-public-nexus.meteoswiss.ch/dispersionmodelling/flexpart-ifs'
-    static final String IMAGE_NAME_PUBLIC_PULL = 'container-registry.meteoswiss.ch/dispersionmodelling/flexpart-ifs'
 
-    // sets the pipeline to execute all steps related to building the service
-    static boolean build = false
+    // Threshold for mypy issues before failing the build
+    static int mypyIssueThreshold = 40
+
+    // Pin mchbuild to stable version to avoid breaking changes
+    static String mchbuildPipPackage = 'mchbuild>=0.13.0,<0.14.0'
 
     // sets to abort the pipeline if the Sonarqube QualityGate fails
     static boolean qualityGateAbortPipeline = false
 
-    // sets the pipeline to execute all steps related to deployment of the service
-    static boolean deploy = false
+    // sets the public docker container registry
+    static String publicContainerRegistry = 'docker-public-nexus.meteoswiss.ch'
 
-    // the image tag used for tagging the image
-    static String imageTag = ''
+    // Name of the container image
+    static String containerImageName = ''
+    static String containerImageNamePublic = ''
+    static String containerImageNameCSCS = ''
 
-    // the image tag used for pushing the image to the public Nexus repo
-    static String imageTagPublic = ''
-
-    // the image tag used for pulling the image from CSCS/externally
-    static String imageTagPublicPull = ''
-
-    // the service version
-    static String version = ''
-
-    // the Vault credititalId
-    static String vaultCredentialId = ''
-
-    // the Vault path
-    static String vaultPath = ''
+    // Semantic version of the artifact
+    static String semanticVersion = ''
 }
+
+String rebuild_cron = env.BRANCH_NAME == "main" ? "@midnight" : ""
 
 @Library('dev_tools@main') _
 pipeline {
-    agent {label 'podman'}
+    agent {label 'podman5'}
 
-    parameters {
-        choice(choices: ['Build', 'Deploy'],
-            description: 'Build type',
-            name: 'buildChoice')
-
-        booleanParam(name: 'BUILD_BASE_IMAGE', defaultValue: false, description: 'Rebuilds the base image containing Spack dependencies')
-    }
+    triggers { cron(rebuild_cron) }
 
     options {
         // New jobs should wait until older jobs are finished
         disableConcurrentBuilds()
-        // Discard old builds - keep 15
-        buildDiscarder(logRotator(numToKeepStr: '15'))
+        // Discard old builds
+        buildDiscarder(logRotator(artifactDaysToKeepStr: '7', artifactNumToKeepStr: '1', daysToKeepStr: '45', numToKeepStr: '10'))
+        // Discard old stashes
+        preserveStashes(buildCount: 7)
         // Timeout the pipeline build after 1 hour
         timeout(time: 1, unit: 'HOURS')
         gitLabConnection('CollabGitLab')
     }
 
     environment {
-        scannerHome = tool name: 'Sonarqube-certs-PROD', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
-        DOCKER_CONFIG = "$workspace/.docker"
-        REGISTRY_AUTH_FILE = "$workspace/.containers/auth.json"
+        PATH = "$workspace/.venv-mchbuild/bin:$PATH"
+        SCANNER_HOME = tool name: 'Sonarqube-certs-PROD', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
     }
 
     stages {
         stage('Preflight') {
             steps {
                 updateGitlabCommitStatus name: 'Build', state: 'running'
+
                 script {
-                    echo 'Starting with Preflight'
+                    echo '---- INSTALL MCHBUILD ----'
+                    sh """
+                    python -m venv .venv-mchbuild
+                    PIP_INDEX_URL=https://hub.meteoswiss.ch/nexus/repository/python-all/simple \
+                      .venv-mchbuild/bin/pip install --upgrade "${Globals.mchbuildPipPackage}"
+                    """
 
-                    // Determine the type of build
-                    switch (params.buildChoice) {
-                        case 'Build':
-                            Globals.build = true
-                            break
-                        case 'Deploy':
-                            Globals.deploy = true
-                            break
+                    echo '---- INITIALIZE PARAMETERS ----'
+
+                    if (env.TAG_NAME) {
+                        echo "Detected release build triggered from tag ${env.TAG_NAME}."
+                        def isMajorMinorPatch = sh(
+                            script: "mchbuild -s version=${env.TAG_NAME} -g isMajorMinorPatch build.checkGivenSemanticVersion",
+                            returnStdout: true
+                        )
+                        if (isMajorMinorPatch != 'true') {
+                            currentBuild.result = 'ABORTED'
+                            error('Build aborted because release builds are only triggered for tags of the form <major>.<minor>.<patch>.')
+                        }
+                        Globals.semanticVersion  = env.TAG_NAME
+                    } else {
+                        echo "Detected development build triggered from branch."
+                        Globals.semanticVersion = sh(
+                            script: 'mchbuild -g semanticVersion build.getSemanticVersion',
+                            returnStdout: true
+                        )
                     }
 
-                    if (Globals.build || Globals.deploy) {
-                        echo 'Starting with calculating version'
-
-                        def shortBranchName = env.BRANCH_NAME
-                            .replaceAll("[^a-zA-Z0-9]+", "")
-                            .take(30)
-                            .toLowerCase()
-
-                        try {
-                            Globals.version = sh(
-                                script: "git describe --tags --match 'v[0-9]*'",
-                                returnStdout: true
-                            ).trim()
-                        } catch (err) {
-                            def version = sh(
-                                script: "git rev-parse --short HEAD",
-                                returnStdout: true
-                            ).trim()
-                            Globals.version = "${shortBranchName}-${version}"
-                        }
-
-                        echo "Using version ${Globals.version}"
-
-                        if (env.BRANCH_NAME == 'main') {
-                            Globals.imageTag = "${Globals.IMAGE_NAME}:latest"
-                            Globals.imageTagPublic = "${Globals.IMAGE_NAME_PUBLIC}:latest"
-                            Globals.imageTagPublicPull = "${Globals.IMAGE_NAME_PUBLIC_PULL}:latest"
-                        } else {
-                            Globals.imageTag = "${Globals.IMAGE_NAME}:${shortBranchName}"
-                            Globals.imageTagPublic = "${Globals.IMAGE_NAME_PUBLIC}:${shortBranchName}"
-                            Globals.imageTagPublicPull = "${Globals.IMAGE_NAME_PUBLIC_PULL}:${shortBranchName}"
-                        }
-
-                        echo "Using container version ${Globals.imageTag}"
-                    }
+                    Globals.containerImageName = sh(
+                        script: 'mchbuild -g containerImageName build.getImageName',
+                        returnStdout: true
+                    )
+                    Globals.containerImageNamePublic = sh(
+                        script: 'mchbuild -g containerImageName build.getImageNamePublic',
+                        returnStdout: true
+                    )
+                    Globals.containerImageNameCSCS = sh(
+                        script: 'mchbuild -g containerImageName build.getImageNameCSCS',
+                        returnStdout: true
+                    )
+                    echo "Using semantic version: ${Globals.semanticVersion}"
+                    echo "Using container image name: ${Globals.containerImageName}"
                 }
             }
         }
 
-        stage('Build Base dependencies image') {
-            when { expression { params.BUILD_BASE_IMAGE } }
+        stage('Build') {
+            environment {
+                HTTP_PROXY = 'http://proxy.meteoswiss.ch:8080'
+                HTTPS_PROXY = 'http://proxy.meteoswiss.ch:8080'
+                NO_PROXY = '.meteoswiss.ch,localhost'
+            }
             steps {
                 withCredentials([usernamePassword(
-                                    credentialsId: 'github app credential for the meteoswiss github organization',
-                                    usernameVariable: 'GITHUB_APP',
-                                    passwordVariable: 'GITHUB_ACCESS_TOKEN'),
-                                usernamePassword(
                                     credentialsId: 'openshift-nexus',
                                     passwordVariable: 'NXPASS',
                                     usernameVariable: 'NXUSER')
                             ]) {
-                    echo "---- BUILDING BASE IMAGE ----"
+                    echo '---- BUILDING CONTAINER IMAGES ----'
+                    // the "--runtime /usr/bin/crun" option is a workaround,
+                    // see https://github.com/containers/podman/blob/main/troubleshooting.md#41-a-podman-build-step-with---mounttypesecret-fails-with-operation-not-permitted
                     sh """
-                    podman build --pull -f Dockerfile.base --build-arg VERSION=${Globals.version} -t "${Globals.IMAGE_NAME}-base:${GIT_COMMIT}" .
-                    """
-                    echo "---- PUBLISH BASE IMAGE ----"
-                    sh """
-                    echo $NXPASS | podman login ${Globals.IMAGE_REPO} -u $NXUSER --password-stdin
-                    podman tag ${Globals.IMAGE_NAME}-base:${GIT_COMMIT} ${Globals.IMAGE_NAME}-base:latest
-                    podman push ${Globals.IMAGE_NAME}-base:${GIT_COMMIT}
-                    podman push ${Globals.IMAGE_NAME}-base:latest
+                        export NXUSER NXPASS
+                        export CRUNPATH=\$(type -p crun)
+                        mchbuild -s commit=${GIT_COMMIT} -s semanticVersion=${Globals.semanticVersion} \
+                            -s crunPath=\$CRUNPATH \
+                            -s containerImageName=${Globals.containerImageName} \
+                            build.artifacts
                     """
                 }
             }
-            post {
-                cleanup {
-                    sh "podman logout ${Globals.IMAGE_REPO} || true"
+        }
+
+        stage('Publish Test Artifacts') {
+            environment {
+                REGISTRY_AUTH_FILE = "$workspace/.containers/auth.json"
+            }
+            steps {
+                echo "---- PUBLISHING TEST CONTAINER IMAGES ----"
+                withCredentials([usernamePassword(credentialsId: 'openshift-nexus',
+                                                  passwordVariable: 'NXPASS',
+                                                  usernameVariable: 'NXUSER')]) {
+                    sh """
+                        mchbuild -s semanticVersion=${Globals.semanticVersion} \
+                            -s containerImageName=${Globals.containerImageName} \
+                            -s publicContainerImageName=${Globals.containerImageNamePublic} \
+                            -s primaryRegistry=${Globals.publicContainerRegistry} \
+                            publish.testArtifacts
+                    """
                 }
             }
         }
 
         stage('Test') {
-            when { expression { Globals.build } }
-            environment {
-                TEST_NODE = 'balfrin-ln003'
+            agent { label 'balfrin' }
+            options {
+                // GIT Jenkins plugin has configured the MCH Web proxy, which is not accessible from CSCS.
+                // Therefore, we need to clone the git repository manually
+                skipDefaultCheckout()
             }
+            environment {
+                PATH="$SCRATCH/mch_jenkins_node/tools/uv:$workspace/.venv-mchbuild/bin:$PATH"
+            }
+
             steps {
-                withCredentials([usernamePassword(
-                                    credentialsId: 'github app credential for the meteoswiss github organization',
-                                    usernameVariable: 'GITHUB_APP',
-                                    passwordVariable: 'GITHUB_ACCESS_TOKEN'),
-                                usernamePassword(
-                                    credentialsId: 'openshift-nexus',
-                                    passwordVariable: 'NXPASS',
-                                    usernameVariable: 'NXUSER')
-                            ]) {
-                    echo "Starting with Build image"
+                cleanWs()
+                script {
+                    echo '---- INSTALL MCHBUILD ----'
                     sh """
-                    podman build --pull --build-arg TOKEN=${GITHUB_ACCESS_TOKEN} --build-arg COMMIT=${GIT_COMMIT} --build-arg VERSION=${Globals.version} --target tester -t ${Globals.imageTag}-tester .
-                    mkdir -p test_reports && chmod a+rw test_reports
+                    python3.12 -m venv .venv-mchbuild
+                    PIP_INDEX_URL=https://service.meteoswiss.ch/nexus/repository/python-all/simple \
+                      .venv-mchbuild/bin/pip install --upgrade "${Globals.mchbuildPipPackage}"
                     """
-                    sh """ echo $NXPASS | podman login ${Globals.IMAGE_REPO_PUBLIC} -u $NXUSER --password-stdin
-                    podman tag ${Globals.imageTag}-tester ${Globals.imageTagPublic}-tester
-                    podman push ${Globals.imageTagPublic}-tester
-                    """
-                    echo "Starting with unit-testing including coverage"
+
+                    echo("---- CLONNING GIT REPO ----")
+                    // Jenkins sets PR numbers as branch names if PR is tested
+                    // but we always need branch name for git fetch
+                    def always_branch = env.CHANGE_ID ? env.CHANGE_BRANCH : env.BRANCH_NAME
+                    withCredentials([gitUsernamePassword(credentialsId: 'github app credential for the meteoswiss github organization')]){
+                        sh """
+                        git init
+                        git fetch --no-tags --force --progress -- https://github.com/MeteoSwiss/flexpart.git ${always_branch}
+                        git checkout -f $GIT_COMMIT
+                        """
+                    }
+
+                    echo("---- RUNNING UNIT TESTS & COLLECTING COVERAGE ----")
                     sh """
-                    ssh trajond@${TEST_NODE}.cscs.ch mkdir -p flexpart-ifs/test_reports
-                    ssh trajond@${TEST_NODE}.cscs.ch sarus pull ${Globals.imageTagPublicPull}-tester
-                    ssh trajond@${TEST_NODE}.cscs.ch "sarus run \
-                        -e TEST_DATA=/scratch/test_data \
-                        --mount=type=bind,source=/oprusers/trajond/flexpart-ifs/test_reports,destination=/scratch/test_reports \
-                        --mount=type=bind,source=/oprusers/trajond/flexpart-ifs/test_data,destination=/scratch/test_data \
-                        ${Globals.imageTagPublicPull}-tester \
-                        sh -c '. ./test_ci.sh && run_tests_with_coverage'"
-                    scp -rp trajond@${TEST_NODE}.cscs.ch:/oprusers/trajond/flexpart-ifs/test_reports/* test_reports && ls -l test_reports
+                        mchbuild -s semanticVersion=${Globals.semanticVersion} \
+                            -s containerImageName=${Globals.containerImageNameCSCS} \
+                            test.unit
                     """
-                } 
+
+                    stash includes: 'test_reports/**', name: 'test_reports'
+                }
             }
             post {
                 always {
-                    junit keepLongStdio: true, testResults: 'test_reports/junit.xml'
-                }
-                cleanup {
-                    sh "podman logout ${Globals.IMAGE_REPO_PUBLIC} || true"
+                    junit keepLongStdio: true, testResults: 'test_reports/junit*.xml'
                 }
             }
         }
 
         stage('Scan') {
-            when { expression { Globals.build } }
             steps {
+                echo '---- LINT & TYPE CHECK ----'
+                sh "mchbuild -s semanticVersion=${Globals.semanticVersion} -s containerImageName=${Globals.containerImageName} test.lint"
                 script {
-                    echo("---- LYNT ----")
-                    sh "podman run --user \$(id -u) --rm -v \$(pwd)/test_reports:/scratch/test_reports ${Globals.imageTag}-tester sh -c '. ./test_ci.sh && run_pylint'"
-
                     try {
-                        echo("---- TYPING CHECK ----")
-                        sh "podman run --user \$(id -u) --rm -v \$(pwd)/test_reports:/scratch/test_reports ${Globals.imageTag}-tester sh -c '. ./test_ci.sh && run_mypy'"
-                        recordIssues(qualityGates: [[threshold: 10, type: 'TOTAL', unstable: false]], tools: [myPy(pattern: 'test_reports/mypy.log')])
+                        recordIssues(qualityGates: [[threshold: Globals.mypyIssueThreshold, type: 'TOTAL', unstable: false]], tools: [myPy(pattern: 'test_reports/mypy.log')])
                     }
                     catch (err) {
                         error "Too many mypy issues, exiting now..."
                     }
-
-                    echo("---- SONARQUBE ANALYSIS ----")
-                    withSonarQubeEnv("Sonarqube-PROD") {
-                        sh "cd utils && ${scannerHome}/bin/sonar-scanner"
-                    }
-
-                    echo("---- SONARQUBE QUALITY GATE ----")
-                    timeout(time: 1, unit: 'HOURS') {
-                        // Parameter indicates whether to set pipeline to UNSTABLE if Quality Gate fails
-                        // true = set pipeline to UNSTABLE, false = don't
-                        waitForQualityGate abortPipeline: Globals.qualityGateAbortPipeline
-                    }
                 }
-            }
-        }
 
-        stage('Create Artifacts') {
-            when { expression { Globals.build || Globals.deploy } }
-            steps {
-                script {
-                    withCredentials([usernamePassword(
-                        credentialsId: 'github app credential for the meteoswiss github organization',
-                        usernameVariable: 'GITHUB_APP',
-                        passwordVariable: 'GITHUB_ACCESS_TOKEN'
-                    )]) {
-                        echo "---- CREATE IMAGE ----"
-                        sh """
-                            podman build --pull \
-                            --build-arg TOKEN=${GITHUB_ACCESS_TOKEN} \
-                            --build-arg COMMIT=${GIT_COMMIT} \
-                            --build-arg VERSION=${Globals.version} \
-                            --target runner \
-                            -t ${Globals.imageTag} .
-                        """
-                    }
+                // Get the tests_reports from the remote execution in balfrin
+                unstash 'test_reports'
+
+                echo("---- SONARQUBE ANALYSIS ----")
+                withSonarQubeEnv("Sonarqube-PROD") {
+                    // fix source path in coverage.xml
+                    // (required because coverage is calculated using podman which uses a differing file structure)
+                    // https://stackoverflow.com/questions/57220171/sonarqube-client-fails-to-parse-pytest-coverage-results
+                    sh "sed -i 's/\\/src\\/app-root/.\\//g' test_reports/coverage.xml"
+                    sh "${SCANNER_HOME}/bin/sonar-scanner"
+                }
+
+                echo("---- SONARQUBE QUALITY GATE ----")
+                timeout(time: 1, unit: 'HOURS') {
+                    // Parameter indicates whether to set pipeline to UNSTABLE if Quality Gate fails
+                    // true = set pipeline to UNSTABLE, false = don't
+                    waitForQualityGate abortPipeline: Globals.qualityGateAbortPipeline
                 }
             }
         }
 
         stage('Publish Artifacts') {
-            when { expression { Globals.deploy } }
-            steps {
-                script {
-                    echo "---- PUBLISH IMAGE ----"
-                    withCredentials([usernamePassword(credentialsId: 'openshift-nexus',
-                        passwordVariable: 'NXPASS', usernameVariable: 'NXUSER')]) {
-                        sh """
-                        echo $NXPASS | podman login ${Globals.IMAGE_REPO} -u $NXUSER --password-stdin
-                        podman push ${Globals.imageTag}
-                        """
-                    }
-                }
+            environment {
+                REGISTRY_AUTH_FILE = "$workspace/.containers/auth.json"
             }
-            post {
-                cleanup {
-                    sh "podman logout ${Globals.IMAGE_REPO} || true"
+            steps {
+                echo "---- PUBLISHING CONTAINER IMAGES ----"
+                withCredentials([usernamePassword(credentialsId: 'openshift-nexus',
+                                                  passwordVariable: 'NXPASS',
+                                                  usernameVariable: 'NXUSER')]) {
+                    sh """
+                        mchbuild -s semanticVersion=${Globals.semanticVersion} -s containerImageName=${Globals.containerImageName} publish.artifacts
+                    """
                 }
             }
         }
@@ -279,13 +248,29 @@ pipeline {
 
     post {
         cleanup {
-            sh "podman image rm -f ${Globals.imageTag}-tester || true"
-            sh "podman image rm -f ${Globals.imageTagPublic}-tester || true"
-            sh "podman image rm -f ${Globals.imageTag} || true"
-            sh "podman image rm -f ${Globals.IMAGE_NAME}-base || true"
+            sh """
+            mchbuild -s semanticVersion=${Globals.semanticVersion} clean
+            """
+            cleanWs()
+        }
+        aborted {
+            updateGitlabCommitStatus name: 'Build', state: 'canceled'
+        }
+        failure {
+            updateGitlabCommitStatus name: 'Build', state: 'failed'
+            echo 'Sending email'
+            sh 'df -h'
+            emailext(subject: "${currentBuild.fullDisplayName}: ${currentBuild.currentResult}",
+                attachLog: true,
+                attachmentsPattern: 'generatedFile.txt',
+                to: env.BRANCH_NAME == 'main' ?
+                    sh(script: "mchbuild -g notifyOnNightlyFailure", returnStdout: true) : '',
+                body: "Job '${env.JOB_NAME} #${env.BUILD_NUMBER}': ${env.BUILD_URL}",
+                recipientProviders: [requestor(), developers()])
         }
         success {
             echo 'Build succeeded'
+            updateGitlabCommitStatus name: 'Build', state: 'success'
         }
     }
 }
