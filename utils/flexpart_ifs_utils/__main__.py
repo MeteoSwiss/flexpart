@@ -62,9 +62,7 @@ if __name__ == '__main__':
                     type=Path,
                     )
     p1.add_argument('-s', '--site',
-                    help='Specify the release site in short form (ie BEZ/LEI..).',
-                    type=str.upper,
-                    choices=['BEZ', 'LEI', 'GOE', 'MUE', 'FES', 'BUG'],
+                    help='Specify the release site.',
                     required=True
                     )
 
@@ -84,15 +82,13 @@ if __name__ == '__main__':
                     required=True
                     )
     p2.add_argument('-s', '--site',
-                    help='Specify the release site in short form (ie BEZ/LEI..).',
-                    type=str.upper,
-                    choices=['BEZ', 'LEI', 'GOE', 'MUE', 'FES', 'BUG'],
+                    help='Specify the release site.',
                     required=True
                     )
-    p2.add_argument('-d', '--domain',
+    p2.add_argument('--domain',
                     help='Specify the domain of the Flexpart run. Global domain runs use nested domain over Europe.',
                     type=str.upper,
-                    choices=['GLOBAL', 'EUROPE'],
+                    choices=[d.name for d in Domain],
                     required=True
                     )
     args = parser.parse_args()
@@ -127,10 +123,12 @@ if __name__ == '__main__':
     with open(CONFIG_PATH, 'r', encoding="utf-8") as f:
         configs = yaml.safe_load(f)
 
-    if RELEASE_SITE:
-        configs = [config for config in configs if config['name'] == RELEASE_SITE]
-        if not configs:
-            raise RuntimeError(f'Release site {RELEASE_SITE} does not match any known to Flexpart.')
+    configs = [config for config in configs if config['name'] == RELEASE_SITE]
+    if not configs:
+        raise RuntimeError(f'Release site {RELEASE_SITE} does not match any known to Flexpart.')
+    if len(configs) > 1:
+        raise RuntimeError(f'Release site {RELEASE_SITE} matches multiple configs.')
+    config = configs[0]
 
     DATA_DIR = JOBS_DIR / 'data'
     if not os.path.exists( DATA_DIR ):
@@ -146,7 +144,7 @@ if __name__ == '__main__':
 
     if not data_paths:
         # Search the db for the relevant files and download data
-        keys = select_files(configs[0]['command'],
+        keys = select_files(config['command'],
                             table=CONFIG.main.aws.db_table,
                             forecast_datetime=FORECAST_DATETIME,
                             step_unit=CONFIG.main.input.step_unit,
@@ -154,11 +152,10 @@ if __name__ == '__main__':
 
         download_keys_from_bucket(keys, DATA_DIR, CONFIG.main.aws.s3.nwp_model_data)
 
-    for config in configs:
-        job_dir = prepare_job_directory(
-            config,
-            JOBS_DIR,
-            FLEXPART_DIR,
-            DATA_DIR,
-            CONFIG.main.openmp_config,
-            domain=DOMAIN)
+    job_dir = prepare_job_directory(
+        config,
+        JOBS_DIR,
+        FLEXPART_DIR,
+        DATA_DIR,
+        CONFIG.main.openmp_config,
+        domain=DOMAIN)
