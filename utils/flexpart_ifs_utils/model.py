@@ -1,7 +1,26 @@
 from enum import Enum
 
 class EnvironmentParameters(Enum):
-    IBDATE = 20230918
-    IBTIME = 6
-    IEDATE = 20230918
-    IETIME = 10
+    EMISSION_START_YYYY = 1
+    EMISSION_START_MM = 2
+    EMISSION_START_DD = 3
+    EMISSION_START_ZZ = 4
+    EMISSION_END_YYYY = 5
+    EMISSION_END_MM = 6
+    EMISSION_END_DD = 7
+    EMISSION_END_ZZ = 8
+    SIMULATION_END_YYYY = 9
+    SIMULATION_END_MM = 10
+    SIMULATION_END_DD = 11
+    SIMULATION_END_ZZ = 12
+
+
+class Domain(Enum):
+    GLOBAL = 1
+    EUROPE = 2
+
+
+DOMAIN_FILE_PREFIX: dict[Domain, str] = {
+    Domain.GLOBAL: "dispc*",
+    Domain.EUROPE: "dispf*",
+}

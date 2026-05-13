@@ -17,7 +17,7 @@ from jinja2 import Environment, FileSystemLoader
 
 from flexpart_ifs_utils import INPUT_DATA_PATTERNS, grib_utils, s3_utils
 from flexpart_ifs_utils.config.service_settings import DBTable, OpenMPConfig
-from flexpart_ifs_utils.model import EnvironmentParameters
+from flexpart_ifs_utils.model import EnvironmentParameters, Domain, DOMAIN_FILE_PREFIX
 
 _logger = logging.getLogger(__name__)
 
@@ -32,19 +32,21 @@ def _init_job_dirs(jobs_dir: Path, name: str) -> tuple[Path, Path, Path, Path]:
     return job_dir, input_dir, output_dir, job_data_dir
 
 
-def _populate_input_dir(flexpart_dir: Path, input_dir: Path) -> None:
+def _populate_input_dir(flexpart_dir: Path, input_dir: Path, domain: Domain) -> None:
     options_dir = flexpart_dir / "share" / "options"
     mch_options_dir = flexpart_dir / "share" / "options.meteoswiss"
     shutil.copytree(mch_options_dir, options_dir, dirs_exist_ok=True)
     shutil.copytree(options_dir, input_dir)
-    shutil.copy(options_dir / "OUTGRID.f", input_dir / "OUTGRID")
+    if domain == Domain.GLOBAL:
+        shutil.copy(options_dir / "OUTGRID.g", input_dir / "OUTGRID")
+    elif domain == Domain.EUROPE:
+        shutil.copy(options_dir / "OUTGRID.f", input_dir / "OUTGRID")
+    else:
+        raise ValueError(f"Unsupported domain: {domain}")
 
 
-def _collect_data_paths(data_dir: Path) -> list[Path]:
-    data_paths: list[Path] = []
-    for ftype in INPUT_DATA_PATTERNS:
-        data_paths.extend(sorted(data_dir.glob(ftype)))
-    return data_paths
+def _path_list(data_dir: Path, domain: Domain) -> list[Path]:
+    return sorted(data_dir.glob(DOMAIN_FILE_PREFIX[domain]))
 
 
 def _write_pathnames(
@@ -53,6 +55,7 @@ def _write_pathnames(
     output_dir: Path,
     job_data_dir: Path,
     available_path: Path,
+    available_path_nested: Path | None = None,
 ) -> None:
     lines = [
         f"{input_dir}/\n",
@@ -61,6 +64,10 @@ def _write_pathnames(
         f"{available_path}\n",
         "============================================\n",
     ]
+    if available_path_nested:
+        lines.append(f"{available_path_nested}\n")
+        lines.append("============================================\n")
+
     (job_dir / "pathnames").write_text("".join(lines), encoding="utf-8")
 
 
@@ -80,12 +87,19 @@ def validate_env(data: dict[str, str | None]) -> None:
 
 
 def parse_env() -> dict[str, str | None]:
-    return {
-        "IBDATE": os.getenv("IBDATE"),
-        "IBTIME": os.getenv("IBTIME"),
-        "IEDATE": os.getenv("IEDATE"),
-        "IETIME": os.getenv("IETIME"),
-    }
+    return {"EMISSION_START_YYYY": os.getenv("EMISSION_START_YYYY"),
+            "EMISSION_START_MM": os.getenv("EMISSION_START_MM"),
+            "EMISSION_START_DD": os.getenv("EMISSION_START_DD"),
+            "EMISSION_START_ZZ": os.getenv("EMISSION_START_ZZ"),
+            "EMISSION_END_YYYY": os.getenv("EMISSION_END_YYYY"),
+            "EMISSION_END_MM": os.getenv("EMISSION_END_MM"),
+            "EMISSION_END_DD": os.getenv("EMISSION_END_DD"),
+            "EMISSION_END_ZZ": os.getenv("EMISSION_END_ZZ"),
+            "SIMULATION_END_YYYY": os.getenv("SIMULATION_END_YYYY"),
+            "SIMULATION_END_MM": os.getenv("SIMULATION_END_MM"),
+            "SIMULATION_END_DD": os.getenv("SIMULATION_END_DD"),
+            "SIMULATION_END_ZZ": os.getenv("SIMULATION_END_ZZ")}
+
 
 
 def prepare_job_directory(
@@ -94,22 +108,27 @@ def prepare_job_directory(
     flexpart_dir: Path,
     data_dir: Path,
     openmp_config: OpenMPConfig,
+    domain: Domain,
 ) -> Path:
     job_dir, input_dir, output_dir, job_data_dir = _init_job_dirs(
         jobs_dir, configuration["name"]
     )
 
-    _populate_input_dir(flexpart_dir, input_dir)
+    _populate_input_dir(flexpart_dir, input_dir, domain)
 
     namelists: list[Path] = [input_dir / "COMMAND", *input_dir.glob("RELEASES*")]
     for nl in namelists:
         _configure_namelist(configuration, nl)
 
     available_path = input_dir / "AVAILABLE"
-    _generate_available(available_path, _collect_data_paths(data_dir))
+    _generate_available(available_path, _path_list(data_dir, domain=domain))
+    available_path_nested = None
+    if domain == Domain.GLOBAL:
+        available_path_nested = input_dir / "AVAILABLE_NESTED"
+        _generate_available(available_path_nested, _path_list(data_dir, domain=Domain.EUROPE))
 
     os.symlink(data_dir, job_data_dir)
-    _write_pathnames(job_dir, input_dir, output_dir, job_data_dir, available_path)
+    _write_pathnames(job_dir, input_dir, output_dir, job_data_dir, available_path, available_path_nested)
 
     _write_job_script(
         job_dir / "job",

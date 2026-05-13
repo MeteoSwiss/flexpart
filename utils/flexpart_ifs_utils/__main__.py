@@ -14,11 +14,11 @@ The main script can be used with the following commands:
 2. `upload`: Upload the output directory to an S3 bucket.
 
 Usage:
-    
+
     python __main__.py generate
         -f <flexpart_dir>
-        -j <jobs_dir> 
-        --datetime <YYYYMMDDHH> 
+        -j <jobs_dir>
+        --datetime <YYYYMMDDHH>
         --site BEZ
 
     python __main__.py upload -d <jobs_dir> -i <input_directory>
@@ -89,7 +89,12 @@ if __name__ == '__main__':
                     choices=['BEZ', 'LEI', 'GOE', 'MUE', 'FES', 'BUG'],
                     required=True
                     )
-
+    p2.add_argument('-d', '--domain',
+                    help='Specify the domain of the Flexpart run. Global domain runs use nested domain over Europe.',
+                    type=str.upper,
+                    choices=['GLOBAL', 'EUROPE'],
+                    required=True
+                    )
     args = parser.parse_args()
 
     if "directory" in args:
@@ -100,6 +105,7 @@ if __name__ == '__main__':
     RELEASE_SITE: str = args.site
     JOBS_DIR: Path = args.jobs_dir
     FLEXPART_DIR: Path = args.flexpart_dir
+    DOMAIN: str = args.domain
 
     WORKDIR: Path = Path(os.path.abspath(__file__)).parent
     CONFIG_TEMPLATE_PATH = WORKDIR / 'runtime_configuration.j2'
@@ -138,11 +144,18 @@ if __name__ == '__main__':
     # Download input data
     if not data_paths:
         keys = select_files(configs[0]['command'],
-                            table = CONFIG.main.aws.db.nwp_model_data,
-                            forecast_datetime = FORECAST_DATETIME,
-                            step_unit = CONFIG.main.input.step_unit)
+                            table=CONFIG.main.aws.db.nwp_model_data,
+                            forecast_datetime=FORECAST_DATETIME,
+                            step_unit=CONFIG.main.input.step_unit,
+                            domain=DOMAIN)
 
         download_keys_from_bucket(keys, DATA_DIR, CONFIG.main.aws.s3.nwp_model_data)
 
     for config in configs:
-        job_dir = prepare_job_directory(config, JOBS_DIR, FLEXPART_DIR, DATA_DIR, CONFIG.main.openmp_config)
+        job_dir = prepare_job_directory(
+            config,
+            JOBS_DIR,
+            FLEXPART_DIR,
+            DATA_DIR,
+            CONFIG.main.openmp_config,
+            domain=DOMAIN)

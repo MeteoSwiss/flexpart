@@ -2,18 +2,18 @@
 - name: BEZ
   command:
     LDIRECT: 1
-    IBDATE: "{{ data.IBDATE }}"
-    IBTIME: "{{ data.IBTIME }}0000"
-    IEDATE: "{{ data.IEDATE }}"
-    IETIME: "{{ data.IETIME }}0000"
+    IBDATE: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    IBTIME: "{{ data.EMISSION_START_ZZ }}0000"
+    IEDATE: "{{ data.SIMULATION_END_YYYY }}{{ data.SIMULATION_END_MM }}{{ data.SIMULATION_END_DD }}"
+    IETIME: "{{ data.SIMULATION_END_ZZ }}0000"
     LOUTSTEP: 10800
   releases:
     NSPEC: 1
     SPECNUM_REL: 16
-    IDATE1: "{{ data.IBDATE }}"
-    ITIME1: "{{ data.IBTIME }}0000"
-    IDATE2: "{{ data.IEDATE }}"
-    ITIME2: "{{ data.IETIME }}0000"
+    IDATE1: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    ITIME1: "{{ data.EMISSION_START_ZZ }}0000"
+    IDATE2: "{{ data.EMISSION_END_YYYY }}{{ data.EMISSION_END_MM }}{{ data.EMISSION_END_DD }}"
+    ITIME2: "{{ data.EMISSION_END_ZZ }}0000"
     LON1: 8.2284
     LAT1: 47.5519
     Z1: 100
@@ -23,18 +23,18 @@
 - name: LEI
   command:
     LDIRECT: 1
-    IBDATE: "{{ data.IBDATE }}"
-    IBTIME: "{{ data.IBTIME }}0000"
-    IEDATE: "{{ data.IEDATE }}"
-    IETIME: "{{ data.IETIME }}0000"
+    IBDATE: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    IBTIME: "{{ data.EMISSION_START_ZZ }}0000"
+    IEDATE: "{{ data.SIMULATION_END_YYYY }}{{ data.SIMULATION_END_MM }}{{ data.SIMULATION_END_DD }}"
+    IETIME: "{{ data.SIMULATION_END_ZZ }}0000"
     LOUTSTEP: 10800
   releases:
     NSPEC: 1
     SPECNUM_REL: 39
-    IDATE1: "{{ data.IBDATE }}"
-    ITIME1: "{{ data.IBTIME }}0000"
-    IDATE2: "{{ data.IEDATE }}"
-    ITIME2: "{{ data.IETIME }}0000"
+    IDATE1: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    ITIME1: "{{ data.EMISSION_START_ZZ }}0000"
+    IDATE2: "{{ data.EMISSION_END_YYYY }}{{ data.EMISSION_END_MM }}{{ data.EMISSION_END_DD }}"
+    ITIME2: "{{ data.EMISSION_END_ZZ }}0000"
     LON1: 8.1824
     LAT1: 47.6013
     MASS: 2.1600E04
@@ -43,18 +43,18 @@
 - name: GOE
   command:
     LDIRECT: 1
-    IBDATE: "{{ data.IBDATE }}"
-    IBTIME: "{{ data.IBTIME }}0000"
-    IEDATE: "{{ data.IEDATE }}"
-    IETIME: "{{ data.IETIME }}0000"
+    IBDATE: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    IBTIME: "{{ data.EMISSION_START_ZZ }}0000"
+    IEDATE: "{{ data.SIMULATION_END_YYYY }}{{ data.SIMULATION_END_MM }}{{ data.SIMULATION_END_DD }}"
+    IETIME: "{{ data.SIMULATION_END_ZZ }}0000"
     LOUTSTEP: 10800
   releases:
     NSPEC: 1
     SPECNUM_REL: 39
-    IDATE1: "{{ data.IBDATE }}"
-    ITIME1: "{{ data.IBTIME }}0000"
-    IDATE2: "{{ data.IEDATE }}"
-    ITIME2: "{{ data.IETIME }}0000"
+    IDATE1: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    ITIME1: "{{ data.EMISSION_START_ZZ }}0000"
+    IDATE2: "{{ data.EMISSION_END_YYYY }}{{ data.EMISSION_END_MM }}{{ data.EMISSION_END_DD }}"
+    ITIME2: "{{ data.EMISSION_END_ZZ }}0000"
     LON1: 7.9668
     LAT1: 47.3659
     MASS: "2.1600E04"
@@ -64,18 +64,18 @@
 - name: MUE
   command:
     LDIRECT: 1
-    IBDATE: "{{ data.IBDATE }}"
-    IBTIME: "{{ data.IBTIME }}0000"
-    IEDATE: "{{ data.IEDATE }}"
-    IETIME: "{{ data.IETIME }}0000"
+    IBDATE: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    IBTIME: "{{ data.EMISSION_START_ZZ }}0000"
+    IEDATE: "{{ data.SIMULATION_END_YYYY }}{{ data.SIMULATION_END_MM }}{{ data.SIMULATION_END_DD }}"
+    IETIME: "{{ data.SIMULATION_END_ZZ }}0000"
     LOUTSTEP: 10800
   releases:
     NSPEC: 1
     SPECNUM_REL: 39
-    IDATE1: "{{ data.IBDATE }}"
-    ITIME1: "{{ data.IBTIME }}0000"
-    IDATE2: "{{ data.IEDATE }}"
-    ITIME2: "{{ data.IETIME }}0000"
+    IDATE1: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    ITIME1: "{{ data.EMISSION_START_ZZ }}0000"
+    IDATE2: "{{ data.EMISSION_END_YYYY }}{{ data.EMISSION_END_MM }}{{ data.EMISSION_END_DD }}"
+    ITIME2: "{{ data.EMISSION_END_ZZ }}0000"
     LON1: 7.2685
     LAT1: 46.969
     MASS: "2.1600E04"
@@ -84,18 +84,18 @@
 - name: FES
   command:
     LDIRECT: 1
-    IBDATE: "{{ data.IBDATE }}"
-    IBTIME: "{{ data.IBTIME }}0000"
-    IEDATE: "{{ data.IEDATE }}"
-    IETIME: "{{ data.IETIME }}0000"
+    IBDATE: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    IBTIME: "{{ data.EMISSION_START_ZZ }}0000"
+    IEDATE: "{{ data.SIMULATION_END_YYYY }}{{ data.SIMULATION_END_MM }}{{ data.SIMULATION_END_DD }}"
+    IETIME: "{{ data.SIMULATION_END_ZZ }}0000"
     LOUTSTEP: 10800
   releases:
     NSPEC: 1
     SPECNUM_REL: 39
-    IDATE1: "{{ data.IBDATE }}"
-    ITIME1: "{{ data.IBTIME }}0000"
-    IDATE2: "{{ data.IEDATE }}"
-    ITIME2: "{{ data.IETIME }}0000"
+    IDATE1: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    ITIME1: "{{ data.EMISSION_START_ZZ }}0000"
+    IDATE2: "{{ data.EMISSION_END_YYYY }}{{ data.EMISSION_END_MM }}{{ data.EMISSION_END_DD }}"
+    ITIME2: "{{ data.EMISSION_END_ZZ }}0000"
     LON1: 7.5625
     LAT1: 47.9036
     MASS: "2.1600E04"
@@ -103,20 +103,340 @@
     COMMENT: Fessenheim
 - name: BUG
   command:
-    IBDATE: "{{ data.IBDATE }}"
-    IBTIME: "{{ data.IBTIME }}0000"
-    IEDATE: "{{ data.IEDATE }}"
-    IETIME: "{{ data.IETIME }}0000"
+    IBDATE: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    IBTIME: "{{ data.EMISSION_START_ZZ }}0000"
+    IEDATE: "{{ data.SIMULATION_END_YYYY }}{{ data.SIMULATION_END_MM }}{{ data.SIMULATION_END_DD }}"
+    IETIME: "{{ data.SIMULATION_END_ZZ }}0000"
     LOUTSTEP: 10800
   releases:
     NSPEC: 1
     SPECNUM_REL: 39
-    IDATE1: "{{ data.IBDATE }}"
-    ITIME1: "{{ data.IBTIME }}0000"
-    IDATE2: "{{ data.IEDATE }}"
-    ITIME2: "{{ data.IETIME }}0000"
+    IDATE1: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    ITIME1: "{{ data.EMISSION_START_ZZ }}0000"
+    IDATE2: "{{ data.EMISSION_END_YYYY }}{{ data.EMISSION_END_MM }}{{ data.EMISSION_END_DD }}"
+    ITIME2: "{{ data.EMISSION_END_ZZ }}0000"
     LON1: 5.27
     LAT1: 45.7992
     MASS: "2.1600E04"
     Z1: 100
     COMMENT: Bugey
+- name: Punggye
+  command:
+    LDIRECT: 1
+    IBDATE: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    IBTIME: "{{ data.EMISSION_START_ZZ }}0000"
+    IEDATE: "{{ data.SIMULATION_END_YYYY }}{{ data.SIMULATION_END_MM }}{{ data.SIMULATION_END_DD }}"
+    IETIME: "{{ data.SIMULATION_END_ZZ }}0000"
+    LOUTSTEP: 10800
+  releases:
+    NSPEC: 1
+    SPECNUM_REL: 39
+    IDATE1: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    ITIME1: "{{ data.EMISSION_START_ZZ }}0000"
+    IDATE2: "{{ data.EMISSION_END_YYYY }}{{ data.EMISSION_END_MM }}{{ data.EMISSION_END_DD }}"
+    ITIME2: "{{ data.EMISSION_END_ZZ }}0000"
+    LON1: 129.09
+    LAT1: 41.28
+    MASS: "4.3200E10"
+    Z1: 100
+    COMMENT: Punggye-ri
+- name: Bushehr
+  command:
+    LDIRECT: 1
+    IBDATE: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    IBTIME: "{{ data.EMISSION_START_ZZ }}0000"
+    IEDATE: "{{ data.SIMULATION_END_YYYY }}{{ data.SIMULATION_END_MM }}{{ data.SIMULATION_END_DD }}"
+    IETIME: "{{ data.SIMULATION_END_ZZ }}0000"
+    LOUTSTEP: 10800
+  releases:
+    NSPEC: 1
+    SPECNUM_REL: 39
+    IDATE1: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    ITIME1: "{{ data.EMISSION_START_ZZ }}0000"
+    IDATE2: "{{ data.EMISSION_END_YYYY }}{{ data.EMISSION_END_MM }}{{ data.EMISSION_END_DD }}"
+    ITIME2: "{{ data.EMISSION_END_ZZ }}0000"
+    LON1: 50.8872
+    LAT1: 28.8289
+    MASS: "4.3200E10"
+    Z1: 100
+    COMMENT: Bushehr
+- name: Bagdad
+  command:
+    LDIRECT: 1
+    IBDATE: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    IBTIME: "{{ data.EMISSION_START_ZZ }}0000"
+    IEDATE: "{{ data.SIMULATION_END_YYYY }}{{ data.SIMULATION_END_MM }}{{ data.SIMULATION_END_DD }}"
+    IETIME: "{{ data.SIMULATION_END_ZZ }}0000"
+    LOUTSTEP: 10800
+  releases:
+    NSPEC: 1
+    SPECNUM_REL: 39
+    IDATE1: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    ITIME1: "{{ data.EMISSION_START_ZZ }}0000"
+    IDATE2: "{{ data.EMISSION_END_YYYY }}{{ data.EMISSION_END_MM }}{{ data.EMISSION_END_DD }}"
+    ITIME2: "{{ data.EMISSION_END_ZZ }}0000"
+    LON1: 44.3833
+    LAT1: 33.3333
+    MASS: "4.3200E10"
+    Z1: 100
+    COMMENT: Bagdad
+- name: Teheran
+  command:
+    LDIRECT: 1
+    IBDATE: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    IBTIME: "{{ data.EMISSION_START_ZZ }}0000"
+    IEDATE: "{{ data.SIMULATION_END_YYYY }}{{ data.SIMULATION_END_MM }}{{ data.SIMULATION_END_DD }}"
+    IETIME: "{{ data.SIMULATION_END_ZZ }}0000"
+    LOUTSTEP: 10800
+  releases:
+    NSPEC: 1
+    SPECNUM_REL: 39
+    IDATE1: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    ITIME1: "{{ data.EMISSION_START_ZZ }}0000"
+    IDATE2: "{{ data.EMISSION_END_YYYY }}{{ data.EMISSION_END_MM }}{{ data.EMISSION_END_DD }}"
+    ITIME2: "{{ data.EMISSION_END_ZZ }}0000"
+    LON1: 51.4167
+    LAT1: 35.7
+    MASS: "4.3200E10"
+    Z1: 100
+    COMMENT: Teheran
+- name: Chernobyl
+  command:
+    LDIRECT: 1
+    IBDATE: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    IBTIME: "{{ data.EMISSION_START_ZZ }}0000"
+    IEDATE: "{{ data.SIMULATION_END_YYYY }}{{ data.SIMULATION_END_MM }}{{ data.SIMULATION_END_DD }}"
+    IETIME: "{{ data.SIMULATION_END_ZZ }}0000"
+    LOUTSTEP: 10800
+  releases:
+    NSPEC: 1
+    SPECNUM_REL: 16
+    IDATE1: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    ITIME1: "{{ data.EMISSION_START_ZZ }}0000"
+    IDATE2: "{{ data.EMISSION_END_YYYY }}{{ data.EMISSION_END_MM }}{{ data.EMISSION_END_DD }}"
+    ITIME2: "{{ data.EMISSION_END_ZZ }}0000"
+    LON1: 30.0997
+    LAT1: 51.3897
+    MASS: "21.600E10"
+    Z1: 100
+    COMMENT: Chernobyl
+- name: Zaporozhye
+  command:
+    LDIRECT: 1
+    IBDATE: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    IBTIME: "{{ data.EMISSION_START_ZZ }}0000"
+    IEDATE: "{{ data.SIMULATION_END_YYYY }}{{ data.SIMULATION_END_MM }}{{ data.SIMULATION_END_DD }}"
+    IETIME: "{{ data.SIMULATION_END_ZZ }}0000"
+    LOUTSTEP: 10800
+  releases:
+    NSPEC: 1
+    SPECNUM_REL: 16
+    IDATE1: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    ITIME1: "{{ data.EMISSION_START_ZZ }}0000"
+    IDATE2: "{{ data.EMISSION_END_YYYY }}{{ data.EMISSION_END_MM }}{{ data.EMISSION_END_DD }}"
+    ITIME2: "{{ data.EMISSION_END_ZZ }}0000"
+    LON1: 34.5858
+    LAT1: 47.5122
+    MASS: "21.600E10"
+    Z1: 100
+    COMMENT: Zaporozhye
+- name: Sued-Ukraine
+  command:
+    LDIRECT: 1
+    IBDATE: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    IBTIME: "{{ data.EMISSION_START_ZZ }}0000"
+    IEDATE: "{{ data.SIMULATION_END_YYYY }}{{ data.SIMULATION_END_MM }}{{ data.SIMULATION_END_DD }}"
+    IETIME: "{{ data.SIMULATION_END_ZZ }}0000"
+    LOUTSTEP: 10800
+  releases:
+    NSPEC: 1
+    SPECNUM_REL: 16
+    IDATE1: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    ITIME1: "{{ data.EMISSION_START_ZZ }}0000"
+    IDATE2: "{{ data.EMISSION_END_YYYY }}{{ data.EMISSION_END_MM }}{{ data.EMISSION_END_DD }}"
+    ITIME2: "{{ data.EMISSION_END_ZZ }}0000"
+    LON1: 31.216667
+    LAT1: 47.816667
+    MASS: "21.600E10"
+    Z1: 100
+    COMMENT: Sued-Ukraine
+- name: Chmelnyzkyj
+  command:
+    LDIRECT: 1
+    IBDATE: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    IBTIME: "{{ data.EMISSION_START_ZZ }}0000"
+    IEDATE: "{{ data.SIMULATION_END_YYYY }}{{ data.SIMULATION_END_MM }}{{ data.SIMULATION_END_DD }}"
+    IETIME: "{{ data.SIMULATION_END_ZZ }}0000"
+    LOUTSTEP: 10800
+  releases:
+    NSPEC: 1
+    SPECNUM_REL: 16
+    IDATE1: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    ITIME1: "{{ data.EMISSION_START_ZZ }}0000"
+    IDATE2: "{{ data.EMISSION_END_YYYY }}{{ data.EMISSION_END_MM }}{{ data.EMISSION_END_DD }}"
+    ITIME2: "{{ data.EMISSION_END_ZZ }}0000"
+    LON1: 26.645
+    LAT1: 50.305
+    MASS: "21.600E10"
+    Z1: 100
+    COMMENT: Chmelnyzkyj
+- name: Riwne
+  command:
+    LDIRECT: 1
+    IBDATE: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    IBTIME: "{{ data.EMISSION_START_ZZ }}0000"
+    IEDATE: "{{ data.SIMULATION_END_YYYY }}{{ data.SIMULATION_END_MM }}{{ data.SIMULATION_END_DD }}"
+    IETIME: "{{ data.SIMULATION_END_ZZ }}0000"
+    LOUTSTEP: 10800
+  releases:
+    NSPEC: 1
+    SPECNUM_REL: 16
+    IDATE1: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    ITIME1: "{{ data.EMISSION_START_ZZ }}0000"
+    IDATE2: "{{ data.EMISSION_END_YYYY }}{{ data.EMISSION_END_MM }}{{ data.EMISSION_END_DD }}"
+    ITIME2: "{{ data.EMISSION_END_ZZ }}0000"
+    LON1: 25.891667
+    LAT1: 51.327778
+    MASS: "21.600E10"
+    Z1: 100
+    COMMENT: Riwne
+- name: Negev
+  command:
+    LDIRECT: 1
+    IBDATE: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    IBTIME: "{{ data.EMISSION_START_ZZ }}0000"
+    IEDATE: "{{ data.SIMULATION_END_YYYY }}{{ data.SIMULATION_END_MM }}{{ data.SIMULATION_END_DD }}"
+    IETIME: "{{ data.SIMULATION_END_ZZ }}0000"
+    LOUTSTEP: 10800
+  releases:
+    NSPEC: 1
+    SPECNUM_REL: 16
+    IDATE1: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    ITIME1: "{{ data.EMISSION_START_ZZ }}0000"
+    IDATE2: "{{ data.EMISSION_END_YYYY }}{{ data.EMISSION_END_MM }}{{ data.EMISSION_END_DD }}"
+    ITIME2: "{{ data.EMISSION_END_ZZ }}0000"
+    LON1: 35.1467
+    LAT1: 31.0036
+    MASS: "21.600E10"
+    Z1: 100
+    COMMENT: Negev_Forschungszentrum
+- name: Kursk
+  command:
+    LDIRECT: 1
+    IBDATE: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    IBTIME: "{{ data.EMISSION_START_ZZ }}0000"
+    IEDATE: "{{ data.SIMULATION_END_YYYY }}{{ data.SIMULATION_END_MM }}{{ data.SIMULATION_END_DD }}"
+    IETIME: "{{ data.SIMULATION_END_ZZ }}0000"
+    LOUTSTEP: 10800
+  releases:
+    NSPEC: 1
+    SPECNUM_REL: 16
+    IDATE1: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    ITIME1: "{{ data.EMISSION_START_ZZ }}0000"
+    IDATE2: "{{ data.EMISSION_END_YYYY }}{{ data.EMISSION_END_MM }}{{ data.EMISSION_END_DD }}"
+    ITIME2: "{{ data.EMISSION_END_ZZ }}0000"
+    LON1: 35.606944
+    LAT1: 51.677222
+    MASS: "21.600E10"
+    Z1: 100
+    COMMENT: Kursk
+- name: Natanz
+  command:
+    LDIRECT: 1
+    IBDATE: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    IBTIME: "{{ data.EMISSION_START_ZZ }}0000"
+    IEDATE: "{{ data.SIMULATION_END_YYYY }}{{ data.SIMULATION_END_MM }}{{ data.SIMULATION_END_DD }}"
+    IETIME: "{{ data.SIMULATION_END_ZZ }}0000"
+    LOUTSTEP: 10800
+  releases:
+    NSPEC: 1
+    SPECNUM_REL: 39
+    IDATE1: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    ITIME1: "{{ data.EMISSION_START_ZZ }}0000"
+    IDATE2: "{{ data.EMISSION_END_YYYY }}{{ data.EMISSION_END_MM }}{{ data.EMISSION_END_DD }}"
+    ITIME2: "{{ data.EMISSION_END_ZZ }}0000"
+    LON1: 51.9136
+    LAT1: 33.5069
+    MASS: "7.2000E09"
+    Z1: 100
+    COMMENT: Natanz
+- name: Isfahan
+  command:
+    LDIRECT: 1
+    IBDATE: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    IBTIME: "{{ data.EMISSION_START_ZZ }}0000"
+    IEDATE: "{{ data.SIMULATION_END_YYYY }}{{ data.SIMULATION_END_MM }}{{ data.SIMULATION_END_DD }}"
+    IETIME: "{{ data.SIMULATION_END_ZZ }}0000"
+    LOUTSTEP: 10800
+  releases:
+    NSPEC: 1
+    SPECNUM_REL: 39
+    IDATE1: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    ITIME1: "{{ data.EMISSION_START_ZZ }}0000"
+    IDATE2: "{{ data.EMISSION_END_YYYY }}{{ data.EMISSION_END_MM }}{{ data.EMISSION_END_DD }}"
+    ITIME2: "{{ data.EMISSION_END_ZZ }}0000"
+    LON1: 51.6767
+    LAT1: 32.6575
+    MASS: "7.2000E09"
+    Z1: 100
+    COMMENT: Isfahan
+- name: Fordo
+  command:
+    LDIRECT: 1
+    IBDATE: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    IBTIME: "{{ data.EMISSION_START_ZZ }}0000"
+    IEDATE: "{{ data.SIMULATION_END_YYYY }}{{ data.SIMULATION_END_MM }}{{ data.SIMULATION_END_DD }}"
+    IETIME: "{{ data.SIMULATION_END_ZZ }}0000"
+    LOUTSTEP: 10800
+  releases:
+    NSPEC: 1
+    SPECNUM_REL: 39
+    IDATE1: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    ITIME1: "{{ data.EMISSION_START_ZZ }}0000"
+    IDATE2: "{{ data.EMISSION_END_YYYY }}{{ data.EMISSION_END_MM }}{{ data.EMISSION_END_DD }}"
+    ITIME2: "{{ data.EMISSION_END_ZZ }}0000"
+    LON1: 50.9967
+    LAT1: 34.8856
+    MASS: "7.2000E09"
+    Z1: 100
+    COMMENT: Fordo
+- name: Arak
+  command:
+    LDIRECT: 1
+    IBDATE: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    IBTIME: "{{ data.EMISSION_START_ZZ }}0000"
+    IEDATE: "{{ data.SIMULATION_END_YYYY }}{{ data.SIMULATION_END_MM }}{{ data.SIMULATION_END_DD }}"
+    IETIME: "{{ data.SIMULATION_END_ZZ }}0000"
+    LOUTSTEP: 10800
+  releases:
+    NSPEC: 1
+    SPECNUM_REL: 39
+    IDATE1: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    ITIME1: "{{ data.EMISSION_START_ZZ }}0000"
+    IDATE2: "{{ data.EMISSION_END_YYYY }}{{ data.EMISSION_END_MM }}{{ data.EMISSION_END_DD }}"
+    ITIME2: "{{ data.EMISSION_END_ZZ }}0000"
+    LON1: 49.2408
+    LAT1: 34.3734
+    MASS: "7.2000E09"
+    Z1: 100
+    COMMENT: Arak
+- name: Incirlik
+  command:
+    LDIRECT: 1
+    IBDATE: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    IBTIME: "{{ data.EMISSION_START_ZZ }}0000"
+    IEDATE: "{{ data.SIMULATION_END_YYYY }}{{ data.SIMULATION_END_MM }}{{ data.SIMULATION_END_DD }}"
+    IETIME: "{{ data.SIMULATION_END_ZZ }}0000"
+    LOUTSTEP: 10800
+  releases:
+    NSPEC: 1
+    SPECNUM_REL: 39
+    IDATE1: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    ITIME1: "{{ data.EMISSION_START_ZZ }}0000"
+    IDATE2: "{{ data.EMISSION_END_YYYY }}{{ data.EMISSION_END_MM }}{{ data.EMISSION_END_DD }}"
+    ITIME2: "{{ data.EMISSION_END_ZZ }}0000"
+    LON1: 35.4344
+    LAT1: 37.003739
+    MASS: "7.2000E09"
+    Z1: 100
+    COMMENT: Incirlik
