@@ -15,9 +15,10 @@ from pathlib import Path
 import yaml
 from jinja2 import Environment, FileSystemLoader
 
-from flexpart_ifs_utils import INPUT_DATA_PATTERNS, grib_utils, s3_utils
+from flexpart_ifs_utils.grib_utils import extract_metadata_from_grib_file, GribMetadata
+from flexpart_ifs_utils.s3_utils import list_objs_in_bucket_via_dynamodb
 from flexpart_ifs_utils.config.service_settings import DBTable, OpenMPConfig
-from flexpart_ifs_utils.model import EnvironmentParameters, Domain, DOMAIN_FILE_PREFIX
+from flexpart_ifs_utils.model import EnvironmentParameters, Domain, DOMAIN_FILE_PREFIX, DOMAIN_MODEL
 
 _logger = logging.getLogger(__name__)
 
@@ -46,6 +47,7 @@ def _populate_input_dir(flexpart_dir: Path, input_dir: Path, domain: Domain) -> 
 
 
 def _path_list(data_dir: Path, domain: Domain) -> list[Path]:
+    """Return a sorted list of data files for the given domain."""
     return sorted(data_dir.glob(DOMAIN_FILE_PREFIX[domain]))
 
 
@@ -208,7 +210,7 @@ def _generate_available(path: Path, data_paths: list[Path]) -> None:
 
 def _get_valid_datetime(
     path: Path,
-    md: grib_utils.GribMetadata | None = None,
+    md: GribMetadata | None = None,
     step_unit: str = "hours",
 ) -> datetime:
     """
@@ -216,7 +218,7 @@ def _get_valid_datetime(
     Valid time is the forecast start time plus the time until that certain step.
     """
     if not md:
-        md = grib_utils.extract_metadata_from_grib_file(path)
+        md = extract_metadata_from_grib_file(path)
 
     leadtime_0 = datetime.strptime(md.date + md.time, "%Y%m%d%H%M")
 
@@ -258,26 +260,8 @@ def _configure_namelist(config: dict, namelist: Path) -> None:
     namelist.write_text(filedata, encoding="utf-8")
 
 
-def _list_objects(
-    table: DBTable, forecast_date: str, forecast_time: str
-) -> dict[str, grib_utils.GribMetadata]:
-    if table.backend_type == "dynamodb":
-        return s3_utils.list_objs_in_bucket_via_dynamodb(
-            table=table,
-            date=forecast_date,
-            time=forecast_time,
-        )
-    if table.backend_type == "sqlite":
-        return s3_utils.list_objs_in_bucket_via_sqlite(
-            table=table,
-            date=forecast_date,
-            time=forecast_time,
-        )
-    raise ValueError(f"Unsupported backend type: {table.backend_type}")
-
-
 def _select_keys_in_window(
-    objs: dict[str, grib_utils.GribMetadata],
+    objs: dict[str, GribMetadata],
     start_dt: datetime,
     end_dt: datetime,
     step_unit: str,
@@ -305,6 +289,7 @@ def select_files(
     table: DBTable,
     forecast_datetime: str,
     step_unit: str,
+    domain: Domain,
 ) -> list[str]:
     step_unit = step_unit.lower()
     if step_unit not in ("minutes", "hours"):
@@ -316,7 +301,20 @@ def select_files(
     forecast_date = forecast_datetime[:8]
     forecast_time = forecast_datetime[8:12]
 
-    objs = _list_objects(table, forecast_date, forecast_time)
+    if domain == Domain.GLOBAL:
+        model = DOMAIN_MODEL[domain]
+    elif domain == Domain.EUROPE:
+        model = DOMAIN_MODEL[domain]
+    else:
+        raise ValueError(f"Unsupported domain: {domain}")
+
+    objs = list_objs_in_bucket_via_dynamodb(
+        table=table,
+        date=forecast_date,
+        time=forecast_time,
+        model=model,
+    )
+
     if not objs:
         raise RuntimeError(
             "There is no data in S3 matching the filter forecast datetime: "
@@ -333,7 +331,7 @@ def select_files(
 
     if not subset:
         raise RuntimeError(
-            "No S3 objects had metadata with validity time between "
+            "No S3 objects had metadata with valid time between "
             f"{start_dt} and {end_dt}."
         )
 

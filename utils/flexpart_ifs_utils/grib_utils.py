@@ -44,7 +44,8 @@ def extract_metadata_from_grib_file(path: Path) -> GribMetadata:
     return GribMetadata(
         date = fcst_date,
         time = fcst_time,
-        step = step_hr)
+        step = step_hr
+        )
 
 
 def _is_grib_file(file_path: Path) -> bool:

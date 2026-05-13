@@ -24,3 +24,8 @@ DOMAIN_FILE_PREFIX: dict[Domain, str] = {
     Domain.GLOBAL: "dispc*",
     Domain.EUROPE: "dispf*",
 }
+
+DOMAIN_MODEL: dict[Domain, str] = {
+    Domain.GLOBAL: "IFS-HRES",
+    Domain.EUROPE: "IFS-HRES-Europe",
+}

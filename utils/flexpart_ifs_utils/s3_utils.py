@@ -127,6 +127,7 @@ def list_objs_in_bucket_via_dynamodb(
     table: DBTable,
     date: str,
     time: str,
+    model: str,
 ) -> dict[str, GribMetadata]:
     """
     List objects in a DynamoDB table using scan with a filter on metadata.
@@ -140,10 +141,11 @@ def list_objs_in_bucket_via_dynamodb(
     dynamodb = boto3.resource("dynamodb", region_name=table.region)
 
     scan_parameters = {
-        "FilterExpression": " ForecastDate = :forecastdate AND ForecastTime = :forecasttime",
+        "FilterExpression": " ForecastDate = :date AND ForecastTime = :time AND Model = :model ",
         "ExpressionAttributeValues": {
-            ":forecastdate": date,
-            ":forecasttime": time,
+            ":date": date,
+            ":time": time,
+            ":model": model,
         },
     }
 
@@ -162,7 +164,7 @@ def list_objs_in_bucket_via_dynamodb(
 
     matching_objects: dict[str, GribMetadata] = {}
     for item in items:
-        if not all(k in item for k in ("ObjectKey", "ForecastTime", "ForecastDate", "Step")):
+        if not all(k in item for k in ("ObjectKey", "ForecastTime", "ForecastDate", "Step", "Model")):
             continue
         matching_objects[item["ObjectKey"]] = GribMetadata(
             time=item["ForecastTime"],

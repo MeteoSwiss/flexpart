@@ -1,6 +1,4 @@
 """
-__main__.py
-
 This module prepares input files and data for running Flexpart-IFS, a Lagrangian particle dispersion model.
 The module handles the following tasks:
 - Downloading the model and static input data from S3 if not available locally.
@@ -36,11 +34,13 @@ from flexpart_ifs_utils.prepare_flexpart import (
     parse_env,
     prepare_job_directory,
     render_template,
-    select_files)
+    select_files,
+    _path_list)
 from flexpart_ifs_utils.s3_utils import (
     download_keys_from_bucket,
     upload_directory)
-from flexpart_ifs_utils import CONFIG, INPUT_DATA_PATTERNS
+from flexpart_ifs_utils.model import Domain
+from flexpart_ifs_utils import CONFIG
 
 
 if __name__ == '__main__':
@@ -105,7 +105,7 @@ if __name__ == '__main__':
     RELEASE_SITE: str = args.site
     JOBS_DIR: Path = args.jobs_dir
     FLEXPART_DIR: Path = args.flexpart_dir
-    DOMAIN: str = args.domain
+    DOMAIN: Domain = Domain[args.domain]
 
     WORKDIR: Path = Path(os.path.abspath(__file__)).parent
     CONFIG_TEMPLATE_PATH = WORKDIR / 'runtime_configuration.j2'
@@ -138,13 +138,16 @@ if __name__ == '__main__':
 
     data_paths = []
 
-    for ftype in INPUT_DATA_PATTERNS:
-        data_paths.extend(sorted(DATA_DIR.glob(ftype)) )
+    # Check if data already exists for the domain
+    if DOMAIN == Domain.GLOBAL:
+        data_paths.extend(_path_list(DATA_DIR, domain=DOMAIN) )
+    elif DOMAIN == Domain.EUROPE:
+        data_paths.extend(_path_list(DATA_DIR, domain=DOMAIN) )
 
-    # Download input data
     if not data_paths:
+        # Search the db for the relevant files and download data
         keys = select_files(configs[0]['command'],
-                            table=CONFIG.main.aws.db.nwp_model_data,
+                            table=CONFIG.main.aws.db_table,
                             forecast_datetime=FORECAST_DATETIME,
                             step_unit=CONFIG.main.input.step_unit,
                             domain=DOMAIN)

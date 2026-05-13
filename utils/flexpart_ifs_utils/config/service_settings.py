@@ -15,21 +15,13 @@ class S3(BaseModel):
     nwp_model_data: Bucket
     output: Bucket
 
-class BackendType(str, Enum):
-    DYNAMODB = "dynamodb"
-    SQLITE = "sqlite"
-
 class DBTable(BaseModel):
     name: str
     region: str
-    backend_type: BackendType
-
-class DB(BaseModel):
-    nwp_model_data: DBTable
 
 class AWS(BaseModel):
     s3: S3
-    db: DB
+    db_table: DBTable
 
 class InputSettings(BaseModel):
     step_unit: str
