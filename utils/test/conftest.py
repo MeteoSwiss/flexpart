@@ -132,8 +132,6 @@ def set_entrypoint(monkeypatch):
         entrypoint_script = str( WORKDIR.parent.parent / 'entrypoint.sh' )
         print("PYTEST_ENTRYPOINT: %s" % entrypoint_script)
         monkeypatch.setenv("PYTEST_ENTRYPOINT", entrypoint_script)
-    monkeypatch.setenv("DOMAIN", "EUROPE")
-
 
 def _set_local_test_data_path():
     # If running locally, provide a path for TEST_DATA in .env - the directory will be symlinked to the job dir.
