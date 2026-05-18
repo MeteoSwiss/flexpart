@@ -73,37 +73,6 @@ def _write_pathnames(
     (job_dir / "pathnames").write_text("".join(lines), encoding="utf-8")
 
 
-def validate_env(data: dict[str, str | None]) -> None:
-    violations: list[str] = []
-    for parameter in EnvironmentParameters:
-        if parameter.name not in data:
-            violations.append(parameter.name)
-        elif data[parameter.name] is None:
-            violations.append(parameter.name)
-
-    if violations:
-        raise RuntimeError(
-            "Environment is missing variables needed to prepare runtime configuration: "
-            f"{violations}"
-        )
-
-
-def parse_env() -> dict[str, str | None]:
-    return {"EMISSION_START_YYYY": os.getenv("EMISSION_START_YYYY"),
-            "EMISSION_START_MM": os.getenv("EMISSION_START_MM"),
-            "EMISSION_START_DD": os.getenv("EMISSION_START_DD"),
-            "EMISSION_START_ZZ": os.getenv("EMISSION_START_ZZ"),
-            "EMISSION_END_YYYY": os.getenv("EMISSION_END_YYYY"),
-            "EMISSION_END_MM": os.getenv("EMISSION_END_MM"),
-            "EMISSION_END_DD": os.getenv("EMISSION_END_DD"),
-            "EMISSION_END_ZZ": os.getenv("EMISSION_END_ZZ"),
-            "SIMULATION_END_YYYY": os.getenv("SIMULATION_END_YYYY"),
-            "SIMULATION_END_MM": os.getenv("SIMULATION_END_MM"),
-            "SIMULATION_END_DD": os.getenv("SIMULATION_END_DD"),
-            "SIMULATION_END_ZZ": os.getenv("SIMULATION_END_ZZ")}
-
-
-
 def prepare_job_directory(
     configuration: dict,
     jobs_dir: Path,
@@ -198,7 +167,7 @@ def _generate_available(path: Path, data_paths: list[Path]) -> None:
                 "________ ______      __________________\n"
             ]
         )
-        _logger.info("Writing lines to AVAILABLE file")
+        _logger.info("Writing lines to %s file", path.name)
         for file in data_paths:
             step_datetime = _get_valid_datetime(file)
             adate = step_datetime.strftime("%Y%m%d")

@@ -30,8 +30,6 @@ from pathlib import Path
 
 import yaml
 from flexpart_ifs_utils.prepare_flexpart import (
-    validate_env,
-    parse_env,
     prepare_job_directory,
     render_template,
     select_files,
@@ -41,6 +39,37 @@ from flexpart_ifs_utils.s3_utils import (
     upload_directory)
 from flexpart_ifs_utils.model import Domain
 from flexpart_ifs_utils import CONFIG
+from flexpart_ifs_utils.model import EnvironmentParameters
+
+
+def validate_env(data: dict[str, str | None]) -> None:
+    violations: list[str] = []
+    for parameter in EnvironmentParameters:
+        if parameter.name not in data:
+            violations.append(parameter.name)
+        elif data[parameter.name] is None:
+            violations.append(parameter.name)
+
+    if violations:
+        raise RuntimeError(
+            "Environment is missing variables needed to prepare runtime configuration: "
+            f"{violations}"
+        )
+
+
+def parse_env() -> dict[str, str | None]:
+    return {"EMISSION_START_YYYY": os.getenv("EMISSION_START_YYYY"),
+            "EMISSION_START_MM": os.getenv("EMISSION_START_MM"),
+            "EMISSION_START_DD": os.getenv("EMISSION_START_DD"),
+            "EMISSION_START_ZZ": os.getenv("EMISSION_START_ZZ"),
+            "EMISSION_END_YYYY": os.getenv("EMISSION_END_YYYY"),
+            "EMISSION_END_MM": os.getenv("EMISSION_END_MM"),
+            "EMISSION_END_DD": os.getenv("EMISSION_END_DD"),
+            "EMISSION_END_ZZ": os.getenv("EMISSION_END_ZZ"),
+            "SIMULATION_END_YYYY": os.getenv("SIMULATION_END_YYYY"),
+            "SIMULATION_END_MM": os.getenv("SIMULATION_END_MM"),
+            "SIMULATION_END_DD": os.getenv("SIMULATION_END_DD"),
+            "SIMULATION_END_ZZ": os.getenv("SIMULATION_END_ZZ")}
 
 
 if __name__ == '__main__':

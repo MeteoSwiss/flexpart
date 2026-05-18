@@ -1,7 +1,6 @@
 import glob
 import logging
 import os
-import sqlite3
 from datetime import datetime as dt
 from pathlib import Path
 
@@ -173,43 +172,6 @@ def list_objs_in_bucket_via_dynamodb(
         )
 
     _logger.info("S3 objects matching search: %s", matching_objects.keys())
-    return matching_objects
-
-
-def list_objs_in_bucket_via_sqlite(
-    table: DBTable,
-    date: str,
-    time: str,
-) -> dict[str, GribMetadata]:
-    conn = sqlite3.connect(table.name)
-    cursor = conn.cursor()
-
-    query = """
-    SELECT key, forecast_ref_time, step
-    FROM uploaded
-    WHERE forecast_ref_time = ?
-    """
-
-    forecast_ref_time_dt = dt.strptime(date + time, "%Y%m%d%H%M")
-    cursor.execute(query, (forecast_ref_time_dt,))
-    items = cursor.fetchall()
-    conn.close()
-
-    unique_steps: set[int] = set()
-    matching_objects: dict[str, GribMetadata] = {}
-
-    for key, forecast_ref_time, step in items:
-        if step in unique_steps:
-            continue
-        unique_steps.add(step)
-
-        ref_dt = dt.strptime(forecast_ref_time, "%Y-%m-%d %H:%M:%S")
-        matching_objects[key] = GribMetadata(
-            date=ref_dt.strftime("%Y%m%d"),
-            time=ref_dt.strftime("%H%M"),
-            step=step,
-        )
-
     return matching_objects
 
 

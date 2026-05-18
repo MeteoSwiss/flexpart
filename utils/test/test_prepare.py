@@ -10,46 +10,36 @@ from unittest.mock import patch
 from flexpart_ifs_utils.prepare_flexpart import (
     render_template, _filter_config, _write_job_script, _generate_available,
     _get_valid_datetime, prepare_job_directory, _configure_namelist,
-    select_files, _get_start_end, validate_env, parse_env
+    select_files, _get_start_end
 )
 from flexpart_ifs_utils.grib_utils import GribMetadata
+from flexpart_ifs_utils.model import Domain
 from test.conftest import jinja_template, references, s3, mock_config
 
-MOCK_MD_EXTRACTION = "flexpart_ifs_utils.grib_utils.extract_metadata_from_grib_file"
-MOCK_LIST_OBJS_IN_BUCKET_VIA_DYNAMODB = "flexpart_ifs_utils.s3_utils.list_objs_in_bucket_via_dynamodb"
-MOCK_LIST_OBJS_IN_BUCKET_VIA_SQLITE = "flexpart_ifs_utils.s3_utils.list_objs_in_bucket_via_sqlite"
+MOCK_MD_EXTRACTION = "flexpart_ifs_utils.prepare_flexpart.extract_metadata_from_grib_file"
+MOCK_LIST_OBJS_IN_BUCKET_VIA_DYNAMODB = "flexpart_ifs_utils.prepare_flexpart.list_objs_in_bucket_via_dynamodb"
 
 @pytest.fixture
 def mock_logger(mocker):
     return mocker.patch("flexpart_ifs_utils.prepare_flexpart._logger", autospec=True)
 
 
-@pytest.fixture
-def mock_environment_incomplete(monkeypatch):
-    # IBDATE is intentionally not set here
-    monkeypatch.setenv("IBTIME", '30000')
-    monkeypatch.setenv("IEDATE", '20241213')
-    monkeypatch.setenv("IETIME", '60000')
-
-def test_validate_env(mock_environment_incomplete):
-
-    environment = parse_env()
-
-    with pytest.raises(RuntimeError) as exc_info:
-        validate_env(environment)
-
-    assert "Environment is missing variables needed to prepare runtime configuration: ['IBDATE']" in str(exc_info.value)
-
-
 def test_render_template(tmp_path, jinja_template, references):
 
     output_path = tmp_path / "output.txt"
 
-    data = {
-        "IBDATE" : "20241210",
-        "IBTIME" : "00",
-        "IEDATE" : "20241210",
-        "IETIME" : "05"}
+    data = {"EMISSION_START_YYYY": "2024",
+            "EMISSION_START_MM": "12",
+            "EMISSION_START_DD": "10",
+            "EMISSION_START_ZZ": "00",
+            "EMISSION_END_YYYY": "2024",
+            "EMISSION_END_MM": "12",
+            "EMISSION_END_DD": "10",
+            "EMISSION_END_ZZ": "05",
+            "SIMULATION_END_YYYY": "2024",
+            "SIMULATION_END_MM": "12",
+            "SIMULATION_END_DD": "10",
+            "SIMULATION_END_ZZ": "05"}
 
     render_template(jinja_template, output_path, ['BEZ'], data)
 
@@ -89,8 +79,8 @@ def test_write_job_script(tmp_path, mock_config):
     }
 
     _write_job_script(
-        data["file_path"], 
-        data["flexpart_exe"], 
+        data["file_path"],
+        data["flexpart_exe"],
         CONFIG.main.openmp_config
     )
 
@@ -180,7 +170,7 @@ def test_prepare_job_directory(tmp_path: Path, references):
     def side_effect(arg):
         step = int(str(arg).split('-')[-1])
         return GribMetadata(date = "20240319", time = "0900", step = step)
-    
+
     with open(references / 'runtime_configuration.yaml', 'r', encoding="utf-8") as f:
         input_runtime_conf = yaml.safe_load(f)
 
@@ -189,7 +179,7 @@ def test_prepare_job_directory(tmp_path: Path, references):
 
     os.mkdir(jobs_dir)
     os.mkdir(data_dir)
-    
+
     flexpart_dir = Path(os.getenv('FLEXPART_PREFIX'))
 
     data_paths: list[Path] = [ data_dir / f"dispf-{step}" for step in range(3,27) ]
@@ -201,7 +191,7 @@ def test_prepare_job_directory(tmp_path: Path, references):
         mock_extract_metadata.side_effect = side_effect
 
         for conf in input_runtime_conf:
-            job_dir = prepare_job_directory(conf, jobs_dir, flexpart_dir, data_dir, CONFIG.main.openmp_config)
+            job_dir = prepare_job_directory(conf, jobs_dir, flexpart_dir, data_dir, CONFIG.main.openmp_config, domain=Domain.EUROPE)
 
             assert job_dir.is_dir()
             assert job_dir.name == conf['name']
@@ -224,6 +214,7 @@ def test_prepare_job_directory(tmp_path: Path, references):
 
             # Test that all the input data filenames are in the available file.
             assert (job_dir / 'input' / 'AVAILABLE').exists()
+            assert not (job_dir / 'input' / 'AVAILABLE_NESTED').exists()
             available = (job_dir / 'input' / 'AVAILABLE').read_text()
             for path in data_paths:
                 assert str(path.name) in available
@@ -237,7 +228,7 @@ def test_configure_namelist(tmp_path, references):
 
     with open(references / 'runtime_configuration.yaml', 'r') as f:
         config = yaml.load(f, Loader=yaml.SafeLoader)
-    
+
     config[0]['command']['IBDATE'] = '20250519'
     config[0]['command']['IEDATE'] = '20250520'
     config[0]['command']['IBTIME'] = '060000'
@@ -268,12 +259,11 @@ def test_configure_namelist(tmp_path, references):
     assert "LON2=8.567," in releases_copy.read_text()
 
 
-@pytest.mark.parametrize("step_unit, backend_type", [("minutes", "sqlite"), ("hours", "dynamodb")])
-def test_select_files(tmp_path, step_unit, backend_type):
+@pytest.mark.parametrize("step_unit", [("minutes"), ("hours")])
+def test_select_files(tmp_path, step_unit):
     from flexpart_ifs_utils import CONFIG
 
     CONFIG.main.input.step_unit = step_unit
-    CONFIG.main.aws.db.nwp_model_data.backend_type = backend_type
 
     DATE="20240501"
     TIME="1200"
@@ -295,34 +285,28 @@ def test_select_files(tmp_path, step_unit, backend_type):
         str(tmp_path / "6000"),
     ]
 
-    if backend_type == "sqlite":
-        patch_target = MOCK_LIST_OBJS_IN_BUCKET_VIA_SQLITE
-    elif backend_type == "dynamodb":
-        patch_target = MOCK_LIST_OBJS_IN_BUCKET_VIA_DYNAMODB
-    else:
-        raise ValueError(f"Unsupported backend_type: {backend_type}")
-
-    with patch(patch_target, spec=True) as mock_list_bucket:
+    with patch(MOCK_LIST_OBJS_IN_BUCKET_VIA_DYNAMODB, spec=True) as mock_list_bucket:
         mock_list_bucket.return_value = {key: GribMetadata(
             date = DATE,
             time = TIME,
             step = int(str(key).split('/')[-1][0])*multiplier,
             ) for key in keys}
         print(keys)
-        subset = select_files(RUNTIME_CONF, 
-                            table=CONFIG.main.aws.db.nwp_model_data, 
-                            forecast_datetime=f"{DATE}{TIME}", 
-                            step_unit=CONFIG.main.input.step_unit)
+        subset = select_files(RUNTIME_CONF,
+                            table=CONFIG.main.aws.db_table,
+                            forecast_datetime=f"{DATE}{TIME}",
+                            step_unit=CONFIG.main.input.step_unit,
+                            domain=Domain.EUROPE)
         print(subset)
 
-        expected = { 
+        expected = {
             'dispf2024050113',
             'dispf2024050114',
             'dispf2024050115',
             'dispf2024050116',
             'dispf2024050117',
             'dispf2024050118'
-        } 
+        }
         assert len(subset) == 6
         assert set(subset) == expected
 

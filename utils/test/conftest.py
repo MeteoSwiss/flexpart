@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-import subprocess
 import shutil
 import logging
 from typing import Generator
@@ -80,7 +79,7 @@ def mock_config() -> Generator:
         mock_config.main.openmp_config = MagicMock(num_threads=5, stack_size="1000M")
         yield mock_config
 
-WORKDIR: Path = Path(os.path.dirname(os.path.realpath(__file__))) 
+WORKDIR: Path = Path(os.path.realpath(__file__)).parent
 
 def pytest_configure(config):
 
@@ -89,7 +88,6 @@ def pytest_configure(config):
     _set_local_flexpart_install_prefix()
     _set_local_eccodes_install_prefix()
     _set_local_jobs_dir()
-    _set_local_entrypoint()
     _set_local_test_data_path()
 
 
@@ -128,11 +126,14 @@ def _set_local_jobs_dir():
             shutil.rmtree( jobs_dir )
             os.makedirs( jobs_dir )
 
+@pytest.fixture(autouse=True)
+def set_entrypoint(monkeypatch):
+    if 'PYTEST_ENTRYPOINT' not in os.environ:
+        entrypoint_script = str( WORKDIR.parent.parent / 'entrypoint.sh' )
+        print("PYTEST_ENTRYPOINT: %s" % entrypoint_script)
+        monkeypatch.setenv("PYTEST_ENTRYPOINT", entrypoint_script)
+    monkeypatch.setenv("DOMAIN", "EUROPE")
 
-def _set_local_entrypoint():
-    if not os.getenv('PYTEST_ENTRYPOINT'):
-        os.environ['PYTEST_ENTRYPOINT'] = str( WORKDIR.parent.parent / 'entrypoint.sh' )
-        print("PYTEST_ENTRYPOINT: %s" % os.getenv("PYTEST_ENTRYPOINT", 'unset'))
 
 def _set_local_test_data_path():
     # If running locally, provide a path for TEST_DATA in .env - the directory will be symlinked to the job dir.
@@ -153,6 +154,3 @@ def _set_local_test_data_path():
         os.symlink(src_data_dir, dst_data_dir)
     else:
         raise RuntimeError('TEST_DATA path is undefined.')
-
-
-

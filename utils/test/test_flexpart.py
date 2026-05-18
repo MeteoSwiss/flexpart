@@ -28,10 +28,18 @@ def mock_s3_endpoint(aws_credentials):
 
 @pytest.fixture
 def mock_environment(monkeypatch):
-    monkeypatch.setenv("IBDATE", '20241210')
-    monkeypatch.setenv("IBTIME", '00')
-    monkeypatch.setenv("IEDATE", '20241210')
-    monkeypatch.setenv("IETIME", '05')
+    monkeypatch.setenv("EMISSION_START_YYYY", '2024')
+    monkeypatch.setenv("EMISSION_START_MM", '12')
+    monkeypatch.setenv("EMISSION_START_DD", '10')
+    monkeypatch.setenv("EMISSION_START_ZZ", '00')
+    monkeypatch.setenv("EMISSION_END_YYYY", '2024')
+    monkeypatch.setenv("EMISSION_END_MM", '12')
+    monkeypatch.setenv("EMISSION_END_DD", '10')
+    monkeypatch.setenv("EMISSION_END_ZZ", '05')
+    monkeypatch.setenv("SIMULATION_END_YYYY", '2024')
+    monkeypatch.setenv("SIMULATION_END_MM", '12')
+    monkeypatch.setenv("SIMULATION_END_DD", '10')
+    monkeypatch.setenv("SIMULATION_END_ZZ", '05')
     # Below vars are used in entrypoint.sh
     monkeypatch.setenv("FORECAST_DATETIME", '2024121000')
     monkeypatch.setenv("RELEASE_SITE_NAME", 'BEZ')
@@ -45,17 +53,17 @@ def test_flexpart_run(mock_s3_endpoint, mock_environment):
 
     entrypoint = os.getenv('PYTEST_ENTRYPOINT')
 
-    process = subprocess.run(f"/bin/bash {entrypoint}", shell=True, capture_output=True, text=True)
+    process = subprocess.run(f"/bin/bash {entrypoint}", shell=True, capture_output=True, text=True, env=os.environ)
 
     stdout = process.stdout
-    
+
     print(stdout)
 
     expected_msg = "CONGRATULATIONS: YOU HAVE SUCCESSFULLY COMPLETED A FLEXPART MODEL RUN!"
 
     assert process.returncode == 0
     assert expected_msg in stdout
-    
+
     jobs_dir = Path(os.environ['JOBS_DIR'])
 
     # assert that NETCDF output files were produced

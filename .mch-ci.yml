@@ -43,10 +43,14 @@ default:
   - test:
       - unitPodman:
           - script: |
+              mkdir -p utils/test_reports
+              mkdir -p utils/test_data
               podman run --rm \
                   -e TEST_DATA=/scratch/test_data \
-                  -v $PWD/test_data:/scratch/test_data \
-                  -v $PWD/test_reports:/scratch/test_reports \
+                  -v $PWD/utils/flexpart_ifs_utils:/scratch/flexpart_ifs_utils \
+                  -v $PWD/utils/test:/scratch/test \
+                  -v $PWD/utils/test_data:/scratch/test_data \
+                  -v $PWD/utils/test_reports:/scratch/test_reports \
                   ${var.containerImageName}-tester:${var.semanticVersion}
       - unit:
           - script: |
