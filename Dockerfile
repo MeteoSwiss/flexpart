@@ -129,6 +129,9 @@ RUN chmod +x test_ci.sh
 
 # This environment tells pytest that the tests are occuring in a container.
 ENV PYTEST_ENTRYPOINT=/scratch/entrypoint.sh
+# Point pylint to the config inside the image; /scratch is not bind-mounted
+# during the lint stage so this path is always visible.
+ENV PYLINTRC=/scratch/pyproject.toml
 
 ENTRYPOINT []
 

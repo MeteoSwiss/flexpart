@@ -1,15 +1,14 @@
+import glob
 import os
 import subprocess
-import glob
 from pathlib import Path
+from unittest import mock
 
+import boto3
 import pytest
 from moto.server import ThreadedMotoServer
-from unittest import mock
-import boto3
 
 from flexpart_ifs_utils import CONFIG
-from test.conftest import aws_credentials
 from flexpart_ifs_utils.grib_utils import extract_metadata_from_grib_file
 
 

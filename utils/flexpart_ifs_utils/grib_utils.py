@@ -2,7 +2,8 @@
 import logging
 from pathlib import Path
 
-from eccodes import codes_grib_new_from_file, codes_get_string, codes_count_in_file, codes_release, CodesInternalError
+from eccodes import (CodesInternalError, codes_count_in_file, codes_get_string,
+                     codes_grib_new_from_file, codes_release)
 from pydantic import BaseModel
 
 _logger = logging.getLogger(__name__)

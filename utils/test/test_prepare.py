@@ -1,20 +1,22 @@
 import os
-from pathlib import Path
-from datetime import datetime
 import shutil
-import yaml
-
-import pytest
+from datetime import datetime
+from pathlib import Path
 from unittest.mock import patch
 
-from flexpart_ifs_utils.prepare_flexpart import (
-    render_template, _filter_config, _write_job_script, _generate_available,
-    _get_valid_datetime, prepare_job_directory, _configure_namelist,
-    select_files, _get_start_end
-)
+import pytest
+import yaml
+
 from flexpart_ifs_utils.grib_utils import GribMetadata
 from flexpart_ifs_utils.model import Model
-from test.conftest import jinja_template, references, s3, mock_config
+from flexpart_ifs_utils.prepare_flexpart import (_configure_namelist,
+                                                 _filter_config,
+                                                 _generate_available,
+                                                 _get_start_end,
+                                                 _get_valid_datetime,
+                                                 _write_job_script,
+                                                 prepare_job_directory,
+                                                 render_template, select_files)
 
 MOCK_MD_EXTRACTION = "flexpart_ifs_utils.prepare_flexpart.extract_metadata_from_grib_file"
 MOCK_LIST_OBJS_IN_BUCKET_VIA_DYNAMODB = "flexpart_ifs_utils.prepare_flexpart.list_objs_in_bucket_via_dynamodb"

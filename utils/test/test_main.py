@@ -3,6 +3,7 @@ import pytest
 
 from flexpart_ifs_utils.__main__ import parse_env, validate_env
 
+
 @pytest.fixture
 def mock_environment_incomplete(monkeypatch):
     # SIMULATION_END_ZZ is intentionally not set here

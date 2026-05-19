@@ -5,19 +5,16 @@ from datetime import datetime as dt
 from pathlib import Path
 
 import boto3
+from boto3.resources.base import ServiceResource
 from botocore.client import BaseClient
 from botocore.config import Config
 from botocore.exceptions import ClientError
-from boto3.resources.base import ServiceResource
 
 from flexpart_ifs_utils import CONFIG
 from flexpart_ifs_utils.config.service_settings import Bucket, DBTable
-from flexpart_ifs_utils.grib_utils import (
-    GribMetadata,
-    RunMetadata,
-    _is_grib_file,
-    extract_metadata_from_grib_file,
-)
+from flexpart_ifs_utils.grib_utils import (GribMetadata, RunMetadata,
+                                           _is_grib_file,
+                                           extract_metadata_from_grib_file)
 
 _logger = logging.getLogger(__name__)
 

@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class EnvironmentParameters(Enum):
     EMISSION_START_YYYY = 1
     EMISSION_START_MM = 2

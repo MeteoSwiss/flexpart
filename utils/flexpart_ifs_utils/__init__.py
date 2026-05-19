@@ -2,6 +2,7 @@
 import os
 
 from mchpy.audit import logger
+
 from flexpart_ifs_utils.config.service_settings import ServiceSettings
 
 CONFIG = ServiceSettings('settings.yaml', os.path.join(os.path.dirname(__file__), 'config'))

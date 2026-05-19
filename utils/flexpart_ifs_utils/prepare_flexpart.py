@@ -15,10 +15,11 @@ from pathlib import Path
 import yaml
 from jinja2 import Environment, FileSystemLoader
 
-from flexpart_ifs_utils.grib_utils import extract_metadata_from_grib_file, GribMetadata
-from flexpart_ifs_utils.s3_utils import list_objs_in_bucket_via_dynamodb
 from flexpart_ifs_utils.config.service_settings import DBTable, OpenMPConfig
-from flexpart_ifs_utils.model import Model, MODEL_PREFIX
+from flexpart_ifs_utils.grib_utils import (GribMetadata,
+                                           extract_metadata_from_grib_file)
+from flexpart_ifs_utils.model import MODEL_PREFIX, Model
+from flexpart_ifs_utils.s3_utils import list_objs_in_bucket_via_dynamodb
 
 _logger = logging.getLogger(__name__)
 

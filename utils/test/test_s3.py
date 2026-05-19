@@ -4,15 +4,13 @@ from pathlib import Path
 import boto3
 import pytest
 
-from flexpart_ifs_utils.s3_utils import (
-    list_objs_in_bucket_via_dynamodb,
-    download_keys_from_bucket,
-    upload_directory)
 from flexpart_ifs_utils import CONFIG
 from flexpart_ifs_utils.config.service_settings import Bucket, DBTable
 from flexpart_ifs_utils.grib_utils import extract_metadata_from_grib_file
+from flexpart_ifs_utils.s3_utils import (download_keys_from_bucket,
+                                         list_objs_in_bucket_via_dynamodb,
+                                         upload_directory)
 
-from test.conftest import s3, model_data, aws_credentials
 
 @pytest.fixture(scope="function")
 def db(aws_credentials):
@@ -70,6 +68,7 @@ def test_list_objs_in_bucket(db, model_data: Path):
 
 import tempfile
 from pathlib import Path
+
 
 @pytest.mark.parametrize("s3", [
     ("aws", None),

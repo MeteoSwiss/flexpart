@@ -22,24 +22,21 @@ Usage:
     python __main__.py upload -d <jobs_dir> -i <input_directory>
 """
 
-import os
-import sys
 import argparse
 import logging
+import os
+import sys
 from pathlib import Path
 
 import yaml
-from flexpart_ifs_utils.prepare_flexpart import (
-    prepare_job_directory,
-    render_template,
-    select_files,
-    _path_list)
-from flexpart_ifs_utils.s3_utils import (
-    download_keys_from_bucket,
-    upload_directory)
-from flexpart_ifs_utils.model import Model
+
 from flexpart_ifs_utils import CONFIG
-from flexpart_ifs_utils.model import EnvironmentParameters
+from flexpart_ifs_utils.model import EnvironmentParameters, Model
+from flexpart_ifs_utils.prepare_flexpart import (_path_list,
+                                                 prepare_job_directory,
+                                                 render_template, select_files)
+from flexpart_ifs_utils.s3_utils import (download_keys_from_bucket,
+                                         upload_directory)
 
 
 def validate_env(data: dict[str, str | None]) -> None:

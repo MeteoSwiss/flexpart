@@ -1,15 +1,15 @@
-import os
-from pathlib import Path
-import shutil
 import logging
+import os
+import shutil
+from pathlib import Path
 from typing import Generator
+from unittest.mock import MagicMock, patch
 
-import pytest
 import boto3
+import pytest
 from botocore.config import Config
 from dotenv import load_dotenv
 from moto import mock_aws
-from unittest.mock import MagicMock, patch
 
 from flexpart_ifs_utils import CONFIG
 
