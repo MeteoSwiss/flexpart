@@ -22,20 +22,6 @@ from flexpart_ifs_utils.grib_utils import (
 _logger = logging.getLogger(__name__)
 
 
-def get_s3_resource(
-    endpoint_url: str,
-    access_key: str,
-    secret_key: str,
-) -> ServiceResource:
-    """Get a boto3 S3 resource."""
-    return boto3.resource(
-        "s3",
-        endpoint_url=endpoint_url,
-        aws_access_key_id=access_key,
-        aws_secret_access_key=secret_key,
-    )
-
-
 def upload_directory(
     directory: Path,
     input_path: Path,
@@ -194,25 +180,13 @@ def download_keys_from_bucket(
 
 
 def _create_s3_client(bucket: Bucket) -> BaseClient:
-    """
-    Creates and configures the S3 client based on the bucket's platform.
-    """
+
     retries_config = {"max_attempts": bucket.retries, "mode": "standard"}
 
-    if bucket.platform == "other":
-        return boto3.Session().client(
-            "s3",
-            endpoint_url=bucket.endpoint_url,
-            config=Config(retries=retries_config),
-        )
-
-    if bucket.platform == "aws":
-        return boto3.Session().client(
-            "s3",
-            config=Config(
-                region_name=bucket.region,
-                retries=retries_config,
-            ),
-        )
-
-    raise ValueError(f"Unsupported bucket platform: {bucket.platform}")
+    return boto3.Session().client(
+        "s3",
+        config=Config(
+            region_name=bucket.region,
+            retries=retries_config,
+        ),
+    )

@@ -22,12 +22,8 @@ main:
       nwp_model_data:
         region: eu-central-2
         name: flexpart-input
-        endpoint_url: None
         retries: 10
-        platform: aws
       output:
         region: eu-central-2
         name: flexpart-output
-        endpoint_url: None
         retries: 10
-        platform: aws

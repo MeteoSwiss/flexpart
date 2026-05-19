@@ -274,7 +274,7 @@ def select_files(
         table=table,
         date=forecast_date,
         time=forecast_time,
-        model=model,
+        model=model.value,
     )
 
     if not objs:

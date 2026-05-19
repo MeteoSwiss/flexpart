@@ -14,17 +14,22 @@ from flexpart_ifs_utils.grib_utils import extract_metadata_from_grib_file
 
 
 @pytest.fixture(autouse=True)
-def mock_s3_endpoint(aws_credentials):
-    s3_endpoint = "http://localhost:5000"
-    with mock.patch.dict(os.environ, {
-        "AWS_ENDPOINT_URL": s3_endpoint,
-        "MAIN__AWS__S3__OUTPUT__ENDPOINT_URL": s3_endpoint
-    }):
-        server = ThreadedMotoServer()
-        server.start()
-        yield s3_endpoint
-    server.stop()
+def aws_server_session(aws_credentials):
 
+    _S3_SERVER_HOST = '127.0.0.1'
+    _S3_SERVER_PORT = 5555
+    server = ThreadedMotoServer(ip_address=_S3_SERVER_HOST, port=_S3_SERVER_PORT)
+
+    with mock.patch.dict(os.environ, {
+        "AWS_ENDPOINT_URL": f'http://{_S3_SERVER_HOST}:{_S3_SERVER_PORT}'
+    }):
+        server.start()
+        session = boto3.Session()
+
+        try:
+            yield session
+        finally:
+            server.stop()
 
 @pytest.fixture
 def mock_environment(monkeypatch):
@@ -47,14 +52,16 @@ def mock_environment(monkeypatch):
 
 
 @pytest.mark.slow
-def test_flexpart_run(mock_s3_endpoint, mock_environment):
+def test_flexpart_run(aws_server_session, mock_environment):
 
-    s3_client = boto3.Session().client('s3', endpoint_url=mock_s3_endpoint)
+    s3_client = boto3.Session().client('s3')
     s3_client.create_bucket(Bucket=CONFIG.main.aws.s3.output.name)
 
-    entrypoint = os.getenv('PYTEST_ENTRYPOINT')
-
-    process = subprocess.run(f"/bin/bash {entrypoint}", shell=True, capture_output=True, text=True, env=os.environ)
+    process = subprocess.run(f"/bin/bash {os.getenv('PYTEST_ENTRYPOINT')}",
+                             shell=True,
+                             capture_output=True,
+                             text=True,
+                             env=os.environ)
 
     print(process.stdout)
     print(process.stderr)

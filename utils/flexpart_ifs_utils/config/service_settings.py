@@ -1,15 +1,12 @@
 from mchpy.audit.logger import LoggingSettings
 from mchpy.config.base_settings import BaseServiceSettings
 from pydantic import BaseModel
-from enum import Enum
 
 
 class Bucket(BaseModel):
     region: str
     name: str
     retries: int | None
-    endpoint_url: str
-    platform: str
 
 class S3(BaseModel):
     nwp_model_data: Bucket
