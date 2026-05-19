@@ -182,7 +182,7 @@ def test_prepare_job_directory(tmp_path: Path, references):
     os.mkdir(jobs_dir)
     os.mkdir(data_dir)
 
-    flexpart_dir = Path(os.getenv('FLEXPART_PREFIX'))
+    flexpart_dir = Path(os.environ['FLEXPART_PREFIX'])
 
     data_paths: list[Path] = [ data_dir / f"dispf-{step}" for step in range(3,27) ]
 
