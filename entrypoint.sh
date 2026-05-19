@@ -22,7 +22,7 @@ python -m flexpart_ifs_utils generate \
     --jobs_dir $JOBS_DIR \
     --datetime $FORECAST_DATETIME \
     --site $RELEASE_SITE_NAME \
-    --domain $DOMAIN
+    --model $MODEL
 
 echo JOBS_DIR: $JOBS_DIR
 
