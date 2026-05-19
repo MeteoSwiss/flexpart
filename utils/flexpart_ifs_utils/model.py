@@ -14,18 +14,11 @@ class EnvironmentParameters(Enum):
     SIMULATION_END_DD = 11
     SIMULATION_END_ZZ = 12
 
+class Model(Enum):
+    IFS_HRES = 'IFS-HRES'
+    IFS_HRES_EUROPE = 'IFS-HRES-Europe'
 
-class Domain(Enum):
-    GLOBAL = 1
-    EUROPE = 2
-
-
-DOMAIN_FILE_PREFIX: dict[Domain, str] = {
-    Domain.GLOBAL: "dispc*",
-    Domain.EUROPE: "dispf*",
-}
-
-DOMAIN_MODEL: dict[Domain, str] = {
-    Domain.GLOBAL: "IFS-HRES",
-    Domain.EUROPE: "IFS-HRES-Europe",
+MODEL_PREFIX: dict[Model, str] = {
+    Model.IFS_HRES: "dispc*",
+    Model.IFS_HRES_EUROPE: "dispf*",
 }

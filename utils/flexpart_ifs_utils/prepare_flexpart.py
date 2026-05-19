@@ -18,7 +18,7 @@ from jinja2 import Environment, FileSystemLoader
 from flexpart_ifs_utils.grib_utils import extract_metadata_from_grib_file, GribMetadata
 from flexpart_ifs_utils.s3_utils import list_objs_in_bucket_via_dynamodb
 from flexpart_ifs_utils.config.service_settings import DBTable, OpenMPConfig
-from flexpart_ifs_utils.model import EnvironmentParameters, Domain, DOMAIN_FILE_PREFIX, DOMAIN_MODEL
+from flexpart_ifs_utils.model import Model, MODEL_PREFIX
 
 _logger = logging.getLogger(__name__)
 
@@ -33,22 +33,22 @@ def _init_job_dirs(jobs_dir: Path, name: str) -> tuple[Path, Path, Path, Path]:
     return job_dir, input_dir, output_dir, job_data_dir
 
 
-def _populate_input_dir(flexpart_dir: Path, input_dir: Path, domain: Domain) -> None:
+def _populate_input_dir(flexpart_dir: Path, input_dir: Path, model: Model) -> None:
     options_dir = flexpart_dir / "share" / "options"
     mch_options_dir = flexpart_dir / "share" / "options.meteoswiss"
     shutil.copytree(mch_options_dir, options_dir, dirs_exist_ok=True)
     shutil.copytree(options_dir, input_dir)
-    if domain == Domain.GLOBAL:
+    if model == model.IFS_HRES:
         shutil.copy(options_dir / "OUTGRID.g", input_dir / "OUTGRID")
-    elif domain == Domain.EUROPE:
+    elif model == model.IFS_HRES_EUROPE:
         shutil.copy(options_dir / "OUTGRID.f", input_dir / "OUTGRID")
     else:
-        raise ValueError(f"Unsupported domain: {domain}")
+        raise ValueError(f"Unsupported model: {model}")
 
 
-def _path_list(data_dir: Path, domain: Domain) -> list[Path]:
+def _path_list(data_dir: Path, model: Model) -> list[Path]:
     """Return a sorted list of data files for the given domain."""
-    return sorted(data_dir.glob(DOMAIN_FILE_PREFIX[domain]))
+    return sorted(data_dir.glob(MODEL_PREFIX[model]))
 
 
 def _write_pathnames(
@@ -79,24 +79,24 @@ def prepare_job_directory(
     flexpart_dir: Path,
     data_dir: Path,
     openmp_config: OpenMPConfig,
-    domain: Domain,
+    model: Model,
 ) -> Path:
     job_dir, input_dir, output_dir, job_data_dir = _init_job_dirs(
         jobs_dir, configuration["name"]
     )
 
-    _populate_input_dir(flexpart_dir, input_dir, domain)
+    _populate_input_dir(flexpart_dir, input_dir, model)
 
     namelists: list[Path] = [input_dir / "COMMAND", *input_dir.glob("RELEASES*")]
     for nl in namelists:
         _configure_namelist(configuration, nl)
 
     available_path = input_dir / "AVAILABLE"
-    _generate_available(available_path, _path_list(data_dir, domain=domain))
+    _generate_available(available_path, _path_list(data_dir, model=model))
     available_path_nested = None
-    if domain == Domain.GLOBAL:
+    if model == Model.IFS_HRES:
         available_path_nested = input_dir / "AVAILABLE_NESTED"
-        _generate_available(available_path_nested, _path_list(data_dir, domain=Domain.EUROPE))
+        _generate_available(available_path_nested, _path_list(data_dir, model=Model.IFS_HRES_EUROPE))
 
     os.symlink(data_dir, job_data_dir)
     _write_pathnames(job_dir, input_dir, output_dir, job_data_dir, available_path, available_path_nested)
@@ -258,7 +258,7 @@ def select_files(
     table: DBTable,
     forecast_datetime: str,
     step_unit: str,
-    domain: Domain,
+    model: Model,
 ) -> list[str]:
     step_unit = step_unit.lower()
     if step_unit not in ("minutes", "hours"):
@@ -269,13 +269,6 @@ def select_files(
 
     forecast_date = forecast_datetime[:8]
     forecast_time = forecast_datetime[8:12]
-
-    if domain == Domain.GLOBAL:
-        model = DOMAIN_MODEL[domain]
-    elif domain == Domain.EUROPE:
-        model = DOMAIN_MODEL[domain]
-    else:
-        raise ValueError(f"Unsupported domain: {domain}")
 
     objs = list_objs_in_bucket_via_dynamodb(
         table=table,

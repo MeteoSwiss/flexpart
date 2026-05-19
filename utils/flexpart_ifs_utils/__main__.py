@@ -37,7 +37,7 @@ from flexpart_ifs_utils.prepare_flexpart import (
 from flexpart_ifs_utils.s3_utils import (
     download_keys_from_bucket,
     upload_directory)
-from flexpart_ifs_utils.model import Domain
+from flexpart_ifs_utils.model import Model
 from flexpart_ifs_utils import CONFIG
 from flexpart_ifs_utils.model import EnvironmentParameters
 
@@ -81,43 +81,43 @@ if __name__ == '__main__':
 
     p1 = sp.add_parser('upload')
     p1.add_argument('-d', '--directory',
-                    help='Specify the jobs directory containing output to upload to S3.',
+                    help='The jobs directory containing output to upload to S3.',
                     required=True,
                     type=Path,
                     )
     p1.add_argument('-i', '--input',
-                    help='Specify the path to the input data from which the output S3 object metadata can be defined.',
+                    help='Path to the input data from which the output S3 object metadata can be defined.',
                     required=True,
                     type=Path,
                     )
     p1.add_argument('-s', '--site',
-                    help='Specify the release site.',
+                    help='Release site.',
                     required=True
                     )
 
     p2 = sp.add_parser('generate')
     p2.add_argument('-f', '--flexpart_dir',
-                    help='Specify the Flexpart directory.',
+                    help='Directory where the Flexpart binary lives.',
                     required=True,
                     type=Path,
                     )
     p2.add_argument('-j', '--jobs_dir',
-                    help='Specify the jobs directory.',
+                    help='Path of the jobs directory.',
                     required=True,
                     type=Path,
                     )
     p2.add_argument('-d', '--datetime',
-                    help='Specify the forecast datetime, in format YYYYMMDDHH.',
+                    help='Forecast datetime, in format YYYYMMDDHH.',
                     required=True
                     )
     p2.add_argument('-s', '--site',
-                    help='Specify the release site.',
+                    help='Release site.',
                     required=True
                     )
-    p2.add_argument('--domain',
-                    help='Specify the domain of the Flexpart run. Global domain runs use nested domain over Europe.',
+    p2.add_argument('--model',
+                    help='IFS model used by Flexpart. IFS-HRES (global) runs use nested domain over Europe (IFS-HRES-Europe).',
                     type=str.upper,
-                    choices=[d.name for d in Domain],
+                    choices=[m.value for m in Model],
                     required=True
                     )
     args = parser.parse_args()
@@ -130,7 +130,7 @@ if __name__ == '__main__':
     RELEASE_SITE: str = args.site
     JOBS_DIR: Path = args.jobs_dir
     FLEXPART_DIR: Path = args.flexpart_dir
-    DOMAIN: Domain = Domain[args.domain]
+    MODEL: Model = Model[args.model]
 
     WORKDIR: Path = Path(os.path.abspath(__file__)).parent
     CONFIG_TEMPLATE_PATH = WORKDIR / 'runtime_configuration.j2'
@@ -163,13 +163,8 @@ if __name__ == '__main__':
     if not os.path.exists( DATA_DIR ):
         os.makedirs( DATA_DIR )
 
-    data_paths = []
-
     # Check if data already exists for the domain
-    if DOMAIN == Domain.GLOBAL:
-        data_paths.extend(_path_list(DATA_DIR, domain=DOMAIN) )
-    elif DOMAIN == Domain.EUROPE:
-        data_paths.extend(_path_list(DATA_DIR, domain=DOMAIN) )
+    data_paths = _path_list(DATA_DIR, MODEL)
 
     if not data_paths:
         # Search the db for the relevant files and download data
@@ -177,7 +172,7 @@ if __name__ == '__main__':
                             table=CONFIG.main.aws.db_table,
                             forecast_datetime=FORECAST_DATETIME,
                             step_unit=CONFIG.main.input.step_unit,
-                            domain=DOMAIN)
+                            model=MODEL)
 
         download_keys_from_bucket(keys, DATA_DIR, CONFIG.main.aws.s3.nwp_model_data)
 
@@ -187,4 +182,4 @@ if __name__ == '__main__':
         FLEXPART_DIR,
         DATA_DIR,
         CONFIG.main.openmp_config,
-        domain=DOMAIN)
+        model=MODEL)

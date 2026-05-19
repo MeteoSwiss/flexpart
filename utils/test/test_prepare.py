@@ -13,7 +13,7 @@ from flexpart_ifs_utils.prepare_flexpart import (
     select_files, _get_start_end
 )
 from flexpart_ifs_utils.grib_utils import GribMetadata
-from flexpart_ifs_utils.model import Domain
+from flexpart_ifs_utils.model import Model
 from test.conftest import jinja_template, references, s3, mock_config
 
 MOCK_MD_EXTRACTION = "flexpart_ifs_utils.prepare_flexpart.extract_metadata_from_grib_file"
@@ -191,7 +191,7 @@ def test_prepare_job_directory(tmp_path: Path, references):
         mock_extract_metadata.side_effect = side_effect
 
         for conf in input_runtime_conf:
-            job_dir = prepare_job_directory(conf, jobs_dir, flexpart_dir, data_dir, CONFIG.main.openmp_config, domain=Domain.EUROPE)
+            job_dir = prepare_job_directory(conf, jobs_dir, flexpart_dir, data_dir, CONFIG.main.openmp_config, model=Model.IFS_HRES_EUROPE)
 
             assert job_dir.is_dir()
             assert job_dir.name == conf['name']
@@ -296,7 +296,7 @@ def test_select_files(tmp_path, step_unit):
                             table=CONFIG.main.aws.db_table,
                             forecast_datetime=f"{DATE}{TIME}",
                             step_unit=CONFIG.main.input.step_unit,
-                            domain=Domain.EUROPE)
+                            model=Model.IFS_HRES_EUROPE)
         print(subset)
 
         expected = {
