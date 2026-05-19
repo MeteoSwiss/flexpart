@@ -116,7 +116,7 @@ if __name__ == '__main__':
                     )
     p2.add_argument('--model',
                     help='IFS model used by Flexpart. IFS-HRES (global) runs use nested domain over Europe (IFS-HRES-Europe).',
-                    type=str.upper,
+                    type=str,
                     choices=[m.value for m in Model],
                     required=True
                     )
@@ -130,7 +130,7 @@ if __name__ == '__main__':
     RELEASE_SITE: str = args.site
     JOBS_DIR: Path = args.jobs_dir
     FLEXPART_DIR: Path = args.flexpart_dir
-    MODEL: Model = Model[args.model]
+    MODEL: Model = Model(args.model)
 
     WORKDIR: Path = Path(os.path.abspath(__file__)).parent
     CONFIG_TEMPLATE_PATH = WORKDIR / 'runtime_configuration.j2'

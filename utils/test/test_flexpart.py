@@ -56,14 +56,13 @@ def test_flexpart_run(mock_s3_endpoint, mock_environment):
 
     process = subprocess.run(f"/bin/bash {entrypoint}", shell=True, capture_output=True, text=True, env=os.environ)
 
-    stdout = process.stdout
-
-    print(stdout)
+    print(process.stdout)
+    print(process.stderr)
 
     expected_msg = "CONGRATULATIONS: YOU HAVE SUCCESSFULLY COMPLETED A FLEXPART MODEL RUN!"
 
     assert process.returncode == 0
-    assert expected_msg in stdout
+    assert expected_msg in process.stdout
 
     jobs_dir = Path(os.environ['JOBS_DIR'])
 
