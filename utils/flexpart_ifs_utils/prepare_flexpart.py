@@ -37,8 +37,8 @@ def _init_job_dirs(jobs_dir: Path, name: str) -> tuple[Path, Path, Path, Path]:
 def _populate_input_dir(flexpart_dir: Path, input_dir: Path, model: Model) -> None:
     options_dir = flexpart_dir / "share" / "options"
     mch_options_dir = flexpart_dir / "share" / "options.meteoswiss"
-    shutil.copytree(mch_options_dir, options_dir, dirs_exist_ok=True)
     shutil.copytree(options_dir, input_dir)
+    shutil.copytree(mch_options_dir, input_dir, dirs_exist_ok=True)
     if model == model.IFS_HRES:
         shutil.copy(options_dir / "OUTGRID.g", input_dir / "OUTGRID")
     elif model == model.IFS_HRES_EUROPE:
