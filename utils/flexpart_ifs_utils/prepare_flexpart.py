@@ -40,9 +40,9 @@ def _populate_input_dir(flexpart_dir: Path, input_dir: Path, model: Model) -> No
     shutil.copytree(options_dir, input_dir)
     shutil.copytree(mch_options_dir, input_dir, dirs_exist_ok=True)
     if model == model.IFS_HRES:
-        shutil.copy(options_dir / "OUTGRID.g", input_dir / "OUTGRID")
+        shutil.copy(input_dir / "OUTGRID.g", input_dir / "OUTGRID")
     elif model == model.IFS_HRES_EUROPE:
-        shutil.copy(options_dir / "OUTGRID.f", input_dir / "OUTGRID")
+        shutil.copy(input_dir / "OUTGRID.f", input_dir / "OUTGRID")
     else:
         raise ValueError(f"Unsupported model: {model}")
 
