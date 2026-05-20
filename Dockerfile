@@ -94,7 +94,7 @@ COPY utils/flexpart_ifs_utils flexpart_ifs_utils
 COPY entrypoint.sh entrypoint.sh
 COPY data/IGBP_int1.dat $JOBS_DIR
 
-RUN chmod -R a+rwx /scratch
+RUN chmod -R a+rwx /scratch /opt/spack-view /opt/spack-root
 
 ARG USERNAME=default_user
 ARG USER_UID=1000
