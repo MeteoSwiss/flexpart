@@ -31,20 +31,9 @@ def aws_credentials():
 
 
 @pytest.fixture(scope="function")
-def s3(request):
-    """
-    Mocked S3 client fixture with dynamic platform and endpoint_url support.
-    """
-    platform, endpoint_url = request.param
-
+def s3(aws_credentials):
     with mock_aws():
-        if endpoint_url:
-            # Custom endpoint
-            s3 = boto3.Session().client("s3", endpoint_url=endpoint_url)
-
-        else:
-            # AWS S3 - handle location constraint for non-us-east-1 regions
-            s3 = boto3.Session().client("s3", region_name="us-east-1")
+        s3 = boto3.Session().client("s3", region_name="us-east-1")
 
         s3.create_bucket(Bucket=CONFIG.main.aws.s3.nwp_model_data.name)
         s3.create_bucket(Bucket=CONFIG.main.aws.s3.output.name)

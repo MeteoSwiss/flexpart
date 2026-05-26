@@ -1,20 +1,20 @@
 import glob
 import logging
 import os
-from datetime import datetime as dt
+from datetime import datetime
 from pathlib import Path
 
 import boto3
-from boto3.resources.base import ServiceResource
 from botocore.client import BaseClient
 from botocore.config import Config
 from botocore.exceptions import ClientError
 
 from flexpart_ifs_utils import CONFIG
-from flexpart_ifs_utils.config.service_settings import Bucket, DBTable
+from flexpart_ifs_utils.config.service_settings import Bucket
 from flexpart_ifs_utils.grib_utils import (GribMetadata, RunMetadata,
                                            _is_grib_file,
-                                           extract_metadata_from_grib_file)
+                                           extract_metadata_from_grib_file,
+                                           _get_valid_datetime)
 
 _logger = logging.getLogger(__name__)
 
@@ -105,57 +105,56 @@ def _get_input_metadata(directory: Path) -> RunMetadata:
     raise FileNotFoundError("No GRIB files found in the directory.")
 
 
-def list_objs_in_bucket_via_dynamodb(
-    table: DBTable,
-    date: str,
-    time: str,
-    model: str,
+
+def _select_keys_in_window(
+    objs: dict[str, GribMetadata],
+    start_dt: datetime,
+    end_dt: datetime,
+    step_unit: str,
+) -> list[str]:
+    subset: list[str] = []
+    for key, metadata in objs.items():
+        file_validtime = _get_valid_datetime(Path(key), metadata, step_unit)
+        if start_dt <= file_validtime <= end_dt:
+            subset.append(key)
+    return subset
+
+
+def list_objs_in_bucket(
+    start_time: datetime,
+    end_time: datetime,
+    bucket: Bucket = CONFIG.main.aws.s3.nwp_model_data,
 ) -> dict[str, GribMetadata]:
     """
-    List objects in a DynamoDB table using scan with a filter on metadata.
+    List objects in a S3 bucket with a filter on metadata.
     """
     _logger.info(
-        "Fetching objects from table with the following metadata: date=%s, time=%s",
-        date,
-        time,
+        "Fetching objects from S3 with valid time between: start_date=%s, end_date=%s",
+        start_time,
+        end_time,
     )
 
-    dynamodb = boto3.resource("dynamodb", region_name=table.region)
+    client = _create_s3_client(bucket)
 
-    scan_parameters = {
-        "FilterExpression": " ForecastDate = :date AND ForecastTime = :time AND Model = :model ",
-        "ExpressionAttributeValues": {
-            ":date": date,
-            ":time": time,
-            ":model": model,
-        },
-    }
+    try:
+        paginator = client.get_paginator("list_objects_v2")
+        page_iterator = paginator.paginate(Bucket=bucket.name)
 
-    dynamo_db_table = dynamodb.Table(table.name)
-    items: list[dict] = []
+        items: dict[str, GribMetadata] = {}
+        for page in page_iterator:
+            for obj in page.get("Contents", []):
+                head = client.head_object(Bucket=bucket.name, Key=obj["Key"])
+                metadata = head.get("Metadata", {})
+                items[obj["Key"]] = GribMetadata(
+                    time=metadata.get("time", ""),
+                    date=metadata.get("date", ""),
+                    step=float(metadata.get("step", "-1")),
+                )
+    except ClientError as exc:
+        _logger.error("Error listing objects in bucket: %s", exc)
+        raise exc
 
-    response = dynamo_db_table.scan(**scan_parameters)
-    items.extend(response.get("Items", []))
-
-    while "LastEvaluatedKey" in response:
-        response = dynamo_db_table.scan(
-            **scan_parameters,
-            ExclusiveStartKey=response["LastEvaluatedKey"],
-        )
-        items.extend(response.get("Items", []))
-
-    matching_objects: dict[str, GribMetadata] = {}
-    for item in items:
-        if not all(k in item for k in ("ObjectKey", "ForecastTime", "ForecastDate", "Step", "Model")):
-            continue
-        matching_objects[item["ObjectKey"]] = GribMetadata(
-            time=item["ForecastTime"],
-            date=item["ForecastDate"],
-            step=item["Step"],
-        )
-
-    _logger.info("S3 objects matching search: %s", matching_objects.keys())
-    return matching_objects
+    return items
 
 
 def download_keys_from_bucket(

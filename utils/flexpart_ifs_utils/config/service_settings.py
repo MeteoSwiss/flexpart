@@ -12,13 +12,8 @@ class S3(BaseModel):
     nwp_model_data: Bucket
     output: Bucket
 
-class DBTable(BaseModel):
-    name: str
-    region: str
-
 class AWS(BaseModel):
     s3: S3
-    db_table: DBTable
 
 class InputSettings(BaseModel):
     step_unit: str

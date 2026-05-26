@@ -1,78 +1,40 @@
 import tempfile
 from pathlib import Path
+from datetime import datetime, timedelta
 
-import boto3
 import pytest
 
 from flexpart_ifs_utils import CONFIG
-from flexpart_ifs_utils.config.service_settings import Bucket, DBTable
+from flexpart_ifs_utils.config.service_settings import Bucket
 from flexpart_ifs_utils.grib_utils import extract_metadata_from_grib_file
 from flexpart_ifs_utils.s3_utils import (download_keys_from_bucket,
-                                         list_objs_in_bucket_via_dynamodb,
+                                         list_objs_in_bucket,
                                          upload_directory)
 
 
-@pytest.fixture(scope="function")
-def db(aws_credentials):
-    from moto import mock_aws
-    with mock_aws():
-        session = boto3.Session()
-        db = session.client('dynamodb', region_name=CONFIG.main.aws.db_table.region)
+def test_list_objs_in_bucket(s3, model_data: Path):
 
-        db.create_table(
-            TableName=CONFIG.main.aws.db_table.name,
-            KeySchema=[
-                {
-                    'AttributeName': 'ObjectKey',
-                    'KeyType': 'HASH'
-                }
-            ],
-            AttributeDefinitions=[
-                {
-                    'AttributeName': 'ObjectKey',
-                    'AttributeType': 'S'
-                }
-            ],
-            ProvisionedThroughput={
-                'ReadCapacityUnits': 5,
-                'WriteCapacityUnits': 5
-            }
-        )
-
-        yield db
-
-
-def test_list_objs_in_bucket(db, model_data: Path):
-    """
-    Test for listing objects in the bucket via DynamoDB.
-    """
-
-    # Get the table configuration
-    table_config = CONFIG.main.aws.db_table
+    bucket = CONFIG.main.aws.s3.nwp_model_data
 
     params = {'date': '20241210', 'time': '0000', 'model': 'IFS-HRES'}
 
     path_list = list(model_data.iterdir())[:3]
 
-    # Add items to the DynamoDB mock table
     for i, path in enumerate(path_list):
-        _add_item_to_table(table_config, db, str(path), step=i, domain='GLOBAL', **params)
-        _add_item_to_table(table_config, db, f"{path}_c", domain='EUROPE', step=i, **params)
+        _add_item_to_bucket_with_metadata(bucket, s3, str(path), str(path), step=i, domain='GLOBAL', **params)
+        _add_item_to_bucket_with_metadata(bucket, s3, str(path), f"{path}_c", domain='EUROPE', step=i, **params)
 
-    result = list_objs_in_bucket_via_dynamodb(table_config, **params)
+    result = list_objs_in_bucket(
+        start_time=datetime.strptime("20241210_0000", "%Y%m%d_%H%M"),
+        end_time=datetime.strptime("20241210_0000", "%Y%m%d_%H%M") + timedelta(hours=3),
+        bucket = bucket
+    )
 
     # Validate the results
     assert len(result) == 2*len(path_list)
-    assert {k for k in result.keys()} == {str(path) for path in path_list} | {f"{path}_c" for path in path_list}
+    assert {k for k in result} == {str(path) for path in path_list} | {f"{path}_c" for path in path_list}
 
 
-import tempfile
-from pathlib import Path
-
-
-@pytest.mark.parametrize("s3", [
-    ("aws", None),
-], indirect=True)
 def test_download_keys_from_bucket(s3, model_data: Path):
     # Configure the bucket dynamically
     bucket = CONFIG.main.aws.s3.nwp_model_data
@@ -91,9 +53,7 @@ def test_download_keys_from_bucket(s3, model_data: Path):
         for file in path_list:
             assert file.name in files_downloaded
 
-@pytest.mark.parametrize("s3", [
-    ("aws", None),
-], indirect=True)
+
 def test_upload_directory(s3, model_data: Path):
 
     # given
@@ -121,22 +81,26 @@ def _add_files_to_bucket(bucket: Bucket, files: list[Path], s3) -> None:
         s3.upload_file(path, bucket.name, path.name)
 
 
-def _add_item_to_table(dbtable: DBTable,
-                       dynamodb,
+def _add_item_to_bucket_with_metadata(bucket: Bucket,
+                       s3_client,
                        path: str,
+                       key: str,
                        time: str = '1200',
                        date: str = '20240607',
                        step: int = 1,
                        model: str = "IFS-HRES",
                        domain: str = "GLOBAL") -> None:
 
-    dynamodb.put_item(
-        TableName=dbtable.name,
-        Item={
-            "ObjectKey": {"S": path},
-            "ForecastDate": {"S": date},
-            "Step": {"N": str(step)},
-            "ForecastTime": {"S": time},
-            "Model": {"S": model},
-            "DomainName": {"S": domain},
-        })
+    with open(path, "rb") as f:
+        s3_client.put_object(
+            Bucket=bucket.name,
+            Key=path if key is None else key,
+            Body=f,
+            Metadata={
+                "time": time,
+                "date": date,
+                "step": str(step),
+                "model": model,
+                "domain": domain,
+            },
+        )

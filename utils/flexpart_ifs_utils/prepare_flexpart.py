@@ -15,11 +15,10 @@ from pathlib import Path
 import yaml
 from jinja2 import Environment, FileSystemLoader
 
-from flexpart_ifs_utils.config.service_settings import DBTable, OpenMPConfig
-from flexpart_ifs_utils.grib_utils import (GribMetadata,
-                                           extract_metadata_from_grib_file)
+from flexpart_ifs_utils.config.service_settings import OpenMPConfig
+from flexpart_ifs_utils.grib_utils import _get_valid_datetime
 from flexpart_ifs_utils.model import MODEL_PREFIX, Model
-from flexpart_ifs_utils.s3_utils import list_objs_in_bucket_via_dynamodb
+from flexpart_ifs_utils.s3_utils import list_objs_in_bucket, _select_keys_in_window
 
 _logger = logging.getLogger(__name__)
 
@@ -178,32 +177,6 @@ def _generate_available(path: Path, data_paths: list[Path]) -> None:
             _logger.info(entry)
 
 
-def _get_valid_datetime(
-    path: Path,
-    md: GribMetadata | None = None,
-    step_unit: str = "hours",
-) -> datetime:
-    """
-    Using GRIB metadata (date,time,step) from within the file (path), calculate the valid time of the data.
-    Valid time is the forecast start time plus the time until that certain step.
-    """
-    if not md:
-        md = extract_metadata_from_grib_file(path)
-
-    leadtime_0 = datetime.strptime(md.date + md.time, "%Y%m%d%H%M")
-
-    if step_unit == "minutes":
-        return leadtime_0 + timedelta(minutes=md.step)
-
-    if step_unit == "hours":
-        return leadtime_0 + timedelta(hours=md.step)
-
-    raise ValueError(
-        "Steps must be provided in either minutes or hours, not "
-        f"{step_unit.lower()}"
-    )
-
-
 def _configure_namelist(config: dict, namelist: Path) -> None:
     """Using values from the runtime configuration, modify various default values of the namelist."""
     filedata = namelist.read_text(encoding="utf-8")
@@ -230,20 +203,6 @@ def _configure_namelist(config: dict, namelist: Path) -> None:
     namelist.write_text(filedata, encoding="utf-8")
 
 
-def _select_keys_in_window(
-    objs: dict[str, GribMetadata],
-    start_dt: datetime,
-    end_dt: datetime,
-    step_unit: str,
-) -> list[str]:
-    subset: list[str] = []
-    for key, metadata in objs.items():
-        file_validtime = _get_valid_datetime(Path(key), metadata, step_unit)
-        if start_dt <= file_validtime <= end_dt:
-            subset.append(key)
-    return subset
-
-
 def _get_start_end(config: dict) -> tuple[datetime, datetime]:
     start = str(config["IBDATE"]) + f"{config['IBTIME']:06}"
     end = str(config["IEDATE"]) + f"{config['IETIME']:06}"
@@ -256,11 +215,10 @@ def _get_start_end(config: dict) -> tuple[datetime, datetime]:
 
 def select_files(
     config: dict,
-    table: DBTable,
     forecast_datetime: str,
     step_unit: str,
-    model: Model,
 ) -> list[str]:
+
     step_unit = step_unit.lower()
     if step_unit not in ("minutes", "hours"):
         raise ValueError(
@@ -268,34 +226,22 @@ def select_files(
             f"{step_unit}"
         )
 
-    forecast_date = forecast_datetime[:8]
-    forecast_time = forecast_datetime[8:12]
-
-    objs = list_objs_in_bucket_via_dynamodb(
-        table=table,
-        date=forecast_date,
-        time=forecast_time,
-        model=model.value,
-    )
-
-    if not objs:
-        raise RuntimeError(
-            "There is no data in S3 matching the filter forecast datetime: "
-            f"{forecast_datetime}"
-        )
-
     start_dt, end_dt = _get_start_end(config)
 
-    forecast_ref = datetime.strptime(forecast_date + forecast_time, "%Y%m%d%H%M")
+    forecast_ref = datetime.strptime(forecast_datetime, "%Y%m%d%H%M")
     if start_dt > forecast_ref:
-        start_dt -= timedelta(hours=1)
+        start_dt -= timedelta(hours=1) # TODO check this for Global runs
 
-    subset = _select_keys_in_window(objs, start_dt, end_dt, step_unit)
+    objs = list_objs_in_bucket(
+        start_time=start_dt,
+        end_time=end_dt,
+    )
 
-    if not subset:
+    filtered_objs = _select_keys_in_window(objs, start_dt, end_dt, step_unit)
+
+    if not filtered_objs:
         raise RuntimeError(
-            "No S3 objects had metadata with valid time between "
-            f"{start_dt} and {end_dt}."
+            f"There are no s3 objects for valid times between {start_dt} and {end_dt}"
         )
 
-    return subset
+    return filtered_objs

@@ -18,8 +18,8 @@ from flexpart_ifs_utils.prepare_flexpart import (_configure_namelist,
                                                  prepare_job_directory,
                                                  render_template, select_files)
 
-MOCK_MD_EXTRACTION = "flexpart_ifs_utils.prepare_flexpart.extract_metadata_from_grib_file"
-MOCK_LIST_OBJS_IN_BUCKET_VIA_DYNAMODB = "flexpart_ifs_utils.prepare_flexpart.list_objs_in_bucket_via_dynamodb"
+MOCK_MD_EXTRACTION = "flexpart_ifs_utils.grib_utils.extract_metadata_from_grib_file"
+MOCK_LIST_OBJS_IN_BUCKET = "flexpart_ifs_utils.prepare_flexpart.list_objs_in_bucket"
 
 @pytest.fixture
 def mock_logger(mocker):
@@ -285,9 +285,12 @@ def test_select_files(tmp_path, step_unit):
         str(tmp_path / "4000"),
         str(tmp_path / "5000"),
         str(tmp_path / "6000"),
+        str(tmp_path / "7000"),
+        str(tmp_path / "8000"),
+        str(tmp_path / "9000"),
     ]
 
-    with patch(MOCK_LIST_OBJS_IN_BUCKET_VIA_DYNAMODB, spec=True) as mock_list_bucket:
+    with patch(MOCK_LIST_OBJS_IN_BUCKET, spec=True) as mock_list_bucket:
         mock_list_bucket.return_value = {key: GribMetadata(
             date = DATE,
             time = TIME,
@@ -295,10 +298,8 @@ def test_select_files(tmp_path, step_unit):
             ) for key in keys}
         print(keys)
         subset = select_files(RUNTIME_CONF,
-                            table=CONFIG.main.aws.db_table,
                             forecast_datetime=f"{DATE}{TIME}",
-                            step_unit=CONFIG.main.input.step_unit,
-                            model=Model.IFS_HRES_EUROPE)
+                            step_unit=CONFIG.main.input.step_unit)
         print(subset)
 
         expected = {
