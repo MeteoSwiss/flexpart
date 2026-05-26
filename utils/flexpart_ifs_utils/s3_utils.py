@@ -1,4 +1,5 @@
 import glob
+import json
 import logging
 import os
 from datetime import datetime
@@ -144,11 +145,17 @@ def list_objs_in_bucket(
         for page in page_iterator:
             for obj in page.get("Contents", []):
                 head = client.head_object(Bucket=bucket.name, Key=obj["Key"])
-                metadata = head.get("Metadata", {})
+                metadata = json.loads(head.get("Metadata")["data"])
+                required_keys = ("time", "date", "step")
+                missing = [k for k in required_keys if k not in metadata]
+                if missing:
+                    raise KeyError(
+                        f"S3 object '{obj['Key']}' is missing required metadata keys: {missing}"
+                    )
                 items[obj["Key"]] = GribMetadata(
-                    time=metadata.get("time", ""),
-                    date=metadata.get("date", ""),
-                    step=float(metadata.get("step", "-1")),
+                    time=metadata["time"],
+                    date=metadata["date"],
+                    step=float(metadata["step"]),
                 )
     except ClientError as exc:
         _logger.error("Error listing objects in bucket: %s", exc)
