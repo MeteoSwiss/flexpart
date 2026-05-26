@@ -1,3 +1,4 @@
+import json
 import tempfile
 from pathlib import Path
 from datetime import datetime, timedelta
@@ -97,10 +98,12 @@ def _add_item_to_bucket_with_metadata(bucket: Bucket,
             Key=path if key is None else key,
             Body=f,
             Metadata={
-                "time": time,
-                "date": date,
-                "step": str(step),
-                "model": model,
-                "domain": domain,
+                "data": json.dumps({
+                    "time": time,
+                    "date": date,
+                    "step": str(step),
+                    "model": model,
+                    "domain": domain,
+                }),
             },
         )
