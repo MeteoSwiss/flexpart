@@ -166,7 +166,6 @@ if __name__ == '__main__':
     if not data_paths:
         # Search the db for the relevant files and download data
         keys = select_files(config['command'],
-                            table=CONFIG.main.aws.db_table,
                             forecast_datetime=FORECAST_DATETIME,
                             step_unit=CONFIG.main.input.step_unit,
                             model=MODEL)
