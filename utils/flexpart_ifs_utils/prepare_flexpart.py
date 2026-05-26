@@ -240,7 +240,7 @@ def _select_keys_in_window(
     for key, metadata in objs.items():
         file_validtime = _get_valid_datetime(Path(key), metadata, step_unit)
         if start_dt <= file_validtime <= end_dt:
-            subset.append(f"dispf{file_validtime.strftime('%Y%m%d%H')}")
+            subset.append(key)
     return subset
 
 
