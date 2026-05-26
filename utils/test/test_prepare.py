@@ -302,12 +302,12 @@ def test_select_files(tmp_path, step_unit):
         print(subset)
 
         expected = {
-            'dispf2024050113',
-            'dispf2024050114',
-            'dispf2024050115',
-            'dispf2024050116',
-            'dispf2024050117',
-            'dispf2024050118'
+            str(tmp_path / "1000"),
+            str(tmp_path / "2000"),
+            str(tmp_path / "3000"),
+            str(tmp_path / "4000"),
+            str(tmp_path / "5000"),
+            str(tmp_path / "6000")
         }
         assert len(subset) == 6
         assert set(subset) == expected
