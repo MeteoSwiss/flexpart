@@ -72,6 +72,10 @@ def _write_pathnames(
 
     (job_dir / "pathnames").write_text("".join(lines), encoding="utf-8")
 
+    _logger.info(
+        "Written pathnames file with the following content:\n%s",
+        "".join(lines),
+    )
 
 def prepare_job_directory(
     configuration: dict,
