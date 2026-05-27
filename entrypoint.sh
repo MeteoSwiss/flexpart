@@ -13,7 +13,7 @@
 set -e
 
 
-SCRIPT_DIR=$(dirname "$0")
+SCRIPT_DIR=$(realpath "$(dirname "$0")")
 echo "Current working directory '$SCRIPT_DIR'"
 
 # Prepare input files for Flexpart-IFS
