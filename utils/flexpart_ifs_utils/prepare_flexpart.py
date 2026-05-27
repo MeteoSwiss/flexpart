@@ -64,11 +64,11 @@ def _write_pathnames(
         f"{output_dir}/\n",
         f"{job_data_dir}/\n",
         f"{available_path}\n",
-        "============================================\n",
     ]
     if available_path_nested:
+        lines.append(f"{job_data_dir}\n")
         lines.append(f"{available_path_nested}\n")
-        lines.append("============================================\n")
+    lines.append("============================================\n")
 
     (job_dir / "pathnames").write_text("".join(lines), encoding="utf-8")
 
