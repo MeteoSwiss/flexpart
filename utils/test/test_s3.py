@@ -62,7 +62,7 @@ def test_upload_output(s3, model_data: Path):
     site = 'ABC'
 
     # when
-    upload_output(model_data, model_data, site, bucket)
+    upload_output(model_data, site, bucket)
 
     # then
     assert 'Contents' in s3.list_objects(Bucket = bucket.name)
