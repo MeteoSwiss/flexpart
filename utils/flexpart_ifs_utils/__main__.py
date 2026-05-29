@@ -77,36 +77,36 @@ if __name__ == '__main__':
     sp = parser.add_subparsers()
 
     p1 = sp.add_parser('upload')
-    p1.add_argument('-d', '--directory',
+    p1.add_argument('--directory',
                     help='The jobs directory containing output to upload to S3.',
                     required=True,
                     type=Path,
                     )
-    p1.add_argument('-s', '--site',
+    p1.add_argument('--site',
                     help='Release site.',
                     required=True
                     )
-    p1.add_argument('-d', '--datetime',
+    p1.add_argument('--datetime',
                     help='Forecast datetime, in format YYYYMMDDHH.',
                     required=True
                     )
 
     p2 = sp.add_parser('generate')
-    p2.add_argument('-f', '--flexpart_dir',
+    p2.add_argument('--flexpart_dir',
                     help='Directory where the Flexpart binary lives.',
                     required=True,
                     type=Path,
                     )
-    p2.add_argument('-j', '--jobs_dir',
+    p2.add_argument('--jobs_dir',
                     help='Path of the jobs directory.',
                     required=True,
                     type=Path,
                     )
-    p2.add_argument('-d', '--datetime',
+    p2.add_argument('--datetime',
                     help='Forecast datetime, in format YYYYMMDDHH.',
                     required=True
                     )
-    p2.add_argument('-s', '--site',
+    p2.add_argument('--site',
                     help='Release site.',
                     required=True
                     )
