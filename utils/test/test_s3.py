@@ -60,19 +60,18 @@ def test_upload_output(s3, model_data: Path):
     # given
     bucket = CONFIG.main.aws.s3.output
     site = 'ABC'
+    datetime = '2024060712'
 
     # when
-    upload_output(model_data, site, bucket)
+    upload_output(model_data, site, datetime, bucket)
 
     # then
     assert 'Contents' in s3.list_objects(Bucket = bucket.name)
 
-    md = extract_metadata_from_grib_file(Path(next(model_data.iterdir())))
-
     for path in model_data.iterdir():
 
         # check the files were uploaded as expected
-        actual = s3.get_object(Bucket = bucket.name, Key = f"{md.date}_{md.time[:2]}/{site}/{path.name}")["Body"].read()
+        actual = s3.get_object(Bucket = bucket.name, Key = f"20240607_12/{site}/{path.name}")["Body"].read()
         with open(path, mode='rb') as f:
             assert actual == f.read()
 
