@@ -40,5 +40,5 @@ cd $SCRIPT_DIR
 # Upload output files of Flexpart-IFS to S3 bucket.
 python -m flexpart_ifs_utils upload \
     --directory $JOBS_DIR \
-    --input ${JOBS_DIR}/data \
-    --site $RELEASE_SITE_NAME
+    --site $RELEASE_SITE_NAME \
+    --datetime $FORECAST_DATETIME \

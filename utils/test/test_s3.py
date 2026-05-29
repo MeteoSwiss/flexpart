@@ -10,7 +10,7 @@ from flexpart_ifs_utils.config.service_settings import Bucket
 from flexpart_ifs_utils.grib_utils import extract_metadata_from_grib_file
 from flexpart_ifs_utils.s3_utils import (download_keys_from_bucket,
                                          list_objs_in_bucket,
-                                         upload_directory)
+                                         upload_output)
 
 
 def test_list_objs_in_bucket(s3, model_data: Path):
@@ -55,14 +55,14 @@ def test_download_keys_from_bucket(s3, model_data: Path):
             assert file.name in files_downloaded
 
 
-def test_upload_directory(s3, model_data: Path):
+def test_upload_output(s3, model_data: Path):
 
     # given
     bucket = CONFIG.main.aws.s3.output
     site = 'ABC'
 
     # when
-    upload_directory(model_data, model_data, site, bucket)
+    upload_output(model_data, model_data, site, bucket)
 
     # then
     assert 'Contents' in s3.list_objects(Bucket = bucket.name)

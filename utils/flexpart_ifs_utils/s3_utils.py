@@ -20,44 +20,24 @@ from flexpart_ifs_utils.grib_utils import (GribMetadata, RunMetadata,
 _logger = logging.getLogger(__name__)
 
 
-def upload_directory(
+def upload_output(
     directory: Path,
-    input_path: Path,
     site: str,
+    forecast_datetime: str,
     bucket: Bucket = CONFIG.main.aws.s3.output,
     parent: str | None = None,
 ) -> None:
     """
-    Uploads the contents of a specified directory to an S3 bucket.
+    Uploads the contents of the Flexpart output directory to an S3 bucket.
 
-    Verifies directories, extracts metadata from the Flexpart input directory,
-    and uploads files from the specified directory to the provided S3 bucket,
-    with metadata attached. If a parent directory is specified, only files
+    Uploads files from the specified directory to the provided S3 bucket,
+    with metadata of forecast datetime and site attached. If a parent directory is specified, only files
     within that parent directory are uploaded.
     """
 
     if not directory.is_dir():
         _logger.error("Directory is empty, cannot upload: %s", directory)
         raise RuntimeError("Directory provided to upload does not exist.")
-
-    if not input_path.is_dir():
-        _logger.error(
-            "Directory provided to Flexpart input data (used to obtain metadata) "
-            "does not exist: %s",
-            input_path,
-        )
-        raise RuntimeError(
-            "Directory provided to Flexpart input data "
-            f"{input_path} (used to obtain metadata) does not exist."
-        )
-
-    try:
-        md = _get_input_metadata(input_path)
-    except FileNotFoundError as exc:
-        raise FileNotFoundError(
-            "No GRIB files found in the Flexpart input directory: "
-            f"{input_path}, cannot extract metadata."
-        ) from exc
 
     try:
         client = _create_s3_client(bucket)
@@ -72,7 +52,7 @@ def upload_directory(
             path_list = [p for p in path_list if p.parent.name == parent]
 
         for path in path_list:
-            key = f"{md.date}_{md.time[:2]}/{site}/{path.name}"
+            key = f"{forecast_datetime[:8]}_{forecast_datetime[8:10]}/{site}/{path.name}"
             _logger.info(
                 "Uploading file: %s to bucket: %s with key: %s",
                 path,
@@ -85,7 +65,7 @@ def upload_directory(
                         data,
                         bucket.name,
                         key,
-                        ExtraArgs={"Metadata": {k: str(v) for k, v in md.model_dump().items()}},
+                        ExtraArgs={"Metadata": {"date": forecast_datetime[:8], "time": forecast_datetime[8:], "site": site}},
                     )
             except ClientError as exc:
                 _logger.error("Upload failed for %s: %s", path, exc)
@@ -93,18 +73,6 @@ def upload_directory(
     except Exception as err:
         _logger.error("Error uploading directory to S3.")
         raise err
-
-
-def _get_input_metadata(directory: Path) -> RunMetadata:
-    """Find the first GRIB file in the specified directory and extract its metadata."""
-    for file in directory.rglob("*"):
-        if file.is_file() and _is_grib_file(file):
-            md = extract_metadata_from_grib_file(file)
-            # Ignore step because we only care about forecast reference time.
-            return RunMetadata(date=md.date, time=md.time)
-
-    raise FileNotFoundError("No GRIB files found in the directory.")
-
 
 
 def _select_keys_in_window(

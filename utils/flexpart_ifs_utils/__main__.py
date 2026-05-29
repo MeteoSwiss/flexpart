@@ -36,7 +36,7 @@ from flexpart_ifs_utils.prepare_flexpart import (_path_list,
                                                  prepare_job_directory,
                                                  render_template, select_files)
 from flexpart_ifs_utils.s3_utils import (download_keys_from_bucket,
-                                         upload_directory)
+                                         upload_output)
 
 
 def validate_env(data: dict[str, str | None]) -> None:
@@ -82,13 +82,12 @@ if __name__ == '__main__':
                     required=True,
                     type=Path,
                     )
-    p1.add_argument('-i', '--input',
-                    help='Path to the input data from which the output S3 object metadata can be defined.',
-                    required=True,
-                    type=Path,
-                    )
     p1.add_argument('-s', '--site',
                     help='Release site.',
+                    required=True
+                    )
+    p1.add_argument('-d', '--datetime',
+                    help='Forecast datetime, in format YYYYMMDDHH.',
                     required=True
                     )
 
@@ -120,7 +119,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if "directory" in args:
-        upload_directory(args.directory, args.input, args.site, parent='output')
+        upload_output(args.directory, args.site, args.datetime, parent='output')
         sys.exit(0)
 
     FORECAST_DATETIME: str = args.datetime
