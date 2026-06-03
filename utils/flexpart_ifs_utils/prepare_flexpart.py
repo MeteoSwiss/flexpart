@@ -221,6 +221,7 @@ def select_files(
     config: dict,
     forecast_datetime: str,
     step_unit: str,
+    model: Model,
 ) -> list[str]:
 
     step_unit = step_unit.lower()
@@ -233,8 +234,14 @@ def select_files(
     start_dt, end_dt = _get_start_end(config)
 
     forecast_ref = datetime.strptime(forecast_datetime, "%Y%m%d%H%M")
+
     if start_dt > forecast_ref:
-        start_dt -= timedelta(hours=1) # TODO check this for Global runs
+        if model == Model.IFS_HRES:
+            start_dt -= timedelta(hours=3)
+        elif model == Model.IFS_HRES_EUROPE:
+            start_dt -= timedelta(hours=1)
+        else:
+            raise ValueError(f"Unsupported model: {model}")
 
     objs = list_objs_in_bucket(
         start_time=start_dt,

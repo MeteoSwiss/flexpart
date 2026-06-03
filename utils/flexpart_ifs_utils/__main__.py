@@ -166,7 +166,8 @@ if __name__ == '__main__':
         # Search the db for the relevant files and download data
         keys = select_files(config['command'],
                             forecast_datetime=FORECAST_DATETIME,
-                            step_unit=CONFIG.main.input.step_unit)
+                            step_unit=CONFIG.main.input.step_unit,
+                            model=MODEL)
 
         download_keys_from_bucket(keys, DATA_DIR, CONFIG.main.aws.s3.nwp_model_data)
 
