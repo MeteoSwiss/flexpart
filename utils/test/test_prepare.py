@@ -299,7 +299,8 @@ def test_select_files(tmp_path, step_unit):
         print(keys)
         subset = select_files(RUNTIME_CONF,
                             forecast_datetime=f"{DATE}{TIME}",
-                            step_unit=CONFIG.main.input.step_unit)
+                            step_unit=CONFIG.main.input.step_unit,
+                            model=Model.IFS_HRES_EUROPE)
         print(subset)
 
         expected = {
