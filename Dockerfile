@@ -94,7 +94,7 @@ COPY utils/flexpart_ifs_utils flexpart_ifs_utils
 COPY entrypoint.sh entrypoint.sh
 COPY data/IGBP_int1.dat $JOBS_DIR
 
-RUN chmod -R a+rwx /scratch
+RUN chmod -R a+rwx /scratch /opt/spack-view /opt/spack-root
 
 ARG USERNAME=default_user
 ARG USER_UID=1000
@@ -129,6 +129,10 @@ RUN chmod +x test_ci.sh
 
 # This environment tells pytest that the tests are occuring in a container.
 ENV PYTEST_ENTRYPOINT=/scratch/entrypoint.sh
+# Point pylint and mypy to the config inside the image; /scratch is not bind-mounted
+# during the lint stage so this path is always visible.
+ENV PYLINTRC=/scratch/pyproject.toml
+ENV MYPY_CONFIG_FILE=/scratch/pyproject.toml
 
 ENTRYPOINT []
 

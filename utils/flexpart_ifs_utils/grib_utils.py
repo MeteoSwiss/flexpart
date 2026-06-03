@@ -1,8 +1,10 @@
 
 import logging
 from pathlib import Path
+from datetime import datetime, timedelta
 
-from eccodes import codes_grib_new_from_file, codes_get_string, codes_count_in_file, codes_release, CodesInternalError
+from eccodes import (CodesInternalError, codes_count_in_file, codes_get_string,
+                     codes_grib_new_from_file, codes_release)
 from pydantic import BaseModel
 
 _logger = logging.getLogger(__name__)
@@ -44,7 +46,8 @@ def extract_metadata_from_grib_file(path: Path) -> GribMetadata:
     return GribMetadata(
         date = fcst_date,
         time = fcst_time,
-        step = step_hr)
+        step = step_hr
+        )
 
 
 def _is_grib_file(file_path: Path) -> bool:
@@ -58,3 +61,29 @@ def _is_grib_file(file_path: Path) -> bool:
     except CodesInternalError:
         return False
     return True
+
+
+def _get_valid_datetime(
+    path: Path,
+    md: GribMetadata | None = None,
+    step_unit: str = "hours",
+) -> datetime:
+    """
+    Using GRIB metadata (date,time,step) from within the file (path), calculate the valid time of the data.
+    Valid time is the forecast start time plus the time until that certain step.
+    """
+    if not md:
+        md = extract_metadata_from_grib_file(path)
+
+    leadtime_0 = datetime.strptime(md.date + md.time, "%Y%m%d%H%M")
+
+    if step_unit == "minutes":
+        return leadtime_0 + timedelta(minutes=md.step)
+
+    if step_unit == "hours":
+        return leadtime_0 + timedelta(hours=md.step)
+
+    raise ValueError(
+        "Steps must be provided in either minutes or hours, not "
+        f"{step_unit.lower()}"
+    )

@@ -13,7 +13,7 @@
 set -e
 
 
-SCRIPT_DIR=$(dirname "$0")
+SCRIPT_DIR=$(realpath "$(dirname "$0")")
 echo "Current working directory '$SCRIPT_DIR'"
 
 # Prepare input files for Flexpart-IFS
@@ -21,7 +21,8 @@ python -m flexpart_ifs_utils generate \
     --flexpart_dir $FLEXPART_PREFIX \
     --jobs_dir $JOBS_DIR \
     --datetime $FORECAST_DATETIME \
-    --site $RELEASE_SITE_NAME
+    --site $RELEASE_SITE_NAME \
+    --model $MODEL
 
 echo JOBS_DIR: $JOBS_DIR
 
@@ -39,5 +40,5 @@ cd $SCRIPT_DIR
 # Upload output files of Flexpart-IFS to S3 bucket.
 python -m flexpart_ifs_utils upload \
     --directory $JOBS_DIR \
-    --input ${JOBS_DIR}/data \
-    --site $RELEASE_SITE_NAME
+    --site $RELEASE_SITE_NAME \
+    --datetime $FORECAST_DATETIME \

@@ -1,80 +1,43 @@
 import glob
+import json
 import logging
 import os
-import sqlite3
-from datetime import datetime as dt
+from datetime import datetime
 from pathlib import Path
 
 import boto3
 from botocore.client import BaseClient
 from botocore.config import Config
 from botocore.exceptions import ClientError
-from boto3.resources.base import ServiceResource
 
 from flexpart_ifs_utils import CONFIG
-from flexpart_ifs_utils.config.service_settings import Bucket, DBTable
-from flexpart_ifs_utils.grib_utils import (
-    GribMetadata,
-    RunMetadata,
-    _is_grib_file,
-    extract_metadata_from_grib_file,
-)
+from flexpart_ifs_utils.config.service_settings import Bucket
+from flexpart_ifs_utils.grib_utils import (GribMetadata, RunMetadata,
+                                           _is_grib_file,
+                                           extract_metadata_from_grib_file,
+                                           _get_valid_datetime)
 
 _logger = logging.getLogger(__name__)
 
 
-def get_s3_resource(
-    endpoint_url: str,
-    access_key: str,
-    secret_key: str,
-) -> ServiceResource:
-    """Get a boto3 S3 resource."""
-    return boto3.resource(
-        "s3",
-        endpoint_url=endpoint_url,
-        aws_access_key_id=access_key,
-        aws_secret_access_key=secret_key,
-    )
-
-
-def upload_directory(
+def upload_output(
     directory: Path,
-    input_path: Path,
     site: str,
+    forecast_datetime: str,
     bucket: Bucket = CONFIG.main.aws.s3.output,
     parent: str | None = None,
 ) -> None:
     """
-    Uploads the contents of a specified directory to an S3 bucket.
+    Uploads the contents of the Flexpart output directory to an S3 bucket.
 
-    Verifies directories, extracts metadata from the Flexpart input directory,
-    and uploads files from the specified directory to the provided S3 bucket,
-    with metadata attached. If a parent directory is specified, only files
+    Uploads files from the specified directory to the provided S3 bucket,
+    with metadata of forecast datetime and site attached. If a parent directory is specified, only files
     within that parent directory are uploaded.
     """
 
     if not directory.is_dir():
         _logger.error("Directory is empty, cannot upload: %s", directory)
         raise RuntimeError("Directory provided to upload does not exist.")
-
-    if not input_path.is_dir():
-        _logger.error(
-            "Directory provided to Flexpart input data (used to obtain metadata) "
-            "does not exist: %s",
-            input_path,
-        )
-        raise RuntimeError(
-            "Directory provided to Flexpart input data "
-            f"{input_path} (used to obtain metadata) does not exist."
-        )
-
-    try:
-        md = _get_input_metadata(input_path)
-    except FileNotFoundError as exc:
-        raise FileNotFoundError(
-            "No GRIB files found in the Flexpart input directory: "
-            f"{input_path}, cannot extract metadata."
-        ) from exc
 
     try:
         client = _create_s3_client(bucket)
@@ -89,7 +52,7 @@ def upload_directory(
             path_list = [p for p in path_list if p.parent.name == parent]
 
         for path in path_list:
-            key = f"{md.date}_{md.time[:2]}/{site}/{path.name}"
+            key = f"{forecast_datetime[:8]}_{forecast_datetime[8:10]}/{site}/{path.name}"
             _logger.info(
                 "Uploading file: %s to bucket: %s with key: %s",
                 path,
@@ -102,7 +65,7 @@ def upload_directory(
                         data,
                         bucket.name,
                         key,
-                        ExtraArgs={"Metadata": {k: str(v) for k, v in md.model_dump().items()}},
+                        ExtraArgs={"Metadata": {"date": forecast_datetime[:8], "time": forecast_datetime[8:], "site": site}},
                     )
             except ClientError as exc:
                 _logger.error("Upload failed for %s: %s", path, exc)
@@ -112,103 +75,61 @@ def upload_directory(
         raise err
 
 
-def _get_input_metadata(directory: Path) -> RunMetadata:
-    """Find the first GRIB file in the specified directory and extract its metadata."""
-    for file in directory.rglob("*"):
-        if file.is_file() and _is_grib_file(file):
-            md = extract_metadata_from_grib_file(file)
-            # Ignore step because we only care about forecast reference time.
-            return RunMetadata(date=md.date, time=md.time)
+def _select_keys_in_window(
+    objs: dict[str, GribMetadata],
+    start_dt: datetime,
+    end_dt: datetime,
+    step_unit: str,
+) -> list[str]:
+    subset: list[str] = []
+    for key, metadata in objs.items():
+        file_validtime = _get_valid_datetime(Path(key), metadata, step_unit)
+        if start_dt <= file_validtime <= end_dt:
+            subset.append(key)
+    return subset
 
-    raise FileNotFoundError("No GRIB files found in the directory.")
 
-
-def list_objs_in_bucket_via_dynamodb(
-    table: DBTable,
-    date: str,
-    time: str,
+def list_objs_in_bucket(
+    start_time: datetime,
+    end_time: datetime,
+    bucket: Bucket = CONFIG.main.aws.s3.nwp_model_data,
 ) -> dict[str, GribMetadata]:
     """
-    List objects in a DynamoDB table using scan with a filter on metadata.
+    List objects in a S3 bucket with a filter on metadata.
     """
     _logger.info(
-        "Fetching objects from table with the following metadata: date=%s, time=%s",
-        date,
-        time,
+        "Fetching objects from S3 with valid time between: start_date=%s, end_date=%s",
+        start_time,
+        end_time,
     )
 
-    dynamodb = boto3.resource("dynamodb", region_name=table.region)
+    client = _create_s3_client(bucket)
 
-    scan_parameters = {
-        "FilterExpression": " ForecastDate = :forecastdate AND ForecastTime = :forecasttime",
-        "ExpressionAttributeValues": {
-            ":forecastdate": date,
-            ":forecasttime": time,
-        },
-    }
+    try:
+        paginator = client.get_paginator("list_objects_v2")
+        page_iterator = paginator.paginate(Bucket=bucket.name)
 
-    dynamo_db_table = dynamodb.Table(table.name)
-    items: list[dict] = []
+        items: dict[str, GribMetadata] = {}
+        for page in page_iterator:
+            for obj in page.get("Contents", []):
+                head = client.head_object(Bucket=bucket.name, Key=obj["Key"])
+                metadata = json.loads(head.get("Metadata")["data"])
+                required_keys = ("time", "date", "step")
+                missing = [k for k in required_keys if k not in metadata]
+                if missing:
+                    raise KeyError(
+                        f"S3 object '{obj['Key']}' is missing required metadata keys: {missing}"
+                    )
+                items[obj["Key"]] = GribMetadata(
+                    time=metadata["time"],
+                    date=metadata["date"],
+                    step=float(metadata["step"]),
+                )
+    except ClientError as exc:
+        _logger.error("Error listing objects in bucket: %s", exc)
+        raise exc
 
-    response = dynamo_db_table.scan(**scan_parameters)
-    items.extend(response.get("Items", []))
-
-    while "LastEvaluatedKey" in response:
-        response = dynamo_db_table.scan(
-            **scan_parameters,
-            ExclusiveStartKey=response["LastEvaluatedKey"],
-        )
-        items.extend(response.get("Items", []))
-
-    matching_objects: dict[str, GribMetadata] = {}
-    for item in items:
-        if not all(k in item for k in ("ObjectKey", "ForecastTime", "ForecastDate", "Step")):
-            continue
-        matching_objects[item["ObjectKey"]] = GribMetadata(
-            time=item["ForecastTime"],
-            date=item["ForecastDate"],
-            step=item["Step"],
-        )
-
-    _logger.info("S3 objects matching search: %s", matching_objects.keys())
-    return matching_objects
-
-
-def list_objs_in_bucket_via_sqlite(
-    table: DBTable,
-    date: str,
-    time: str,
-) -> dict[str, GribMetadata]:
-    conn = sqlite3.connect(table.name)
-    cursor = conn.cursor()
-
-    query = """
-    SELECT key, forecast_ref_time, step
-    FROM uploaded
-    WHERE forecast_ref_time = ?
-    """
-
-    forecast_ref_time_dt = dt.strptime(date + time, "%Y%m%d%H%M")
-    cursor.execute(query, (forecast_ref_time_dt,))
-    items = cursor.fetchall()
-    conn.close()
-
-    unique_steps: set[int] = set()
-    matching_objects: dict[str, GribMetadata] = {}
-
-    for key, forecast_ref_time, step in items:
-        if step in unique_steps:
-            continue
-        unique_steps.add(step)
-
-        ref_dt = dt.strptime(forecast_ref_time, "%Y-%m-%d %H:%M:%S")
-        matching_objects[key] = GribMetadata(
-            date=ref_dt.strftime("%Y%m%d"),
-            time=ref_dt.strftime("%H%M"),
-            step=step,
-        )
-
-    return matching_objects
+    return items
 
 
 def download_keys_from_bucket(
@@ -230,25 +151,13 @@ def download_keys_from_bucket(
 
 
 def _create_s3_client(bucket: Bucket) -> BaseClient:
-    """
-    Creates and configures the S3 client based on the bucket's platform.
-    """
+
     retries_config = {"max_attempts": bucket.retries, "mode": "standard"}
 
-    if bucket.platform == "other":
-        return boto3.Session().client(
-            "s3",
-            endpoint_url=bucket.endpoint_url,
-            config=Config(retries=retries_config),
-        )
-
-    if bucket.platform == "aws":
-        return boto3.Session().client(
-            "s3",
-            config=Config(
-                region_name=bucket.region,
-                retries=retries_config,
-            ),
-        )
-
-    raise ValueError(f"Unsupported bucket platform: {bucket.platform}")
+    return boto3.Session().client(
+        "s3",
+        config=Config(
+            region_name=bucket.region,
+            retries=retries_config,
+        ),
+    )

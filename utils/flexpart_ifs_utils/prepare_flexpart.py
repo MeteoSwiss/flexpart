@@ -15,9 +15,10 @@ from pathlib import Path
 import yaml
 from jinja2 import Environment, FileSystemLoader
 
-from flexpart_ifs_utils import INPUT_DATA_PATTERNS, grib_utils, s3_utils
-from flexpart_ifs_utils.config.service_settings import DBTable, OpenMPConfig
-from flexpart_ifs_utils.model import EnvironmentParameters
+from flexpart_ifs_utils.config.service_settings import OpenMPConfig
+from flexpart_ifs_utils.grib_utils import _get_valid_datetime
+from flexpart_ifs_utils.model import MODEL_PREFIX, Model
+from flexpart_ifs_utils.s3_utils import list_objs_in_bucket, _select_keys_in_window
 
 _logger = logging.getLogger(__name__)
 
@@ -32,19 +33,22 @@ def _init_job_dirs(jobs_dir: Path, name: str) -> tuple[Path, Path, Path, Path]:
     return job_dir, input_dir, output_dir, job_data_dir
 
 
-def _populate_input_dir(flexpart_dir: Path, input_dir: Path) -> None:
+def _populate_input_dir(flexpart_dir: Path, input_dir: Path, model: Model) -> None:
     options_dir = flexpart_dir / "share" / "options"
     mch_options_dir = flexpart_dir / "share" / "options.meteoswiss"
-    shutil.copytree(mch_options_dir, options_dir, dirs_exist_ok=True)
     shutil.copytree(options_dir, input_dir)
-    shutil.copy(options_dir / "OUTGRID.f", input_dir / "OUTGRID")
+    shutil.copytree(mch_options_dir, input_dir, dirs_exist_ok=True)
+    if model == model.IFS_HRES:
+        shutil.copy(input_dir / "OUTGRID.g", input_dir / "OUTGRID")
+    elif model == model.IFS_HRES_EUROPE:
+        shutil.copy(input_dir / "OUTGRID.f", input_dir / "OUTGRID")
+    else:
+        raise ValueError(f"Unsupported model: {model}")
 
 
-def _collect_data_paths(data_dir: Path) -> list[Path]:
-    data_paths: list[Path] = []
-    for ftype in INPUT_DATA_PATTERNS:
-        data_paths.extend(sorted(data_dir.glob(ftype)))
-    return data_paths
+def _path_list(data_dir: Path, model: Model) -> list[Path]:
+    """Return a sorted list of data files for the given domain."""
+    return sorted(data_dir.glob(MODEL_PREFIX[model]))
 
 
 def _write_pathnames(
@@ -53,40 +57,25 @@ def _write_pathnames(
     output_dir: Path,
     job_data_dir: Path,
     available_path: Path,
+    available_path_nested: Path | None = None,
 ) -> None:
     lines = [
         f"{input_dir}/\n",
         f"{output_dir}/\n",
         f"{job_data_dir}/\n",
         f"{available_path}\n",
-        "============================================\n",
     ]
+    if available_path_nested:
+        lines.append(f"{job_data_dir}/\n")
+        lines.append(f"{available_path_nested}\n")
+    lines.append("============================================\n")
+
     (job_dir / "pathnames").write_text("".join(lines), encoding="utf-8")
 
-
-def validate_env(data: dict[str, str | None]) -> None:
-    violations: list[str] = []
-    for parameter in EnvironmentParameters:
-        if parameter.name not in data:
-            violations.append(parameter.name)
-        elif data[parameter.name] is None:
-            violations.append(parameter.name)
-
-    if violations:
-        raise RuntimeError(
-            "Environment is missing variables needed to prepare runtime configuration: "
-            f"{violations}"
-        )
-
-
-def parse_env() -> dict[str, str | None]:
-    return {
-        "IBDATE": os.getenv("IBDATE"),
-        "IBTIME": os.getenv("IBTIME"),
-        "IEDATE": os.getenv("IEDATE"),
-        "IETIME": os.getenv("IETIME"),
-    }
-
+    _logger.info(
+        "Written pathnames file with the following content:\n%s",
+        "".join(lines),
+    )
 
 def prepare_job_directory(
     configuration: dict,
@@ -94,22 +83,27 @@ def prepare_job_directory(
     flexpart_dir: Path,
     data_dir: Path,
     openmp_config: OpenMPConfig,
+    model: Model,
 ) -> Path:
     job_dir, input_dir, output_dir, job_data_dir = _init_job_dirs(
         jobs_dir, configuration["name"]
     )
 
-    _populate_input_dir(flexpart_dir, input_dir)
+    _populate_input_dir(flexpart_dir, input_dir, model)
 
     namelists: list[Path] = [input_dir / "COMMAND", *input_dir.glob("RELEASES*")]
     for nl in namelists:
         _configure_namelist(configuration, nl)
 
     available_path = input_dir / "AVAILABLE"
-    _generate_available(available_path, _collect_data_paths(data_dir))
+    _generate_available(available_path, _path_list(data_dir, model=model))
+    available_path_nested = None
+    if model == Model.IFS_HRES:
+        available_path_nested = input_dir / "AVAILABLE_NESTED"
+        _generate_available(available_path_nested, _path_list(data_dir, model=Model.IFS_HRES_EUROPE))
 
     os.symlink(data_dir, job_data_dir)
-    _write_pathnames(job_dir, input_dir, output_dir, job_data_dir, available_path)
+    _write_pathnames(job_dir, input_dir, output_dir, job_data_dir, available_path, available_path_nested)
 
     _write_job_script(
         job_dir / "job",
@@ -177,7 +171,7 @@ def _generate_available(path: Path, data_paths: list[Path]) -> None:
                 "________ ______      __________________\n"
             ]
         )
-        _logger.info("Writing lines to AVAILABLE file")
+        _logger.info("Writing lines to %s file", path.name)
         for file in data_paths:
             step_datetime = _get_valid_datetime(file)
             adate = step_datetime.strftime("%Y%m%d")
@@ -185,32 +179,6 @@ def _generate_available(path: Path, data_paths: list[Path]) -> None:
             entry = f"{adate} {int(atime):02}0000      {file.name}\n"
             f.write(entry)
             _logger.info(entry)
-
-
-def _get_valid_datetime(
-    path: Path,
-    md: grib_utils.GribMetadata | None = None,
-    step_unit: str = "hours",
-) -> datetime:
-    """
-    Using GRIB metadata (date,time,step) from within the file (path), calculate the valid time of the data.
-    Valid time is the forecast start time plus the time until that certain step.
-    """
-    if not md:
-        md = grib_utils.extract_metadata_from_grib_file(path)
-
-    leadtime_0 = datetime.strptime(md.date + md.time, "%Y%m%d%H%M")
-
-    if step_unit == "minutes":
-        return leadtime_0 + timedelta(minutes=md.step)
-
-    if step_unit == "hours":
-        return leadtime_0 + timedelta(hours=md.step)
-
-    raise ValueError(
-        "Steps must be provided in either minutes or hours, not "
-        f"{step_unit.lower()}"
-    )
 
 
 def _configure_namelist(config: dict, namelist: Path) -> None:
@@ -239,38 +207,6 @@ def _configure_namelist(config: dict, namelist: Path) -> None:
     namelist.write_text(filedata, encoding="utf-8")
 
 
-def _list_objects(
-    table: DBTable, forecast_date: str, forecast_time: str
-) -> dict[str, grib_utils.GribMetadata]:
-    if table.backend_type == "dynamodb":
-        return s3_utils.list_objs_in_bucket_via_dynamodb(
-            table=table,
-            date=forecast_date,
-            time=forecast_time,
-        )
-    if table.backend_type == "sqlite":
-        return s3_utils.list_objs_in_bucket_via_sqlite(
-            table=table,
-            date=forecast_date,
-            time=forecast_time,
-        )
-    raise ValueError(f"Unsupported backend type: {table.backend_type}")
-
-
-def _select_keys_in_window(
-    objs: dict[str, grib_utils.GribMetadata],
-    start_dt: datetime,
-    end_dt: datetime,
-    step_unit: str,
-) -> list[str]:
-    subset: list[str] = []
-    for key, metadata in objs.items():
-        file_validtime = _get_valid_datetime(Path(key), metadata, step_unit)
-        if start_dt <= file_validtime <= end_dt:
-            subset.append(f"dispf{file_validtime.strftime('%Y%m%d%H')}")
-    return subset
-
-
 def _get_start_end(config: dict) -> tuple[datetime, datetime]:
     start = str(config["IBDATE"]) + f"{config['IBTIME']:06}"
     end = str(config["IEDATE"]) + f"{config['IETIME']:06}"
@@ -283,10 +219,11 @@ def _get_start_end(config: dict) -> tuple[datetime, datetime]:
 
 def select_files(
     config: dict,
-    table: DBTable,
     forecast_datetime: str,
     step_unit: str,
+    model: Model,
 ) -> list[str]:
+
     step_unit = step_unit.lower()
     if step_unit not in ("minutes", "hours"):
         raise ValueError(
@@ -294,28 +231,28 @@ def select_files(
             f"{step_unit}"
         )
 
-    forecast_date = forecast_datetime[:8]
-    forecast_time = forecast_datetime[8:12]
-
-    objs = _list_objects(table, forecast_date, forecast_time)
-    if not objs:
-        raise RuntimeError(
-            "There is no data in S3 matching the filter forecast datetime: "
-            f"{forecast_datetime}"
-        )
-
     start_dt, end_dt = _get_start_end(config)
 
-    forecast_ref = datetime.strptime(forecast_date + forecast_time, "%Y%m%d%H%M")
+    forecast_ref = datetime.strptime(forecast_datetime, "%Y%m%d%H%M")
+
     if start_dt > forecast_ref:
-        start_dt -= timedelta(hours=1)
+        if model == Model.IFS_HRES:
+            start_dt -= timedelta(hours=3)
+        elif model == Model.IFS_HRES_EUROPE:
+            start_dt -= timedelta(hours=1)
+        else:
+            raise ValueError(f"Unsupported model: {model}")
 
-    subset = _select_keys_in_window(objs, start_dt, end_dt, step_unit)
+    objs = list_objs_in_bucket(
+        start_time=start_dt,
+        end_time=end_dt,
+    )
 
-    if not subset:
+    filtered_objs = _select_keys_in_window(objs, start_dt, end_dt, step_unit)
+
+    if not filtered_objs:
         raise RuntimeError(
-            "No S3 objects had metadata with validity time between "
-            f"{start_dt} and {end_dt}."
+            f"There are no s3 objects for valid times between {start_dt} and {end_dt}"
         )
 
-    return subset
+    return filtered_objs
