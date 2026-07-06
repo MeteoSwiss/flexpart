@@ -208,7 +208,7 @@ module par_mod
   !**************************************************
 
   integer,parameter :: maxpart=100000
-  integer,parameter :: maxspec=1
+  integer,parameter :: maxspec=5
 
   real,parameter :: minmass=0.0001
 
