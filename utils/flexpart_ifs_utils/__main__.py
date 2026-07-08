@@ -111,7 +111,7 @@ if __name__ == '__main__':
                     required=True
                     )
     p2.add_argument('--model',
-                    help='IFS model used by Flexpart. IFS-HRES (global) runs use nested domain over Europe (IFS-HRES-Europe).',
+                    help='IFS model used by Flexpart. IFS-Global runs use nested domain over Europe (IFS-Europe).',
                     type=str,
                     choices=[m.value for m in Model],
                     required=True

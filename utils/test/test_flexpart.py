@@ -47,7 +47,7 @@ def mock_environment(monkeypatch):
     # Below vars are used in entrypoint.sh
     monkeypatch.setenv("FORECAST_DATETIME", '2024121000')
     monkeypatch.setenv("RELEASE_SITE_NAME", 'BEZ')
-    monkeypatch.setenv("MODEL", 'IFS-HRES-Europe')
+    monkeypatch.setenv("MODEL", 'IFS-Europe')
 
 
 @pytest.mark.slow

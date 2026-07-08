@@ -16,8 +16,8 @@ class EnvironmentParameters(Enum):
     SIMULATION_END_ZZ = 12
 
 class Model(Enum):
-    IFS_HRES = 'IFS-HRES'
-    IFS_HRES_EUROPE = 'IFS-HRES-Europe'
+    IFS_HRES = 'IFS-Global'
+    IFS_HRES_EUROPE = 'IFS-Europe'
 
 MODEL_PREFIX: dict[Model, str] = {
     Model.IFS_HRES: "dispc*",
