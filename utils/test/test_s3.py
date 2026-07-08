@@ -17,7 +17,7 @@ def test_list_objs_in_bucket(s3, model_data: Path):
 
     bucket = CONFIG.main.aws.s3.nwp_model_data
 
-    params = {'date': '20241210', 'time': '0000', 'model': 'IFS-HRES'}
+    params = {'date': '20241210', 'time': '0000', 'model': 'IFS-Global'}
 
     path_list = list(model_data.iterdir())[:3]
 
@@ -88,7 +88,7 @@ def _add_item_to_bucket_with_metadata(bucket: Bucket,
                        time: str = '1200',
                        date: str = '20240607',
                        step: int = 1,
-                       model: str = "IFS-HRES",
+                       model: str = "IFS-Global",
                        domain: str = "GLOBAL") -> None:
 
     with open(path, "rb") as f:
