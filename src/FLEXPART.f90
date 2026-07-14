@@ -45,7 +45,7 @@ program flexpart
 
   integer :: i, j, ix, jy, inest, iopt
   integer :: idummy = -320
-  character(len=256) :: inline_options  !pathfile, flexversion, arg2
+  character(len=256) :: inline_options  !pathfile, flex, arg2
   integer :: metdata_format = GRIBFILE_CENTRE_UNKNOWN
   integer :: detectformat
 
@@ -61,7 +61,7 @@ program flexpart
 
   ! FLEXPART version string
   flexversion_major = '10' ! Major version number, also used for species file names
-  flexversion='Version '//trim(flexversion_major)//'.4.12 (2026-06-26)'
+  flexversion='Version '//trim(flexversion_major)//'.5.1 (2026-07-14)'
   verbosity=0
 
   ! Read the pathnames where input/output files are stored
