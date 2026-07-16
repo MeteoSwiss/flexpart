@@ -61,7 +61,7 @@ program flexpart
 
   ! FLEXPART version string
   flexversion_major = '10' ! Major version number, also used for species file names
-  flexversion='Version '//trim(flexversion_major)//'.5.1 (2026-07-14)'
+  flexversion='Version '//trim(flexversion_major)//'.5.2 (2026-07-16)'
   verbosity=0
 
   ! Read the pathnames where input/output files are stored
