@@ -10,7 +10,6 @@ import yaml
 from flexpart_ifs_utils.grib_utils import GribMetadata
 from flexpart_ifs_utils.model import Model
 from flexpart_ifs_utils.prepare_flexpart import (_configure_namelist,
-                                                 _filter_config,
                                                  _generate_available,
                                                  _get_start_end,
                                                  _get_valid_datetime,
@@ -43,10 +42,9 @@ def test_render_template(tmp_path, jinja_template, references):
             "SIMULATION_END_DD": "10",
             "SIMULATION_END_ZZ": "05"}
 
-    render_template(jinja_template, output_path, ['BEZ'], data)
+    render_template(jinja_template, output_path, data)
 
-    assert "IBDATE: '20241210'" in output_path.read_text()
-    assert 'COMMENT: Leibstadt' not in output_path.read_text()
+    assert 'IBDATE: "20241210"' in output_path.read_text()
 
     with open(output_path, 'r', encoding="utf-8") as f:
         actual_runtime_conf = yaml.safe_load(f)
@@ -55,21 +53,6 @@ def test_render_template(tmp_path, jinja_template, references):
         expected_runtime_conf = yaml.safe_load(f)
 
     assert actual_runtime_conf == expected_runtime_conf
-
-
-def test_filter_config(tmp_path):
-    yaml_file = tmp_path / "config.yaml"
-    yaml_file.write_text("""
-    - name: BEZ
-    - name: LEI
-    - name: GOE
-    """)
-
-    release_sites = ["BEZ", "GOE"]
-    _filter_config(yaml_file, release_sites)
-
-    assert yaml_file.read_text() == "- name: BEZ\n- name: GOE\n"
-
 
 
 def test_write_job_script(tmp_path, mock_config):
@@ -174,7 +157,7 @@ def test_prepare_job_directory(tmp_path: Path, references):
         return GribMetadata(date = "20240319", time = "0900", step = step)
 
     with open(references / 'runtime_configuration.yaml', 'r', encoding="utf-8") as f:
-        input_runtime_conf = yaml.safe_load(f)
+        conf = yaml.safe_load(f)
 
     jobs_dir = tmp_path / "jobs"
     data_dir = tmp_path / "data"
@@ -192,68 +175,67 @@ def test_prepare_job_directory(tmp_path: Path, references):
     with patch(MOCK_MD_EXTRACTION) as mock_extract_metadata:
         mock_extract_metadata.side_effect = side_effect
 
-        for conf in input_runtime_conf:
-            job_dir = prepare_job_directory(conf, jobs_dir, flexpart_dir, data_dir, CONFIG.main.openmp_config, model=Model.IFS_HRES_EUROPE)
+        job_dir = prepare_job_directory(conf, jobs_dir, flexpart_dir, data_dir, CONFIG.main.openmp_config, model=Model.IFS_HRES_EUROPE)
 
-            assert job_dir.is_dir()
-            assert job_dir.name == conf['name']
-            assert (job_dir / 'input' ).is_dir()
-            assert (job_dir / 'output' ).is_dir()
-            assert (job_dir / 'data' ).is_symlink()
-            assert (job_dir / 'job' ).exists()
+        assert job_dir.is_dir()
+        assert job_dir.name == conf['name']
+        assert (job_dir / 'input' ).is_dir()
+        assert (job_dir / 'output' ).is_dir()
+        assert (job_dir / 'data' ).is_symlink()
+        assert (job_dir / 'job' ).exists()
 
-            for file in ('COMMAND', 'RELEASES'):
-                assert (job_dir / 'input' / file).exists()
-                with open(job_dir / 'input' / file, 'r') as actual:
-                    with open(references / 'BEZ/input' / file, 'r') as expected:
-                        assert actual.read() == expected.read()
+        for file in ('COMMAND', 'RELEASES'):
+            assert (job_dir / 'input' / file).exists()
+            with open(job_dir / 'input' / file, 'r') as actual:
+                with open(references / 'Testerhausen/input' / file, 'r') as expected:
+                    assert actual.read() == expected.read()
 
-            # Test that the correct outgrid was used, given the model.
-            assert (job_dir / 'input' / 'OUTGRID').exists()
-            with open(job_dir / 'input' / "OUTGRID", 'r') as outgrid_actual:
-                with open(references / 'BEZ/input' / "OUTGRID", 'r') as outgrid_expected:
-                    assert outgrid_actual.read() == outgrid_expected.read()
+        # Test that the correct outgrid was used, given the model.
+        assert (job_dir / 'input' / 'OUTGRID').exists()
+        with open(job_dir / 'input' / "OUTGRID", 'r') as outgrid_actual:
+            with open(references / 'Testerhausen/input' / "OUTGRID", 'r') as outgrid_expected:
+                assert outgrid_actual.read() == outgrid_expected.read()
 
-            # Test that all the input data filenames are in the available file.
-            assert (job_dir / 'input' / 'AVAILABLE').exists()
-            assert not (job_dir / 'input' / 'AVAILABLE_NESTED').exists()
-            available = (job_dir / 'input' / 'AVAILABLE').read_text()
-            for path in data_paths:
-                assert str(path.name) in available
+        # Test that all the input data filenames are in the available file.
+        assert (job_dir / 'input' / 'AVAILABLE').exists()
+        assert not (job_dir / 'input' / 'AVAILABLE_NESTED').exists()
+        available = (job_dir / 'input' / 'AVAILABLE').read_text()
+        for path in data_paths:
+            assert str(path.name) in available
 
 
 
 def test_configure_namelist(tmp_path, references):
-    command_namelist: Path = references / 'BEZ/input' / "COMMAND"
+    command_namelist: Path = references / 'Testerhausen/input' / "COMMAND"
     command_copy = tmp_path / command_namelist.name
     shutil.copyfile(command_namelist, command_copy)
 
     with open(references / 'runtime_configuration.yaml', 'r') as f:
         config = yaml.load(f, Loader=yaml.SafeLoader)
 
-    config[0]['command']['IBDATE'] = '20250519'
-    config[0]['command']['IEDATE'] = '20250520'
-    config[0]['command']['IBTIME'] = '060000'
-    config[0]['command']['IETIME'] = '090000'
+    config['command']['IBDATE'] = '20250519'
+    config['command']['IEDATE'] = '20250520'
+    config['command']['IBTIME'] = '060000'
+    config['command']['IETIME'] = '090000'
     print(config)
 
-    _configure_namelist(config[0], command_copy)
+    _configure_namelist(config, command_copy)
 
     assert "IBDATE=20250519," in command_copy.read_text()
     assert "IBTIME=060000," in command_copy.read_text()
     assert "IEDATE=20250520," in command_copy.read_text()
     assert "IETIME=090000," in command_copy.read_text()
 
-    releases_namelist: Path = references / 'BEZ/input' / "RELEASES"
+    releases_namelist: Path = references / 'Testerhausen/input' / "RELEASES"
     releases_copy = tmp_path / releases_namelist.name
     shutil.copyfile(releases_namelist, releases_copy)
 
-    config[0]['releases']['LAT1'] = 43.21
-    config[0]['releases']['LAT2'] = 43.21
-    config[0]['releases']['LON1'] = 8.567
-    config[0]['releases']['LON2'] = 8.567
+    config['releases']['LAT1'] = 43.21
+    config['releases']['LAT2'] = 43.21
+    config['releases']['LON1'] = 8.567
+    config['releases']['LON2'] = 8.567
 
-    _configure_namelist(config[0], releases_copy)
+    _configure_namelist(config, releases_copy)
 
     assert "LAT1=43.21," in releases_copy.read_text()
     assert "LAT2=43.21," in releases_copy.read_text()

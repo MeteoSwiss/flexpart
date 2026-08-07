@@ -22,5 +22,5 @@
  ZKIND=1,
  MASS=2.8800E10,
  PARTS   =         200000, ! Total number of particles to be released
- COMMENT="Beznau",
+ COMMENT="Testerhausen",
 /

@@ -52,7 +52,10 @@ def resource_dir() -> Path:
 
 @pytest.fixture(scope="session")
 def jinja_template() -> Path:
-    jinja_template: Path = Path(os.path.dirname(os.path.realpath(__file__))).parent / 'flexpart_ifs_utils/runtime_configuration.j2'
+    # A single site's config as downloaded from the site-config S3 bucket (see
+    # dispersionmodelling-deployment/config/flexpart/sites_ifs.yaml), not the old
+    # multi-site catalog that used to be packaged into the image.
+    jinja_template: Path = Path(os.path.dirname(os.path.realpath(__file__))) / 'references/testerhausen_site.j2'
     return jinja_template
 
 

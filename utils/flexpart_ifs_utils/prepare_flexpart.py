@@ -12,7 +12,6 @@ import shutil
 from datetime import datetime, timedelta
 from pathlib import Path
 
-import yaml
 from jinja2 import Environment, FileSystemLoader
 
 from flexpart_ifs_utils.config.service_settings import OpenMPConfig
@@ -116,7 +115,6 @@ def prepare_job_directory(
 def render_template(
     template_path: Path,
     output_path: Path,
-    release_list: list[str] | None,
     data: dict[str, str | None],
 ) -> None:
     """Fill Jinja template of runtime configuration with runtime config stored in `data`."""
@@ -127,20 +125,6 @@ def render_template(
     rendered_content = env.from_string(template_content).render(data=data)
 
     output_path.write_text(rendered_content, encoding="utf-8")
-
-    if release_list:
-        _filter_config(output_path, release_list)
-
-
-def _filter_config(yaml_file: Path, release_sites: list[str]) -> None:
-    """Filters the runtime configuration yaml to contain only the release site that will be run."""
-    with open(yaml_file, "r", encoding="utf-8") as file:
-        data = yaml.load(file, Loader=yaml.Loader)
-
-    filtered_sections = [section for section in data if section["name"] in release_sites]
-
-    with open(yaml_file, "w", encoding="utf-8") as file:
-        yaml.dump(filtered_sections, file)
 
 
 def _write_job_script(

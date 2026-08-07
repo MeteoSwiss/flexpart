@@ -17,7 +17,7 @@ Usage:
         -f <flexpart_dir>
         -j <jobs_dir>
         --datetime <YYYYMMDDHH>
-        --site BEZ
+        --site <site>
 
     python __main__.py upload -d <jobs_dir> -i <input_directory>
 """
@@ -128,10 +128,6 @@ if __name__ == '__main__':
     FLEXPART_DIR: Path = args.flexpart_dir
     MODEL: Model = Model(args.model)
 
-    WORKDIR: Path = Path(os.path.abspath(__file__)).parent
-    CONFIG_TEMPLATE_PATH = WORKDIR / 'runtime_configuration.j2'
-    CONFIG_PATH =  JOBS_DIR / (CONFIG_TEMPLATE_PATH.stem + '.yaml')
-
     if not os.path.exists( JOBS_DIR ):
         os.makedirs( JOBS_DIR )
 
@@ -143,17 +139,19 @@ if __name__ == '__main__':
 
     validate_env(environment)
 
-    render_template(CONFIG_TEMPLATE_PATH, CONFIG_PATH, [RELEASE_SITE], environment)
+    # The site catalog is owned by dispersionmodelling-deployment and published to S3 by
+    # Terraform, one object per site actually configured for this environment - an unknown
+    # RELEASE_SITE_NAME fails here (S3 404) rather than matching against a locally-packaged
+    # catalog that could silently be stale relative to Terraform's config.
+    site_config_key = f'{CONFIG.main.runtime_config.site_config_key_prefix}{RELEASE_SITE}.yaml'
+    download_keys_from_bucket([site_config_key], JOBS_DIR, CONFIG.main.aws.s3.site_config)
+    CONFIG_TEMPLATE_PATH = JOBS_DIR / f'{RELEASE_SITE}.yaml'
+    CONFIG_PATH = JOBS_DIR / (CONFIG_TEMPLATE_PATH.stem + '_rendered.yaml')
+
+    render_template(CONFIG_TEMPLATE_PATH, CONFIG_PATH, environment)
 
     with open(CONFIG_PATH, 'r', encoding="utf-8") as f:
-        configs = yaml.safe_load(f)
-
-    configs = [config for config in configs if config['name'] == RELEASE_SITE]
-    if not configs:
-        raise RuntimeError(f'Release site {RELEASE_SITE} does not match any known to Flexpart.')
-    if len(configs) > 1:
-        raise RuntimeError(f'Release site {RELEASE_SITE} matches multiple configs.')
-    config = configs[0]
+        config = yaml.safe_load(f)
 
     DATA_DIR = JOBS_DIR / 'data'
     if not os.path.exists( DATA_DIR ):
