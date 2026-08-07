@@ -68,6 +68,18 @@ def reference_forecast_datetime() -> str:
     return "202412092100"
 
 
+@pytest.fixture(scope="session")
+def templates_dir() -> Path:
+    """Where the anonymized control-file templates live, same path prepare_job_directory uses.
+
+    Not a path relative to this test file: the tester image copies utils/test to /scratch/test,
+    dropping the utils/ level, so a source-tree-relative path silently points nowhere. The templates
+    are installed via spack into FLEXPART_PREFIX/share/templates, and that env var is guaranteed set
+    here - pytest_configure below raises before collection otherwise.
+    """
+    return Path(os.environ['FLEXPART_PREFIX']) / 'share' / 'templates'
+
+
 @pytest.fixture
 def reference_data_end(monkeypatch):
     """End of available model data, as the state machine still supplies it."""

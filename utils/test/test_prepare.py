@@ -18,14 +18,12 @@ from flexpart_ifs_utils.site_config import load_site_config
 MOCK_MD_EXTRACTION = "flexpart_ifs_utils.grib_utils.extract_metadata_from_grib_file"
 MOCK_LIST_OBJS_IN_BUCKET = "flexpart_ifs_utils.prepare_flexpart.list_objs_in_bucket"
 
-TEMPLATES_DIR = Path(__file__).parent.parent.parent / "templates"
-
 @pytest.fixture
 def mock_logger(mocker):
     return mocker.patch("flexpart_ifs_utils.prepare_flexpart._logger", autospec=True)
 
 
-def test_render_namelists(tmp_path, site_config_file, references,
+def test_render_namelists(tmp_path, templates_dir, site_config_file, references,
                           reference_forecast_datetime, reference_data_end):
     """The site object plus the resolved window must reproduce the reference namelists exactly.
 
@@ -35,21 +33,21 @@ def test_render_namelists(tmp_path, site_config_file, references,
     site = load_site_config(site_config_file)
     job = resolve_job_config(reference_forecast_datetime, Model.IFS_HRES_EUROPE, site)
 
-    render_namelists(TEMPLATES_DIR, tmp_path, site, job)
+    render_namelists(templates_dir, tmp_path, site, job)
 
     for name in ("COMMAND", "RELEASES"):
         expected = (references / "Testerhausen/input" / name).read_text(encoding="utf-8")
         assert (tmp_path / name).read_text(encoding="utf-8") == expected
 
 
-def test_render_namelists_follows_the_sites_offsets(tmp_path, site_config_file,
+def test_render_namelists_follows_the_sites_offsets(tmp_path, templates_dir, site_config_file,
                                                     reference_forecast_datetime, reference_data_end):
     """Change a site's release offset and the namelist follows - nothing else re-derives it."""
     site = load_site_config(site_config_file)
     job = resolve_job_config(reference_forecast_datetime, Model.IFS_HRES_EUROPE, site,
                              overrides={"release_start_offset_h": 4, "release_end_offset_h": 6})
 
-    render_namelists(TEMPLATES_DIR, tmp_path, site, job)
+    render_namelists(templates_dir, tmp_path, site, job)
 
     releases = (tmp_path / "RELEASES").read_text(encoding="utf-8")
     assert "IDATE1=20241210," in releases
@@ -57,14 +55,14 @@ def test_render_namelists_follows_the_sites_offsets(tmp_path, site_config_file,
     assert "ITIME2=030000," in releases
 
 
-def test_render_namelists_renders_sub_hour_windows(tmp_path, site_config_file,
+def test_render_namelists_renders_sub_hour_windows(tmp_path, templates_dir, site_config_file,
                                                    reference_forecast_datetime, reference_data_end):
     """HHMISS, not HH + a literal '0000' - fractional offsets are expressible now."""
     site = load_site_config(site_config_file)
     job = resolve_job_config(reference_forecast_datetime, Model.IFS_HRES_EUROPE, site,
                              overrides={"release_start_offset_h": 2.5})
 
-    render_namelists(TEMPLATES_DIR, tmp_path, site, job)
+    render_namelists(templates_dir, tmp_path, site, job)
 
     assert "ITIME1=233000," in (tmp_path / "RELEASES").read_text(encoding="utf-8")
 
