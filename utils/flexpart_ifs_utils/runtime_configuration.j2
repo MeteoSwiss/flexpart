@@ -440,3 +440,23 @@
     MASS: "7.2000E09"
     Z1: 100
     COMMENT: Incirlik
+- name: Barakah
+  command:
+    LDIRECT: 1
+    IBDATE: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    IBTIME: "{{ data.EMISSION_START_ZZ }}0000"
+    IEDATE: "{{ data.SIMULATION_END_YYYY }}{{ data.SIMULATION_END_MM }}{{ data.SIMULATION_END_DD }}"
+    IETIME: "{{ data.SIMULATION_END_ZZ }}0000"
+    LOUTSTEP: 10800
+  releases:
+    NSPEC: 1
+    SPECNUM_REL: 39
+    IDATE1: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
+    ITIME1: "{{ data.EMISSION_START_ZZ }}0000"
+    IDATE2: "{{ data.EMISSION_END_YYYY }}{{ data.EMISSION_END_MM }}{{ data.EMISSION_END_DD }}"
+    ITIME2: "{{ data.EMISSION_END_ZZ }}0000"
+    LON1: 52.2315
+    LAT1: 23.9677
+    MASS: "4.3200E10"
+    Z1: 100
+    COMMENT: Barakah
