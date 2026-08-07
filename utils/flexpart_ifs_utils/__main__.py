@@ -16,7 +16,7 @@ Usage:
     python __main__.py generate
         -f <flexpart_dir>
         -j <jobs_dir>
-        --datetime <YYYYMMDDHH>
+        --datetime <YYYYMMDDhhmm>
         --site <site>
 
     python __main__.py upload -d <jobs_dir> -i <input_directory>
@@ -28,46 +28,16 @@ import os
 import sys
 from pathlib import Path
 
-import yaml
-
 from flexpart_ifs_utils import CONFIG
-from flexpart_ifs_utils.model import EnvironmentParameters, Model
+from flexpart_ifs_utils.job_config import resolve_job_config
+from flexpart_ifs_utils.model import Model
 from flexpart_ifs_utils.prepare_flexpart import (_path_list,
                                                  prepare_job_directory,
-                                                 render_template, select_files)
-from flexpart_ifs_utils.s3_utils import (download_keys_from_bucket,
+                                                 select_files)
+from flexpart_ifs_utils.s3_utils import (canonicalize_output_names,
+                                         download_keys_from_bucket,
                                          upload_output)
-
-
-def validate_env(data: dict[str, str | None]) -> None:
-    violations: list[str] = []
-    for parameter in EnvironmentParameters:
-        if parameter.name not in data:
-            violations.append(parameter.name)
-        elif data[parameter.name] is None:
-            violations.append(parameter.name)
-
-    if violations:
-        raise RuntimeError(
-            "Environment is missing variables needed to prepare runtime configuration: "
-            f"{violations}"
-        )
-
-
-def parse_env() -> dict[str, str | None]:
-    return {"EMISSION_START_YYYY": os.getenv("EMISSION_START_YYYY"),
-            "EMISSION_START_MM": os.getenv("EMISSION_START_MM"),
-            "EMISSION_START_DD": os.getenv("EMISSION_START_DD"),
-            "EMISSION_START_ZZ": os.getenv("EMISSION_START_ZZ"),
-            "EMISSION_END_YYYY": os.getenv("EMISSION_END_YYYY"),
-            "EMISSION_END_MM": os.getenv("EMISSION_END_MM"),
-            "EMISSION_END_DD": os.getenv("EMISSION_END_DD"),
-            "EMISSION_END_ZZ": os.getenv("EMISSION_END_ZZ"),
-            "SIMULATION_END_YYYY": os.getenv("SIMULATION_END_YYYY"),
-            "SIMULATION_END_MM": os.getenv("SIMULATION_END_MM"),
-            "SIMULATION_END_DD": os.getenv("SIMULATION_END_DD"),
-            "SIMULATION_END_ZZ": os.getenv("SIMULATION_END_ZZ")}
-
+from flexpart_ifs_utils.site_config import load_site_config
 
 if __name__ == '__main__':
 
@@ -87,7 +57,7 @@ if __name__ == '__main__':
                     required=True
                     )
     p1.add_argument('--datetime',
-                    help='Forecast datetime, in format YYYYMMDDHH.',
+                    help='Forecast reference datetime, in format YYYYMMDDhhmm.',
                     required=True
                     )
 
@@ -103,7 +73,7 @@ if __name__ == '__main__':
                     type=Path,
                     )
     p2.add_argument('--datetime',
-                    help='Forecast datetime, in format YYYYMMDDHH.',
+                    help='Forecast reference datetime, in format YYYYMMDDhhmm.',
                     required=True
                     )
     p2.add_argument('--site',
@@ -119,6 +89,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if "directory" in args:
+        # Rename before upload, so the object key never carries Flexpart's simulation-start stamp -
+        # that stamp is what forced the render step and the ensemble aggregator to re-derive the
+        # release offset, and it is why the offset could not vary per site.
+        canonicalize_output_names(args.directory / args.site / 'output')
         upload_output(args.directory, args.site, args.datetime, parent='output')
         sys.exit(0)
 
@@ -135,23 +109,17 @@ if __name__ == '__main__':
     _logger.info('Jobs directory: %s', JOBS_DIR)
     _logger.debug('Args: %s', args)
 
-    environment = parse_env()
-
-    validate_env(environment)
-
     # The site catalog is owned by dispersionmodelling-deployment and published to S3 by
     # Terraform, one object per site actually configured for this environment - an unknown
     # RELEASE_SITE_NAME fails here (S3 404) rather than matching against a locally-packaged
     # catalog that could silently be stale relative to Terraform's config.
     site_config_key = f'{CONFIG.main.runtime_config.site_config_key_prefix}{RELEASE_SITE}.yaml'
     download_keys_from_bucket([site_config_key], JOBS_DIR, CONFIG.main.aws.s3.site_config)
-    CONFIG_TEMPLATE_PATH = JOBS_DIR / f'{RELEASE_SITE}.yaml'
-    CONFIG_PATH = JOBS_DIR / (CONFIG_TEMPLATE_PATH.stem + '_rendered.yaml')
 
-    render_template(CONFIG_TEMPLATE_PATH, CONFIG_PATH, environment)
-
-    with open(CONFIG_PATH, 'r', encoding="utf-8") as f:
-        config = yaml.safe_load(f)
+    # Plain declarative site data - no longer a Jinja template of the namelist, so there is nothing
+    # to render here and no intermediate file. The namelist templates live in the image.
+    site = load_site_config(JOBS_DIR / f'{RELEASE_SITE}.yaml')
+    job = resolve_job_config(FORECAST_DATETIME, MODEL, site)
 
     DATA_DIR = JOBS_DIR / 'data'
     if not os.path.exists( DATA_DIR ):
@@ -162,15 +130,15 @@ if __name__ == '__main__':
 
     if not data_paths:
         # Search the db for the relevant files and download data
-        keys = select_files(config['command'],
-                            forecast_datetime=FORECAST_DATETIME,
+        keys = select_files(job,
                             step_unit=CONFIG.main.input.step_unit,
                             model=MODEL)
 
         download_keys_from_bucket(keys, DATA_DIR, CONFIG.main.aws.s3.nwp_model_data)
 
     job_dir = prepare_job_directory(
-        config,
+        site,
+        job,
         JOBS_DIR,
         FLEXPART_DIR,
         DATA_DIR,

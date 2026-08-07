@@ -32,49 +32,39 @@ def aws_server_session(aws_credentials):
 
 @pytest.fixture
 def mock_environment(monkeypatch):
-    monkeypatch.setenv("EMISSION_START_YYYY", '2024')
-    monkeypatch.setenv("EMISSION_START_MM", '12')
-    monkeypatch.setenv("EMISSION_START_DD", '10')
-    monkeypatch.setenv("EMISSION_START_ZZ", '00')
-    monkeypatch.setenv("EMISSION_END_YYYY", '2024')
-    monkeypatch.setenv("EMISSION_END_MM", '12')
-    monkeypatch.setenv("EMISSION_END_DD", '10')
-    monkeypatch.setenv("EMISSION_END_ZZ", '05')
+    # End of the available model data. The eight EMISSION_* variables that used to accompany this are
+    # no longer read: the release window comes from the site's own offsets.
     monkeypatch.setenv("SIMULATION_END_YYYY", '2024')
     monkeypatch.setenv("SIMULATION_END_MM", '12')
     monkeypatch.setenv("SIMULATION_END_DD", '10')
     monkeypatch.setenv("SIMULATION_END_ZZ", '05')
-    # Below vars are used in entrypoint.sh
-    monkeypatch.setenv("FORECAST_DATETIME", '2024121000')
+    # Below vars are used in entrypoint.sh. FORECAST_DATETIME is YYYYMMDDhhmm, as the run scheduler
+    # builds it from forecast_date + forecast_time; it has to stay aligned with the reference time of
+    # the GRIB in TEST_DATA, because the upload key is derived from it.
+    monkeypatch.setenv("FORECAST_DATETIME", '202412100000')
     monkeypatch.setenv("RELEASE_SITE_NAME", 'Testerhausen')
     monkeypatch.setenv("MODEL", 'IFS-Europe')
 
 
-# The Testerhausen site block Terraform would upload to `sites/Testerhausen.yaml` in the site-config bucket -
-# see dispersionmodelling-deployment/config/flexpart/sites_ifs.yaml. Date placeholders are still
-# unrendered Jinja, exactly as the app downloads it: rendering happens locally after download.
+# The Testerhausen site object Terraform would upload to `sites/Testerhausen.yaml` in the site-config
+# bucket - see dispersionmodelling-deployment/config/flexpart/sites_ifs.yaml. Plain data: no Jinja and
+# no dates, so there is nothing to render after download. The offsets resolve against
+# FORECAST_DATETIME to the 00:00-05:00 window the GRIB in TEST_DATA covers; the byte-level check
+# against the reference namelists lives in test_prepare.py.
 TESTERHAUSEN_SITE_CONFIG = """
 name: Testerhausen
-command:
-  LDIRECT: 1
-  IBDATE: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
-  IBTIME: "{{ data.EMISSION_START_ZZ }}0000"
-  IEDATE: "{{ data.SIMULATION_END_YYYY }}{{ data.SIMULATION_END_MM }}{{ data.SIMULATION_END_DD }}"
-  IETIME: "{{ data.SIMULATION_END_ZZ }}0000"
-  LOUTSTEP: 10800
-releases:
-  NSPEC: 1
-  SPECNUM_REL: 16
-  IDATE1: "{{ data.EMISSION_START_YYYY }}{{ data.EMISSION_START_MM }}{{ data.EMISSION_START_DD }}"
-  ITIME1: "{{ data.EMISSION_START_ZZ }}0000"
-  IDATE2: "{{ data.EMISSION_END_YYYY }}{{ data.EMISSION_END_MM }}{{ data.EMISSION_END_DD }}"
-  ITIME2: "{{ data.EMISSION_END_ZZ }}0000"
-  LON1: 8.2284
-  LAT1: 47.5519
-  Z1: 100
-  ZKIND: 1
-  MASS: "2.8800E10"
-  COMMENT: Testerhausen
+latitude: 47.5519
+longitude: 8.2284
+height_m: 100
+height_reference: agl
+species: 16
+mass_bq: 2.8800e+10
+output_interval_s: 10800
+direction: forward
+comment: Testerhausen
+simulation_start_offset_h: 0
+release_start_offset_h: 0
+release_end_offset_h: 5
 """
 
 
@@ -109,6 +99,10 @@ def test_flexpart_run(aws_server_session, mock_environment):
     # assert that NETCDF output files were produced
     path_list = [Path(f) for f in glob.iglob(str(jobs_dir)+'/*/output/*', recursive=True) if os.path.isfile(f) and Path(f).suffix == '.nc']
     assert len(path_list) > 0
+
+    # The concentration grid carries no simulation-start stamp, so nothing downstream has to
+    # re-derive the release offset to address it.
+    assert 'grid_conc.nc' in [path.name for path in path_list]
 
     md = extract_metadata_from_grib_file(
         next((jobs_dir/'data').iterdir())

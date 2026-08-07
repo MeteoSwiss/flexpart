@@ -1,0 +1,17 @@
+---
+# One release site exactly as Terraform publishes it to S3: the deployment repo's catalog entry with
+# the site name folded in (see dispersionmodelling-deployment/config/flexpart/sites_*.yaml).
+# Plain data - not a template of the namelist, which lives in templates/{COMMAND,RELEASES}.j2.
+name: Testerhausen
+latitude: 47.5519
+longitude: 8.2284
+height_m: 100
+height_reference: agl
+species: 16
+mass_bq: 2.8800e+10
+output_interval_s: 10800
+direction: forward
+comment: Testerhausen
+simulation_start_offset_h: 3
+release_start_offset_h: 3
+release_end_offset_h: 8

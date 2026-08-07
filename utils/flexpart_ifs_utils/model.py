@@ -2,18 +2,20 @@ from enum import Enum
 
 
 class EnvironmentParameters(Enum):
-    EMISSION_START_YYYY = 1
-    EMISSION_START_MM = 2
-    EMISSION_START_DD = 3
-    EMISSION_START_ZZ = 4
-    EMISSION_END_YYYY = 5
-    EMISSION_END_MM = 6
-    EMISSION_END_DD = 7
-    EMISSION_END_ZZ = 8
-    SIMULATION_END_YYYY = 9
-    SIMULATION_END_MM = 10
-    SIMULATION_END_DD = 11
-    SIMULATION_END_ZZ = 12
+    """Time-related variables the state machine still puts on the ECS task.
+
+    Only the end of the available model data arrives this way now. The eight ``EMISSION_*`` variables
+    that used to accompany it encoded a globally-computed release window; that window is now derived
+    inside the container from the site's own offsets, so they are no longer read. They are still
+    emitted by the run scheduler and forwarded by the state machine, and get removed there separately
+    - this app must stop reading them first.
+    """
+
+    SIMULATION_END_YYYY = 1
+    SIMULATION_END_MM = 2
+    SIMULATION_END_DD = 3
+    SIMULATION_END_ZZ = 4
+
 
 class Model(Enum):
     IFS_HRES = 'IFS-Global'

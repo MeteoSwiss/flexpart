@@ -11,12 +11,12 @@
 ! templating a line here - the site config deliberately carries no namelist key names and no dates.
 !
 &COMMAND
- LDIRECT=1, ! Simulation direction in time   ; 1 (forward) or -1 (backward)
- IBDATE=20241210, ! Start date of the simulation   ; YYYYMMDD: YYYY=year, MM=month, DD=day  
- IBTIME=000000, ! Start time of the simulation   ; HHMISS: HH=hours, MI=min, SS=sec; UTC
- IEDATE=20241210, ! End date of the simulation     ; same format as IBDATE 
- IETIME=050000, ! End  time of the simulation    ; same format as IBTIME
- LOUTSTEP=10800, ! Interval of model output; average concentrations calculated every LOUTSTEP (s)  
+ LDIRECT={{ site.direction_value }}, ! Simulation direction in time   ; 1 (forward) or -1 (backward)
+ IBDATE={{ job.simulation_start | fp_date }}, ! Start date of the simulation   ; YYYYMMDD: YYYY=year, MM=month, DD=day  
+ IBTIME={{ job.simulation_start | fp_time }}, ! Start time of the simulation   ; HHMISS: HH=hours, MI=min, SS=sec; UTC
+ IEDATE={{ job.simulation_end | fp_date }}, ! End date of the simulation     ; same format as IBDATE 
+ IETIME={{ job.simulation_end | fp_time }}, ! End  time of the simulation    ; same format as IBTIME
+ LOUTSTEP={{ site.output_interval_s }}, ! Interval of model output; average concentrations calculated every LOUTSTEP (s)  
  LOUTAVER=          10800, ! Interval of output averaging (s)
  LOUTSAMPLE=          900, ! Interval of output sampling  (s), higher stat. accuracy with shorter intervals
  ITSPLIT=       999999999, ! Interval of particle splitting (s)

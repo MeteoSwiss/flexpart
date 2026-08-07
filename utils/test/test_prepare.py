@@ -1,58 +1,72 @@
 import os
-import shutil
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-import yaml
 
 from flexpart_ifs_utils.grib_utils import GribMetadata
+from flexpart_ifs_utils.job_config import JobConfig, resolve_job_config
 from flexpart_ifs_utils.model import Model
-from flexpart_ifs_utils.prepare_flexpart import (_configure_namelist,
-                                                 _generate_available,
-                                                 _get_start_end,
+from flexpart_ifs_utils.prepare_flexpart import (_generate_available,
                                                  _get_valid_datetime,
                                                  _write_job_script,
                                                  prepare_job_directory,
-                                                 render_template, select_files)
+                                                 render_namelists, select_files)
+from flexpart_ifs_utils.site_config import load_site_config
 
 MOCK_MD_EXTRACTION = "flexpart_ifs_utils.grib_utils.extract_metadata_from_grib_file"
 MOCK_LIST_OBJS_IN_BUCKET = "flexpart_ifs_utils.prepare_flexpart.list_objs_in_bucket"
+
+TEMPLATES_DIR = Path(__file__).parent.parent.parent / "templates"
 
 @pytest.fixture
 def mock_logger(mocker):
     return mocker.patch("flexpart_ifs_utils.prepare_flexpart._logger", autospec=True)
 
 
-def test_render_template(tmp_path, jinja_template, references):
+def test_render_namelists(tmp_path, site_config_file, references,
+                          reference_forecast_datetime, reference_data_end):
+    """The site object plus the resolved window must reproduce the reference namelists exactly.
 
-    output_path = tmp_path / "output.txt"
+    This is the contract that replaced the regex-substitution pass: everything Flexpart reads comes
+    from templates/{COMMAND,RELEASES}.j2 filled from the site config and the job window.
+    """
+    site = load_site_config(site_config_file)
+    job = resolve_job_config(reference_forecast_datetime, Model.IFS_HRES_EUROPE, site)
 
-    data = {"EMISSION_START_YYYY": "2024",
-            "EMISSION_START_MM": "12",
-            "EMISSION_START_DD": "10",
-            "EMISSION_START_ZZ": "00",
-            "EMISSION_END_YYYY": "2024",
-            "EMISSION_END_MM": "12",
-            "EMISSION_END_DD": "10",
-            "EMISSION_END_ZZ": "05",
-            "SIMULATION_END_YYYY": "2024",
-            "SIMULATION_END_MM": "12",
-            "SIMULATION_END_DD": "10",
-            "SIMULATION_END_ZZ": "05"}
+    render_namelists(TEMPLATES_DIR, tmp_path, site, job)
 
-    render_template(jinja_template, output_path, data)
+    for name in ("COMMAND", "RELEASES"):
+        expected = (references / "Testerhausen/input" / name).read_text(encoding="utf-8")
+        assert (tmp_path / name).read_text(encoding="utf-8") == expected
 
-    assert 'IBDATE: "20241210"' in output_path.read_text()
 
-    with open(output_path, 'r', encoding="utf-8") as f:
-        actual_runtime_conf = yaml.safe_load(f)
+def test_render_namelists_follows_the_sites_offsets(tmp_path, site_config_file,
+                                                    reference_forecast_datetime, reference_data_end):
+    """Change a site's release offset and the namelist follows - nothing else re-derives it."""
+    site = load_site_config(site_config_file)
+    job = resolve_job_config(reference_forecast_datetime, Model.IFS_HRES_EUROPE, site,
+                             overrides={"release_start_offset_h": 4, "release_end_offset_h": 6})
 
-    with open(references / 'runtime_configuration.yaml', 'r', encoding="utf-8") as f:
-        expected_runtime_conf = yaml.safe_load(f)
+    render_namelists(TEMPLATES_DIR, tmp_path, site, job)
 
-    assert actual_runtime_conf == expected_runtime_conf
+    releases = (tmp_path / "RELEASES").read_text(encoding="utf-8")
+    assert "IDATE1=20241210," in releases
+    assert "ITIME1=010000," in releases
+    assert "ITIME2=030000," in releases
+
+
+def test_render_namelists_renders_sub_hour_windows(tmp_path, site_config_file,
+                                                   reference_forecast_datetime, reference_data_end):
+    """HHMISS, not HH + a literal '0000' - fractional offsets are expressible now."""
+    site = load_site_config(site_config_file)
+    job = resolve_job_config(reference_forecast_datetime, Model.IFS_HRES_EUROPE, site,
+                             overrides={"release_start_offset_h": 2.5})
+
+    render_namelists(TEMPLATES_DIR, tmp_path, site, job)
+
+    assert "ITIME1=233000," in (tmp_path / "RELEASES").read_text(encoding="utf-8")
 
 
 def test_write_job_script(tmp_path, mock_config):
@@ -149,15 +163,16 @@ def test_get_valid_datetime_with_metadata(tmp_path):
     assert dt == datetime(2024, 1, 2, 2)
 
 
-def test_prepare_job_directory(tmp_path: Path, references):
+def test_prepare_job_directory(tmp_path: Path, references, site_config_file,
+                               reference_forecast_datetime, reference_data_end):
     from flexpart_ifs_utils import CONFIG
 
     def side_effect(arg):
         step = int(str(arg).split('-')[-1])
         return GribMetadata(date = "20240319", time = "0900", step = step)
 
-    with open(references / 'runtime_configuration.yaml', 'r', encoding="utf-8") as f:
-        conf = yaml.safe_load(f)
+    site = load_site_config(site_config_file)
+    job = resolve_job_config(reference_forecast_datetime, Model.IFS_HRES_EUROPE, site)
 
     jobs_dir = tmp_path / "jobs"
     data_dir = tmp_path / "data"
@@ -175,10 +190,10 @@ def test_prepare_job_directory(tmp_path: Path, references):
     with patch(MOCK_MD_EXTRACTION) as mock_extract_metadata:
         mock_extract_metadata.side_effect = side_effect
 
-        job_dir = prepare_job_directory(conf, jobs_dir, flexpart_dir, data_dir, CONFIG.main.openmp_config, model=Model.IFS_HRES_EUROPE)
+        job_dir = prepare_job_directory(site, job, jobs_dir, flexpart_dir, data_dir, CONFIG.main.openmp_config, model=Model.IFS_HRES_EUROPE)
 
         assert job_dir.is_dir()
-        assert job_dir.name == conf['name']
+        assert job_dir.name == site.name
         assert (job_dir / 'input' ).is_dir()
         assert (job_dir / 'output' ).is_dir()
         assert (job_dir / 'data' ).is_symlink()
@@ -189,6 +204,10 @@ def test_prepare_job_directory(tmp_path: Path, references):
             with open(job_dir / 'input' / file, 'r') as actual:
                 with open(references / 'Testerhausen/input' / file, 'r') as expected:
                     assert actual.read() == expected.read()
+
+        # The packaged skeletons and the archived per-site variants are no longer copied in: the
+        # only RELEASES in the job directory is the one that was rendered for this site.
+        assert [p.name for p in job_dir.glob('input/RELEASES*')] == ['RELEASES']
 
         # Test that the correct outgrid was used, given the model.
         assert (job_dir / 'input' / 'OUTGRID').exists()
@@ -205,44 +224,6 @@ def test_prepare_job_directory(tmp_path: Path, references):
 
 
 
-def test_configure_namelist(tmp_path, references):
-    command_namelist: Path = references / 'Testerhausen/input' / "COMMAND"
-    command_copy = tmp_path / command_namelist.name
-    shutil.copyfile(command_namelist, command_copy)
-
-    with open(references / 'runtime_configuration.yaml', 'r') as f:
-        config = yaml.load(f, Loader=yaml.SafeLoader)
-
-    config['command']['IBDATE'] = '20250519'
-    config['command']['IEDATE'] = '20250520'
-    config['command']['IBTIME'] = '060000'
-    config['command']['IETIME'] = '090000'
-    print(config)
-
-    _configure_namelist(config, command_copy)
-
-    assert "IBDATE=20250519," in command_copy.read_text()
-    assert "IBTIME=060000," in command_copy.read_text()
-    assert "IEDATE=20250520," in command_copy.read_text()
-    assert "IETIME=090000," in command_copy.read_text()
-
-    releases_namelist: Path = references / 'Testerhausen/input' / "RELEASES"
-    releases_copy = tmp_path / releases_namelist.name
-    shutil.copyfile(releases_namelist, releases_copy)
-
-    config['releases']['LAT1'] = 43.21
-    config['releases']['LAT2'] = 43.21
-    config['releases']['LON1'] = 8.567
-    config['releases']['LON2'] = 8.567
-
-    _configure_namelist(config, releases_copy)
-
-    assert "LAT1=43.21," in releases_copy.read_text()
-    assert "LAT2=43.21," in releases_copy.read_text()
-    assert "LON1=8.567," in releases_copy.read_text()
-    assert "LON2=8.567," in releases_copy.read_text()
-
-
 @pytest.mark.parametrize("step_unit", [("minutes"), ("hours")])
 def test_select_files(tmp_path, step_unit):
     from flexpart_ifs_utils import CONFIG
@@ -252,7 +233,16 @@ def test_select_files(tmp_path, step_unit):
     DATE="20240501"
     TIME="1200"
 
-    RUNTIME_CONF = {"IBDATE": "20240501", "IBTIME": 140000, "IEDATE": "20240501", "IETIME": 180000}
+    # A simulation window of 14:00 to 18:00 against a 12:00 forecast reference. The window arrives as
+    # datetimes now, rather than being re-parsed out of the namelist's date strings.
+    job = JobConfig(
+        model=Model.IFS_HRES_EUROPE,
+        forecast_datetime=datetime(2024, 5, 1, 12),
+        simulation_start=datetime(2024, 5, 1, 14),
+        simulation_end=datetime(2024, 5, 1, 18),
+        release_start=datetime(2024, 5, 1, 14),
+        release_end=datetime(2024, 5, 1, 16),
+    )
 
     if step_unit == 'minutes':
         multiplier = 60
@@ -278,13 +268,12 @@ def test_select_files(tmp_path, step_unit):
             time = TIME,
             step = int(str(key).split('/')[-1][0])*multiplier,
             ) for key in keys}
-        print(keys)
-        subset = select_files(RUNTIME_CONF,
-                            forecast_datetime=f"{DATE}{TIME}",
+        subset = select_files(job,
                             step_unit=CONFIG.main.input.step_unit,
                             model=Model.IFS_HRES_EUROPE)
-        print(subset)
 
+        # Starts at 13:00, not 14:00: the simulation starts after the forecast reference, so the
+        # preceding step is pulled in for precipitation de-accumulation.
         expected = {
             str(tmp_path / "1000"),
             str(tmp_path / "2000"),
@@ -295,11 +284,3 @@ def test_select_files(tmp_path, step_unit):
         }
         assert len(subset) == 6
         assert set(subset) == expected
-
-def test_get_start_end():
-    config = {"IBDATE": "20230101", "IBTIME": 120000, "IEDATE": "20230201", "IETIME": 220000}
-
-    start, end = _get_start_end(config)
-
-    assert start == datetime(2023, 1, 1, 12, 0, 0)
-    assert end == datetime(2023, 2, 1, 22, 0, 0)

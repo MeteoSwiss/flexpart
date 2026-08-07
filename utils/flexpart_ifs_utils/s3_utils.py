@@ -2,6 +2,7 @@ import glob
 import json
 import logging
 import os
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -18,6 +19,58 @@ from flexpart_ifs_utils.grib_utils import (GribMetadata, RunMetadata,
                                            _get_valid_datetime)
 
 _logger = logging.getLogger(__name__)
+
+# (pattern, canonical name, required). The nested pattern is listed first and matched exclusively,
+# because `grid_conc_nest_<stamp>.nc` also satisfies the plain concentration pattern.
+_OUTPUT_NAME_PATTERNS: tuple[tuple[re.Pattern[str], str, bool], ...] = (
+    (re.compile(r"^grid_conc_nest_\d+\.nc$"), "grid_conc_nest.nc", False),
+    (re.compile(r"^grid_conc_\d+\.nc$"), "grid_conc.nc", True),
+)
+
+
+def canonicalize_output_names(output_dir: Path) -> None:
+    """Strip the simulation-start timestamp out of Flexpart's NetCDF filenames.
+
+    Flexpart names its concentration output ``grid_conc_<ibdate><ibtime>.nc`` from the *simulation
+    start* (see ``netcdf_output_mod.f90``), so every consumer that wants to address the file has to
+    re-derive that timestamp. Three of them did, each hard-coding ``forecast + 3h``, which held only
+    while every release site shared one offset. The S3 key already carries date, hour and site, so the
+    timestamp inside the filename is pure duplication: dropping it collapses all three consumers to a
+    constant and lets the release window vary per site.
+
+    A missing or ambiguous concentration file raises rather than being skipped - the failure would
+    otherwise surface much later, as a render step pointed at a key that was never written. Backward
+    runs (``LDIRECT=-1``) write ``grid_time_*.nc`` instead and are not wired through to rendering;
+    they fail here, deliberately.
+
+    Idempotent, so a hand-run ``upload`` on an already-renamed job directory still works.
+    """
+    if not output_dir.is_dir():
+        raise RuntimeError(f"Flexpart output directory does not exist: {output_dir}")
+
+    for pattern, canonical_name, required in _OUTPUT_NAME_PATTERNS:
+        matches = sorted(p for p in output_dir.iterdir() if pattern.match(p.name))
+
+        if len(matches) > 1:
+            raise RuntimeError(
+                f"Expected at most one {pattern.pattern} in {output_dir}, found "
+                f"{[p.name for p in matches]}"
+            )
+        if not matches:
+            if (output_dir / canonical_name).exists():
+                _logger.info("Flexpart output already named %s, nothing to rename", canonical_name)
+                continue
+            if required:
+                raise RuntimeError(
+                    f"No Flexpart output matching {pattern.pattern} in {output_dir}; "
+                    f"found {sorted(p.name for p in output_dir.iterdir())}"
+                )
+            continue
+
+        source = matches[0]
+        target = output_dir / canonical_name
+        _logger.info("Renaming Flexpart output %s to %s", source.name, target.name)
+        source.rename(target)
 
 
 def upload_output(
