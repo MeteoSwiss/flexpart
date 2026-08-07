@@ -70,13 +70,10 @@ default:
               pullAlways: false
               removeLocalImage: false
               pythonSourcePackage: utils
-          - pythonContainerTypeCheck:
-              imageName: ${var.containerImageName}-tester
-              imageTag: ${var.semanticVersion}
-              packageManager: ''
-              pullAlways: false
-              removeLocalImage: false
-              pythonSourcePackage: utils
+          - script: |
+              podman run --rm -w /src/app-root/utils -v $PWD:/src/app-root:rw \
+                  ${var.containerImageName}-tester:${var.semanticVersion} \
+                  sh -c "mypy -p flexpart_ifs_utils | grep error | tee /src/app-root/test_reports/mypy.log"
   - publish:
       - testArtifacts:
           - containerPublishImage:
