@@ -221,9 +221,68 @@ def test_prepare_job_directory(tmp_path: Path, references, site_config_file,
             assert str(path.name) in available
 
 
+def test_prepare_job_directory_nests_the_europe_domain_for_ifs_global(
+        tmp_path: Path, references, site_config_file, reference_forecast_datetime, reference_data_end):
+    """IFS-Global branches twice on top of what IFS-Europe does: OUTGRID.g instead of OUTGRID.f, and
+    a second AVAILABLE_NESTED built from the Europe-prefixed data alongside the global one. Only the
+    IFS-Europe branch of both had a test before this one."""
+    from flexpart_ifs_utils import CONFIG
+
+    def side_effect(arg):
+        step = int(str(arg).split('-')[-1])
+        return GribMetadata(date = "20240319", time = "0900", step = step)
+
+    site = load_site_config(site_config_file)
+    job = resolve_job_config(reference_forecast_datetime, Model.IFS_HRES, site)
+
+    jobs_dir = tmp_path / "jobs"
+    data_dir = tmp_path / "data"
+
+    os.mkdir(jobs_dir)
+    os.mkdir(data_dir)
+
+    flexpart_dir = Path(os.environ['FLEXPART_PREFIX'])
+
+    # IFS-Global pulls both its own global-domain data (dispc*) and the nested Europe-domain data
+    # (dispf*) out of the same data directory.
+    global_paths: list[Path] = [data_dir / f"dispc-{step}" for step in range(3, 27)]
+    europe_paths: list[Path] = [data_dir / f"dispf-{step}" for step in range(3, 27)]
+
+    for file in global_paths + europe_paths:
+        file.touch()
+
+    with patch(MOCK_MD_EXTRACTION) as mock_extract_metadata:
+        mock_extract_metadata.side_effect = side_effect
+
+        job_dir = prepare_job_directory(site, job, jobs_dir, flexpart_dir, data_dir, CONFIG.main.openmp_config, model=Model.IFS_HRES)
+
+        assert (job_dir / 'input' / 'OUTGRID').exists()
+        with open(job_dir / 'input' / "OUTGRID", 'r') as outgrid_actual:
+            with open(references / 'Testerhausen/input' / "OUTGRID.g", 'r') as outgrid_expected:
+                assert outgrid_actual.read() == outgrid_expected.read()
+
+        assert (job_dir / 'input' / 'AVAILABLE').exists()
+        available = (job_dir / 'input' / 'AVAILABLE').read_text()
+        for path in global_paths:
+            assert str(path.name) in available
+
+        assert (job_dir / 'input' / 'AVAILABLE_NESTED').exists()
+        available_nested = (job_dir / 'input' / 'AVAILABLE_NESTED').read_text()
+        for path in europe_paths:
+            assert str(path.name) in available_nested
+
 
 @pytest.mark.parametrize("step_unit", [("minutes"), ("hours")])
-def test_select_files(tmp_path, step_unit):
+@pytest.mark.parametrize(
+    "model, expected_step_hours",
+    [
+        # IFS-Europe backs off 1h for de-accumulation; IFS-Global backs off 3h. Same window, same
+        # data, different model -> a different file selection, so both branches need their own case.
+        pytest.param(Model.IFS_HRES_EUROPE, (1, 2, 3, 4, 5, 6), id="europe-1h-backoff"),
+        pytest.param(Model.IFS_HRES, (0, 1, 2, 3, 4, 5, 6), id="global-3h-backoff"),
+    ],
+)
+def test_select_files(tmp_path, step_unit, model, expected_step_hours):
     from flexpart_ifs_utils import CONFIG
 
     CONFIG.main.input.step_unit = step_unit
@@ -234,7 +293,7 @@ def test_select_files(tmp_path, step_unit):
     # A simulation window of 14:00 to 18:00 against a 12:00 forecast reference. The window arrives as
     # datetimes now, rather than being re-parsed out of the namelist's date strings.
     job = JobConfig(
-        model=Model.IFS_HRES_EUROPE,
+        model=model,
         forecast_datetime=datetime(2024, 5, 1, 12),
         simulation_start=datetime(2024, 5, 1, 14),
         simulation_end=datetime(2024, 5, 1, 18),
@@ -268,17 +327,8 @@ def test_select_files(tmp_path, step_unit):
             ) for key in keys}
         subset = select_files(job,
                             step_unit=CONFIG.main.input.step_unit,
-                            model=Model.IFS_HRES_EUROPE)
+                            model=model)
 
-        # Starts at 13:00, not 14:00: the simulation starts after the forecast reference, so the
-        # preceding step is pulled in for precipitation de-accumulation.
-        expected = {
-            str(tmp_path / "1000"),
-            str(tmp_path / "2000"),
-            str(tmp_path / "3000"),
-            str(tmp_path / "4000"),
-            str(tmp_path / "5000"),
-            str(tmp_path / "6000")
-        }
-        assert len(subset) == 6
+        expected = {str(tmp_path / f"{hour}000") for hour in expected_step_hours}
+        assert len(subset) == len(expected_step_hours)
         assert set(subset) == expected
