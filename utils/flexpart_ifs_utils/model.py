@@ -6,9 +6,9 @@ class EnvironmentParameters(Enum):
 
     Only the end of the available model data arrives this way now. The eight ``EMISSION_*`` variables
     that used to accompany it encoded a globally-computed release window; that window is now derived
-    inside the container from the site's own offsets, so they are no longer read. They are still
-    emitted by the run scheduler and forwarded by the state machine, and get removed there separately
-    - this app must stop reading them first.
+    inside the container from the site's own offsets (with an on-demand run's ``JOB_OVERRIDES``, if
+    any, taking precedence - see :func:`flexpart_ifs_utils.job_config.resolve_job_config`), so they are
+    no longer emitted by the run scheduler or forwarded by the state machine at all.
     """
 
     SIMULATION_END_YYYY = 1

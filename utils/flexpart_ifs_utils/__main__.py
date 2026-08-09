@@ -23,6 +23,7 @@ Usage:
 """
 
 import argparse
+import json
 import logging
 import os
 import sys
@@ -119,7 +120,10 @@ if __name__ == '__main__':
     # Plain declarative site data - no longer a Jinja template of the namelist, so there is nothing
     # to render here and no intermediate file. The namelist templates live in the image.
     site = load_site_config(JOBS_DIR / f'{RELEASE_SITE}.yaml')
-    job = resolve_job_config(FORECAST_DATETIME, MODEL, site)
+    # On-demand runs may override the site's own offsets for this one job; scheduled runs leave
+    # this empty, in which case the site's config applies. See resolve_job_config.
+    overrides = json.loads(os.getenv('JOB_OVERRIDES', '{}'))
+    job = resolve_job_config(FORECAST_DATETIME, MODEL, site, overrides)
 
     DATA_DIR = JOBS_DIR / 'data'
     if not os.path.exists( DATA_DIR ):
