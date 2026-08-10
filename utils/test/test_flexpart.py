@@ -16,13 +16,15 @@ from flexpart_ifs_utils.grib_utils import extract_metadata_from_grib_file
 def aws_server_session(aws_credentials):
 
     _S3_SERVER_HOST = '127.0.0.1'
-    _S3_SERVER_PORT = 5555
-    server = ThreadedMotoServer(ip_address=_S3_SERVER_HOST, port=_S3_SERVER_PORT)
+    # port=0 lets the OS assign a free ephemeral port, avoiding collisions when tests from
+    # multiple repos/runs share this machine.
+    server = ThreadedMotoServer(ip_address=_S3_SERVER_HOST, port=0)
+    server.start()
+    host, port = server.get_host_and_port()
 
     with mock.patch.dict(os.environ, {
-        "AWS_ENDPOINT_URL": f'http://{_S3_SERVER_HOST}:{_S3_SERVER_PORT}'
+        "AWS_ENDPOINT_URL": f'http://{host}:{port}'
     }):
-        server.start()
         session = boto3.Session()
 
         try:
