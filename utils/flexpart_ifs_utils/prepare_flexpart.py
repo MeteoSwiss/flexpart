@@ -226,7 +226,7 @@ def select_files(
             f"{step_unit}"
         )
 
-    start_dt, end_dt = job.simulation_start, job.simulation_end
+    start_dt = job.simulation_start
 
     if start_dt > job.forecast_datetime:
         # Flexpart de-accumulates precipitation across steps, so it needs the step before the
@@ -240,14 +240,14 @@ def select_files(
 
     objs = list_objs_in_bucket(
         start_time=start_dt,
-        end_time=end_dt,
+        end_time=job.simulation_end,
     )
 
-    filtered_objs = _select_keys_in_window(objs, start_dt, end_dt, step_unit)
+    filtered_objs = _select_keys_in_window(objs, start_dt, job.simulation_end, step_unit)
 
     if not filtered_objs:
         raise RuntimeError(
-            f"There are no s3 objects for valid times between {start_dt} and {end_dt}"
+            f"There are no s3 objects for valid times between {start_dt} and {job.simulation_end}"
         )
 
     return filtered_objs
