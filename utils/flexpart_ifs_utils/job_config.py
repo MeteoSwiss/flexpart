@@ -59,9 +59,12 @@ def resolve_job_config(
 ) -> JobConfig:
     """Build the job's window from the forecast reference time and the site's offsets.
 
-    Resolution order for each offset: the payload's ``jobConfig`` override (how an on-demand run
-    asks for its own window), then the site config, then the built-in default. ``overrides`` is read
-    but nothing writes it yet - the on-demand API's ``runConfig`` is wired onto it separately.
+    Resolution order for each offset: the run's own override (how an on-demand run asks for its own
+    window), then the site config, then the built-in default. That override is the run row's
+    ``runConfig``, forwarded verbatim by the run scheduler as the ``JOB_OVERRIDES`` environment
+    variable and parsed in ``__main__``; it is empty for a scheduled run, leaving the site's own
+    config to apply. It stays free-form the whole way through, which is why keys this function does
+    not read are logged rather than dropped without trace - see _warn_unrecognised_overrides.
 
     ``simulation_end`` is the one value that is not a free choice: Flexpart can only be driven over
     forecast steps that exist, so a site's ``simulation_duration_h`` is clamped to the end of the
