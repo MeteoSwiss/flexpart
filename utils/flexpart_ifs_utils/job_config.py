@@ -22,6 +22,16 @@ _logger = logging.getLogger(__name__)
 
 _FORECAST_DATETIME_FORMAT = "%Y%m%d%H%M"
 
+# The site-config fields an on-demand run's payload may override. Anything else it carries is not
+# read below, so it is logged rather than dropped without trace - see _warn_unrecognised_overrides.
+# Adding an overridable field means adding it here too.
+_OVERRIDABLE_FIELDS = frozenset({
+    "simulation_start_offset_h",
+    "release_start_offset_h",
+    "release_end_offset_h",
+    "simulation_duration_h",
+})
+
 
 @dataclass(frozen=True)
 class JobConfig:
@@ -61,6 +71,7 @@ def resolve_job_config(
     reference = _parse_forecast_datetime(forecast_datetime)
     data_end = _data_end_from_env()
     overrides = overrides or {}
+    _warn_unrecognised_overrides(overrides, site)
 
     simulation_start_offset = _offset(overrides, site, "simulation_start_offset_h")
     release_start_offset = _offset(overrides, site, "release_start_offset_h")
@@ -99,6 +110,24 @@ def resolve_job_config(
         reference, data_end,
     )
     return job
+
+
+def _warn_unrecognised_overrides(overrides: dict[str, Any], site: SiteConfig) -> None:
+    """Log the override keys this function does not read, which are otherwise applied to nothing.
+
+    A warning and not an error on purpose. By the time the container runs, the run row is written and
+    the execution has started, and the job fans out per site and member - rejecting a stale payload
+    here would turn it into a failed task per job rather than one refused request. The eager check
+    belongs at ``create_run``, which already validates ``sites`` and ``computeBackends`` before a run
+    is accepted at all. This is only the trace that says a requested window was not applied.
+    """
+    unrecognised = sorted(set(overrides) - _OVERRIDABLE_FIELDS)
+    if unrecognised:
+        _logger.warning(
+            "Ignoring unrecognised job override(s) for %s: %s. The site's own config applies for "
+            "these; the overridable fields are %s.",
+            site.name, ", ".join(unrecognised), ", ".join(sorted(_OVERRIDABLE_FIELDS)),
+        )
 
 
 def _offset(overrides: dict[str, Any], site: SiteConfig, field: str) -> float:

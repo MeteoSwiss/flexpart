@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 
 import pytest
@@ -106,6 +107,39 @@ def test_resolve_job_config_prefers_a_payload_override(tmp_path, reference_data_
 
     assert job.release_start == datetime(2024, 12, 9, 22)
     assert job.release_end == datetime(2024, 12, 10, 1)
+
+
+def test_resolve_job_config_warns_about_unrecognised_overrides(tmp_path, reference_data_end, caplog):
+    """A payload in a vocabulary this function does not read applies to nothing - not silently.
+
+    The override reaching the container is a free-form dict carried verbatim from the run row, so a
+    payload naming fields that are not site config fields resolves to exactly the site's own defaults.
+    Without this log line there is no trace that a requested window was dropped.
+    """
+
+    site = _site(tmp_path, "release_start_offset_h: 3\nrelease_end_offset_h: 9\n")
+
+    with caplog.at_level(logging.WARNING):
+        job = resolve_job_config(FORECAST, Model.IFS_HRES_EUROPE, site,
+                                 overrides={"model": {"name": "IFS-HRES-Europe"},
+                                            "release": {"duration": 6}})
+
+    assert "Ignoring unrecognised job override(s) for Testerhausen: model, release" in caplog.text
+    # ... and the site's own config still applies, unchanged.
+    assert job.release_start == datetime(2024, 12, 10, 0)
+    assert job.release_end == datetime(2024, 12, 10, 6)
+
+
+def test_resolve_job_config_does_not_warn_about_a_recognised_override(tmp_path, reference_data_end, caplog):
+    """Every scheduled run passes through here, so the check must not be a source of noise."""
+
+    site = _site(tmp_path, "release_start_offset_h: 3\n")
+
+    with caplog.at_level(logging.WARNING):
+        resolve_job_config(FORECAST, Model.IFS_HRES_EUROPE, site,
+                           overrides={"release_start_offset_h": 1})
+
+    assert "unrecognised" not in caplog.text
 
 
 def test_resolve_job_config_rejects_a_reversed_release_window(tmp_path, reference_data_end):
