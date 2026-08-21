@@ -61,6 +61,11 @@ if __name__ == '__main__':
                     help='Forecast reference datetime, in format YYYYMMDDhhmm.',
                     required=True
                     )
+    p1.add_argument('--run-id',
+                    help='The run this output belongs to. It is the root of every uploaded object '
+                         'key; see upload_output.',
+                    required=True
+                    )
 
     p2 = sp.add_parser('generate')
     p2.add_argument('--flexpart_dir',
@@ -94,7 +99,7 @@ if __name__ == '__main__':
         # that stamp is what forced the render step and the ensemble aggregator to re-derive the
         # release offset, and it is why the offset could not vary per site.
         canonicalize_output_names(args.directory / args.site / 'output')
-        upload_output(args.directory, args.site, args.datetime, parent='output')
+        upload_output(args.directory, args.run_id, args.site, args.datetime, parent='output')
         sys.exit(0)
 
     FORECAST_DATETIME: str = args.datetime

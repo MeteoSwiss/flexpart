@@ -75,6 +75,7 @@ def canonicalize_output_names(output_dir: Path) -> None:
 
 def upload_output(
     directory: Path,
+    run_id: str,
     site: str,
     forecast_datetime: str,
     bucket: Bucket = CONFIG.main.aws.s3.output,
@@ -86,6 +87,12 @@ def upload_output(
     Uploads files from the specified directory to the provided S3 bucket,
     with metadata of forecast datetime and site attached. If a parent directory is specified, only files
     within that parent directory are uploaded.
+
+    The object key is rooted at ``run_id`` and carries nothing below it but the release site, this
+    application's only fan-out dimension. The run id is a deterministic composite that already
+    encodes the run type, application, model and forecast reference, so repeating the forecast
+    reference as a key segment would say the same thing twice - it is still recorded as object
+    metadata, where it is searchable without being part of the identity.
     """
 
     if not directory.is_dir():
@@ -105,7 +112,7 @@ def upload_output(
             path_list = [p for p in path_list if p.parent.name == parent]
 
         for path in path_list:
-            key = f"{forecast_datetime[:8]}_{forecast_datetime[8:10]}/{site}/{path.name}"
+            key = f"{run_id}/{site}/{path.name}"
             _logger.info(
                 "Uploading file: %s to bucket: %s with key: %s",
                 path,
@@ -118,7 +125,14 @@ def upload_output(
                         data,
                         bucket.name,
                         key,
-                        ExtraArgs={"Metadata": {"date": forecast_datetime[:8], "time": forecast_datetime[8:], "site": site}},
+                        ExtraArgs={
+                            "Metadata": {
+                                "run_id": run_id,
+                                "date": forecast_datetime[:8],
+                                "time": forecast_datetime[8:],
+                                "site": site,
+                            }
+                        },
                     )
             except ClientError as exc:
                 _logger.error("Upload failed for %s: %s", path, exc)
