@@ -79,7 +79,7 @@ def test_upload_output(s3, model_data: Path):
             assert obj["Body"].read() == f.read()
 
         assert obj["Metadata"] == {
-            'run_id': run_id,
+            'run-id': run_id,
             'date': '20240607',
             'time': '12',
             'site': site,

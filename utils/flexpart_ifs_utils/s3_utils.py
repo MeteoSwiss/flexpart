@@ -127,7 +127,10 @@ def upload_output(
                         key,
                         ExtraArgs={
                             "Metadata": {
-                                "run_id": run_id,
+                                # Hyphenated to match flexpart-cosmo-icon, where an underscored
+                                # metadata key is lost by the moto server its tests run against; the
+                                # two flexpart applications describe their output with one vocabulary.
+                                "run-id": run_id,
                                 "date": forecast_datetime[:8],
                                 "time": forecast_datetime[8:],
                                 "site": site,

@@ -9,7 +9,6 @@ import pytest
 from moto.server import ThreadedMotoServer
 
 from flexpart_ifs_utils import CONFIG
-from flexpart_ifs_utils.grib_utils import extract_metadata_from_grib_file
 
 
 @pytest.fixture(autouse=True)
@@ -32,6 +31,14 @@ def aws_server_session(aws_credentials):
         finally:
             server.stop()
 
+
+# The run id the state machine hands the container. A deterministic composite of run type,
+# application, model and forecast reference (leadtime-aggregator: common/domain/run_id.py), and the
+# root of every object key this run uploads - which is why the upload assertions below need no other
+# prefix, and why FORECAST_DATETIME no longer appears in one.
+RUN_ID = 'scheduled-flexpart-IFS-Europe-20241210-0000'
+
+
 @pytest.fixture
 def mock_environment(monkeypatch):
     # End of the available model data. The eight EMISSION_* variables that used to accompany this are
@@ -42,10 +49,11 @@ def mock_environment(monkeypatch):
     monkeypatch.setenv("SIMULATION_END_ZZ", '05')
     # Below vars are used in entrypoint.sh. FORECAST_DATETIME is YYYYMMDDhhmm, as the run scheduler
     # builds it from forecast_date + forecast_time; it has to stay aligned with the reference time of
-    # the GRIB in TEST_DATA, because the upload key is derived from it.
+    # the GRIB in TEST_DATA, because the simulation window is resolved from it.
     monkeypatch.setenv("FORECAST_DATETIME", '202412100000')
     monkeypatch.setenv("RELEASE_SITE_NAME", 'Testerhausen')
     monkeypatch.setenv("MODEL", 'IFS-Europe')
+    monkeypatch.setenv("RUN_ID", RUN_ID)
 
 
 # The Testerhausen site object Terraform would upload to `sites/Testerhausen.yaml` in the site-config
@@ -106,14 +114,10 @@ def test_flexpart_run(aws_server_session, mock_environment):
     # re-derive the release offset to address it.
     assert 'grid_conc.nc' in [path.name for path in path_list]
 
-    md = extract_metadata_from_grib_file(
-        next((jobs_dir/'data').iterdir())
-    )
-
     # assert that output files are uploaded to S3 (moto3)
     in_mem_client = boto3.client("s3")
     for path in path_list:
-        key = f"{md.date}_{md.time[:2]}/{os.getenv('RELEASE_SITE_NAME')}/{path.name}"
+        key = f"{RUN_ID}/{os.getenv('RELEASE_SITE_NAME')}/{path.name}"
         actual = in_mem_client.get_object(Bucket = CONFIG.main.aws.s3.output.name, Key = key)["Body"].read()
         with open(path, mode='rb') as f:
             assert actual == f.read()
