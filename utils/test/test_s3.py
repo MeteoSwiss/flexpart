@@ -62,19 +62,28 @@ def test_upload_output(s3, model_data: Path):
     bucket = CONFIG.main.aws.s3.output
     site = 'ABC'
     datetime = '2024060712'
+    run_id = 'scheduled-flexpart-IFS-Global-20240607-1200'
 
     # when
-    upload_output(model_data, site, datetime, bucket)
+    upload_output(model_data, run_id, site, datetime, bucket)
 
     # then
     assert 'Contents' in s3.list_objects(Bucket = bucket.name)
 
     for path in model_data.iterdir():
 
-        # check the files were uploaded as expected
-        actual = s3.get_object(Bucket = bucket.name, Key = f"20240607_12/{site}/{path.name}")["Body"].read()
+        # check the files were uploaded as expected: the key is the run id plus the release site,
+        # with the forecast reference carried as metadata rather than as a key segment
+        obj = s3.get_object(Bucket = bucket.name, Key = f"{run_id}/{site}/{path.name}")
         with open(path, mode='rb') as f:
-            assert actual == f.read()
+            assert obj["Body"].read() == f.read()
+
+        assert obj["Metadata"] == {
+            'run-id': run_id,
+            'date': '20240607',
+            'time': '12',
+            'site': site,
+        }
 
 def test_canonicalize_output_names(tmp_path: Path):
 
