@@ -8,7 +8,8 @@ import pytest
 from flexpart_ifs_utils import CONFIG
 from flexpart_ifs_utils.config.service_settings import Bucket
 from flexpart_ifs_utils.grib_utils import extract_metadata_from_grib_file
-from flexpart_ifs_utils.s3_utils import (download_keys_from_bucket,
+from flexpart_ifs_utils.s3_utils import (canonicalize_output_names,
+                                         download_keys_from_bucket,
                                          list_objs_in_bucket,
                                          upload_output)
 
@@ -74,6 +75,79 @@ def test_upload_output(s3, model_data: Path):
         actual = s3.get_object(Bucket = bucket.name, Key = f"20240607_12/{site}/{path.name}")["Body"].read()
         with open(path, mode='rb') as f:
             assert actual == f.read()
+
+def test_canonicalize_output_names(tmp_path: Path):
+
+    # given - what Flexpart actually writes: the concentration grid stamped with the simulation
+    # start, next to the other output files it leaves behind
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+    (output_dir / "grid_conc_20241210000000.nc").write_text("conc", encoding="utf-8")
+    (output_dir / "header").write_text("header", encoding="utf-8")
+
+    # when
+    canonicalize_output_names(output_dir)
+
+    # then
+    assert (output_dir / "grid_conc.nc").read_text(encoding="utf-8") == "conc"
+    assert not (output_dir / "grid_conc_20241210000000.nc").exists()
+    assert (output_dir / "header").exists()
+
+
+def test_canonicalize_output_names_renames_nest_separately(tmp_path: Path):
+
+    # given - the nested grid also matches the plain pattern, so it must not be mistaken for it
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+    (output_dir / "grid_conc_20241210000000.nc").write_text("conc", encoding="utf-8")
+    (output_dir / "grid_conc_nest_20241210000000.nc").write_text("nest", encoding="utf-8")
+
+    # when
+    canonicalize_output_names(output_dir)
+
+    # then
+    assert (output_dir / "grid_conc.nc").read_text(encoding="utf-8") == "conc"
+    assert (output_dir / "grid_conc_nest.nc").read_text(encoding="utf-8") == "nest"
+
+
+def test_canonicalize_output_names_requires_the_concentration_grid(tmp_path: Path):
+
+    # given - a backward run writes grid_time_* instead, and is not wired through to rendering
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+    (output_dir / "grid_time_20241210000000.nc").write_text("time", encoding="utf-8")
+
+    # then - fail here rather than leaving the render step pointed at a key nobody wrote
+    with pytest.raises(RuntimeError, match="grid_conc"):
+        canonicalize_output_names(output_dir)
+
+
+def test_canonicalize_output_names_rejects_an_ambiguous_match(tmp_path: Path):
+
+    # given
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+    (output_dir / "grid_conc_20241210000000.nc").write_text("a", encoding="utf-8")
+    (output_dir / "grid_conc_20241210030000.nc").write_text("b", encoding="utf-8")
+
+    # then
+    with pytest.raises(RuntimeError, match="at most one"):
+        canonicalize_output_names(output_dir)
+
+
+def test_canonicalize_output_names_is_idempotent(tmp_path: Path):
+
+    # given - a hand-run `upload` against a job directory that was already renamed
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+    (output_dir / "grid_conc.nc").write_text("conc", encoding="utf-8")
+
+    # when
+    canonicalize_output_names(output_dir)
+
+    # then
+    assert (output_dir / "grid_conc.nc").read_text(encoding="utf-8") == "conc"
+
 
 def _add_files_to_bucket(bucket: Bucket, files: list[Path], s3) -> None:
 

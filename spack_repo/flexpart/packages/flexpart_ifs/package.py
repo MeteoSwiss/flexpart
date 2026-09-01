@@ -47,3 +47,6 @@ class FlexpartIfs(MakefilePackage):
         install_tree('options', join_path(prefix.share, 'options'))
         install_tree('options.meteoswiss',
                      join_path(prefix.share, 'options.meteoswiss'))
+        # Anonymized COMMAND/RELEASES templates; flexpart_ifs_utils renders these per job instead of
+        # patching the skeletons in the options directories above.
+        install_tree('templates', join_path(prefix.share, 'templates'))

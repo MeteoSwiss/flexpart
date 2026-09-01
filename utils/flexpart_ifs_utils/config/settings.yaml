@@ -13,6 +13,8 @@ main:
     stack_size: 100M
   input:
     step_unit: hours
+  runtime_config:
+    site_config_key_prefix: "sites/"
   aws:
     s3:
       nwp_model_data:
@@ -22,4 +24,8 @@ main:
       output:
         region: eu-central-2
         name: flexpart-output
+        retries: 10
+      site_config:
+        region: eu-central-2
+        name: flexpart-ifs-static-input
         retries: 10

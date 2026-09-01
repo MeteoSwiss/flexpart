@@ -51,9 +51,42 @@ def resource_dir() -> Path:
     return resource
 
 @pytest.fixture(scope="session")
-def jinja_template() -> Path:
-    jinja_template: Path = Path(os.path.dirname(os.path.realpath(__file__))).parent / 'flexpart_ifs_utils/runtime_configuration.j2'
-    return jinja_template
+def site_config_file() -> Path:
+    # A single site's config as downloaded from the site-config S3 bucket (see
+    # dispersionmodelling-deployment/config/flexpart/sites_ifs.yaml). Plain data: it is no longer a
+    # Jinja template of the namelist, so there is nothing to render before loading it.
+    return Path(os.path.dirname(os.path.realpath(__file__))) / 'references/testerhausen_site.yaml'
+
+
+@pytest.fixture(scope="session")
+def reference_forecast_datetime() -> str:
+    """The forecast reference the reference namelists were generated from.
+
+    With testerhausen_site.yaml's 3/3/8 hour offsets this yields the simulation and release windows
+    in references/Testerhausen/input/{COMMAND,RELEASES}.
+    """
+    return "202412092100"
+
+
+@pytest.fixture(scope="session")
+def templates_dir() -> Path:
+    """Where the anonymized control-file templates live, same path prepare_job_directory uses.
+
+    Not a path relative to this test file: the tester image copies utils/test to /scratch/test,
+    dropping the utils/ level, so a source-tree-relative path silently points nowhere. The templates
+    are installed via spack into FLEXPART_PREFIX/share/templates, and that env var is guaranteed set
+    here - pytest_configure below raises before collection otherwise.
+    """
+    return Path(os.environ['FLEXPART_PREFIX']) / 'share' / 'templates'
+
+
+@pytest.fixture
+def reference_data_end(monkeypatch):
+    """End of available model data, as the state machine still supplies it."""
+    monkeypatch.setenv("SIMULATION_END_YYYY", "2024")
+    monkeypatch.setenv("SIMULATION_END_MM", "12")
+    monkeypatch.setenv("SIMULATION_END_DD", "10")
+    monkeypatch.setenv("SIMULATION_END_ZZ", "05")
 
 
 @pytest.fixture(scope="session")

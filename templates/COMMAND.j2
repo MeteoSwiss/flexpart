@@ -4,14 +4,20 @@
 !*                         Please select your options                         *
 !*                                                                            *
 !******************************************************************************
+!
+! Anonymized control-file template. Lines a job cannot vary are literals; the templated values come
+! from the per-site config published to S3 by Terraform (`site`) and from the run's resolved time
+! window (`job`, derived from FORECAST_DATETIME plus the site's offsets). Adding a knob means
+! templating a line here - the site config deliberately carries no namelist key names and no dates.
+!
 &COMMAND
- LDIRECT=1,
- IBDATE=20241210,
- IBTIME=000000,
- IEDATE=20241210,
- IETIME=050000,
- LOUTSTEP=10800,
- LOUTAVER=          10800, ! Interval of output averaging (s)
+ LDIRECT={{ site.direction_value }}, ! Simulation direction in time   ; 1 (forward) or -1 (backward)
+ IBDATE={{ job.simulation_start | fp_date }}, ! Start date of the simulation   ; YYYYMMDD: YYYY=year, MM=month, DD=day  
+ IBTIME={{ job.simulation_start | fp_time }}, ! Start time of the simulation   ; HHMISS: HH=hours, MI=min, SS=sec; UTC
+ IEDATE={{ job.simulation_end | fp_date }}, ! End date of the simulation     ; same format as IBDATE 
+ IETIME={{ job.simulation_end | fp_time }}, ! End  time of the simulation    ; same format as IBTIME
+ LOUTSTEP={{ site.output_interval_s }}, ! Interval of model output; average concentrations calculated every LOUTSTEP (s)  
+ LOUTAVER={{ site.output_interval_s }}, ! Interval of output averaging (s)
  LOUTSAMPLE=          900, ! Interval of output sampling  (s), higher stat. accuracy with shorter intervals
  ITSPLIT=       999999999, ! Interval of particle splitting (s)
  LSYNCTIME=           900, ! All processes are synchronized to this time interval (s)
@@ -19,7 +25,7 @@
  IFINE=                 4, ! Reduction for time step in vertical transport, used only if CTL>1
  IOUT=                  9, ! Output type: [1]mass 2]pptv 3]1&2 4]plume 5]1&4, +8 for NetCDF output
  IPOUT=                 0, ! Particle position output: 0]no 1]every output 2]only at end 3]time averaged
- LSUBGRID=              0, ! Increase of ABL heights due to sub-grid scale orographic variations;[0]off 1]on 
+ LSUBGRID=              1, ! Increase of ABL heights due to sub-grid scale orographic variations;[0]off 1]on 
  LCONVECTION=           1, ! Switch for convection parameterization;0]off [1]on
  LAGESPECTRA=           0, ! Switch for calculation of age spectra (needs AGECLASSES);[0]off 1]on
  IPIN=                  0, ! Warm start from particle dump (needs previous partposit_end file); [0]no 1]yes  
@@ -33,5 +39,4 @@
  LINIT_COND=            0, ! Output sensitivity to initial conditions (bkw mode only) [0]off 1]conc 2]mmr
  SURF_ONLY=             0, ! Output only for the lowest model layer, used w/ LINIT_COND=1 or 2
  CBLFLAG=               0, ! Skewed, not Gaussian turbulence in the convective ABL, need large CTL and IFINE
- OHFIELDS_PATH= "../../flexin/", ! Default path for OH file
 /

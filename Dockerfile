@@ -22,6 +22,7 @@ WORKDIR /opt
 # structure otherwise when it forms the .ctx directory
 COPY options /opt/options
 COPY options.meteoswiss /opt/options.meteoswiss
+COPY templates /opt/templates
 COPY spack_env /opt/spack_env
 COPY spack_repo /opt/spack_repo
 COPY src /opt/src

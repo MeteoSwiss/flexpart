@@ -1,0 +1,32 @@
+!******************************************************************************
+!*                                                                            *
+!*      Input file for the Lagrangian particle dispersion model FLEXPART      *
+!*                         Please select your options                         *
+!*                                                                            *
+!******************************************************************************
+!
+! Anonymized control-file template. Lines a job cannot vary are literals; the templated values come
+! from the per-site config published to S3 by Terraform (`site`) and from the run's resolved time
+! window (`job`, derived from FORECAST_DATETIME plus the site's offsets). Adding a knob means
+! templating a line here - the site config deliberately carries no namelist key names and no dates.
+!
+&RELEASES_CTRL
+ NSPEC={{ site.nspec }}, ! Total number of species
+ SPECNUM_REL={{ site.species }}, ! Species numbers in directory SPECIES
+/
+&RELEASE                   ! For each release
+ IDATE1={{ job.release_start | fp_date }}, ! Release start date, YYYYMMDD: YYYY=year, MM=month, DD=day
+ ITIME1={{ job.release_start | fp_time }}, ! Release start time in UTC HHMISS: HH hours, MI=minutes, SS=seconds
+ IDATE2={{ job.release_end | fp_date }}, ! Release end date, same as IDATE1
+ ITIME2={{ job.release_end | fp_time }}, ! Release end time, same as ITIME1
+ LON1={{ site.longitude }}, ! Left longitude of release box -180 < LON1 <180
+ LON2={{ site.longitude }}, ! Right longitude of release box, same as LON1
+ LAT1={{ site.latitude }}, ! Lower latitude of release box, -90 < LAT1 < 90
+ LAT2={{ site.latitude }}, ! Upper latitude of release box same format as LAT1 
+ Z1={{ site.height_m }}, ! Lower height of release box meters/hPa above reference level
+ Z2={{ site.height_m }}, ! Upper height of release box meters/hPa above reference level
+ ZKIND={{ site.zkind }}, ! Reference level 1=above ground, 2=above sea level, 3 for pressure in hPa
+ MASS={{ site.mass_bq | fortran_real }}, ! Total mass emitted, only relevant for fwd simulations
+ PARTS   =         200000, ! Total number of particles to be released
+ COMMENT="{{ site.comment }}", ! Comment, written in the outputfile
+/

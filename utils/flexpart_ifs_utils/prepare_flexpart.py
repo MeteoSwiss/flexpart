@@ -7,20 +7,23 @@ and writing the job script with the relevent paths to the input files.
 
 import logging
 import os
-import re
 import shutil
-from datetime import datetime, timedelta
+from datetime import timedelta
 from pathlib import Path
 
-import yaml
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
 from flexpart_ifs_utils.config.service_settings import OpenMPConfig
 from flexpart_ifs_utils.grib_utils import _get_valid_datetime
+from flexpart_ifs_utils.job_config import JobConfig
 from flexpart_ifs_utils.model import MODEL_PREFIX, Model
+from flexpart_ifs_utils.site_config import SiteConfig
 from flexpart_ifs_utils.s3_utils import list_objs_in_bucket, _select_keys_in_window
 
 _logger = logging.getLogger(__name__)
+
+# The namelists rendered from templates/, rather than copied from the packaged options directories.
+_NAMELIST_TEMPLATES = ("COMMAND", "RELEASES")
 
 
 def _init_job_dirs(jobs_dir: Path, name: str) -> tuple[Path, Path, Path, Path]:
@@ -34,10 +37,14 @@ def _init_job_dirs(jobs_dir: Path, name: str) -> tuple[Path, Path, Path, Path]:
 
 
 def _populate_input_dir(flexpart_dir: Path, input_dir: Path, model: Model) -> None:
+    # COMMAND and RELEASES are rendered from templates/, so the packaged skeletons are skipped -
+    # and with them the archived per-site RELEASES.bez/.goe/.cherno/... variants, which the old
+    # regex-substitution pass used to patch and leave behind in the job's input directory.
+    skip_namelists = shutil.ignore_patterns(*_NAMELIST_TEMPLATES, "RELEASES.*")
     options_dir = flexpart_dir / "share" / "options"
     mch_options_dir = flexpart_dir / "share" / "options.meteoswiss"
-    shutil.copytree(options_dir, input_dir)
-    shutil.copytree(mch_options_dir, input_dir, dirs_exist_ok=True)
+    shutil.copytree(options_dir, input_dir, ignore=skip_namelists)
+    shutil.copytree(mch_options_dir, input_dir, dirs_exist_ok=True, ignore=skip_namelists)
     if model == model.IFS_HRES:
         shutil.copy(input_dir / "OUTGRID.g", input_dir / "OUTGRID")
     elif model == model.IFS_HRES_EUROPE:
@@ -78,22 +85,19 @@ def _write_pathnames(
     )
 
 def prepare_job_directory(
-    configuration: dict,
+    site: SiteConfig,
+    job: JobConfig,
     jobs_dir: Path,
     flexpart_dir: Path,
     data_dir: Path,
     openmp_config: OpenMPConfig,
     model: Model,
 ) -> Path:
-    job_dir, input_dir, output_dir, job_data_dir = _init_job_dirs(
-        jobs_dir, configuration["name"]
-    )
+    job_dir, input_dir, output_dir, job_data_dir = _init_job_dirs(jobs_dir, site.name)
 
     _populate_input_dir(flexpart_dir, input_dir, model)
 
-    namelists: list[Path] = [input_dir / "COMMAND", *input_dir.glob("RELEASES*")]
-    for nl in namelists:
-        _configure_namelist(configuration, nl)
+    render_namelists(flexpart_dir / "share" / "templates", input_dir, site, job)
 
     available_path = input_dir / "AVAILABLE"
     _generate_available(available_path, _path_list(data_dir, model=model))
@@ -113,34 +117,61 @@ def prepare_job_directory(
     return job_dir
 
 
-def render_template(
-    template_path: Path,
-    output_path: Path,
-    release_list: list[str] | None,
-    data: dict[str, str | None],
+def _fp_date(moment: "object") -> str:
+    """Flexpart's namelist date encoding, YYYYMMDD."""
+    return moment.strftime("%Y%m%d")  # type: ignore[attr-defined]
+
+
+def _fp_time(moment: "object") -> str:
+    """Flexpart's namelist time encoding, HHMISS.
+
+    Six digits, so minute and second resolution is expressible. The retired site-config templates
+    concatenated an hour with a literal '0000', which is why offsets could only ever be whole hours.
+    """
+    return moment.strftime("%H%M%S")  # type: ignore[attr-defined]
+
+
+def _fortran_real(value: float) -> str:
+    """Format a mass as the Fortran real literal the namelist has always carried, e.g. 2.8800E10.
+
+    The site config holds the mass as a number, so it cannot silently mean two different things
+    depending on whether someone quoted it in YAML. Fortran's namelist reader accepts an exponent
+    with or without a sign; the unsigned form is kept to match what the namelist held before.
+    """
+    return f"{value:.4E}".replace("E+", "E")
+
+
+def render_namelists(
+    templates_dir: Path,
+    input_dir: Path,
+    site: SiteConfig,
+    job: JobConfig,
 ) -> None:
-    """Fill Jinja template of runtime configuration with runtime config stored in `data`."""
-    _logger.info("Rendering templates")
-    template_content = template_path.read_text(encoding="utf-8")
+    """Render COMMAND and RELEASES from the packaged control-file templates.
 
-    env = Environment(loader=FileSystemLoader(template_path.parent), autoescape=True)
-    rendered_content = env.from_string(template_content).render(data=data)
+    Replaces a regex-substitution pass over the packaged skeletons, which could only set keys that
+    already appeared in them and silently ignored anything else. ``StrictUndefined`` makes the
+    equivalent mistake here - referencing a field the config does not carry - a hard failure.
 
-    output_path.write_text(rendered_content, encoding="utf-8")
+    The rendered files are logged in full: this is the only way to confirm from a task's logs that the
+    S3 site object, the offsets and the template composed into the namelist that Flexpart actually ran.
+    """
+    env = Environment(
+        loader=FileSystemLoader(templates_dir),
+        autoescape=False,
+        undefined=StrictUndefined,
+        keep_trailing_newline=True,
+        trim_blocks=True,
+        lstrip_blocks=True,
+    )
+    env.filters["fp_date"] = _fp_date
+    env.filters["fp_time"] = _fp_time
+    env.filters["fortran_real"] = _fortran_real
 
-    if release_list:
-        _filter_config(output_path, release_list)
-
-
-def _filter_config(yaml_file: Path, release_sites: list[str]) -> None:
-    """Filters the runtime configuration yaml to contain only the release site that will be run."""
-    with open(yaml_file, "r", encoding="utf-8") as file:
-        data = yaml.load(file, Loader=yaml.Loader)
-
-    filtered_sections = [section for section in data if section["name"] in release_sites]
-
-    with open(yaml_file, "w", encoding="utf-8") as file:
-        yaml.dump(filtered_sections, file)
+    for name in _NAMELIST_TEMPLATES:
+        rendered = env.get_template(f"{name}.j2").render(site=site, job=job)
+        (input_dir / name).write_text(rendered, encoding="utf-8")
+        _logger.info("Rendered %s namelist for site %s:\n%s", name, site.name, rendered)
 
 
 def _write_job_script(
@@ -181,48 +212,12 @@ def _generate_available(path: Path, data_paths: list[Path]) -> None:
             _logger.info(entry)
 
 
-def _configure_namelist(config: dict, namelist: Path) -> None:
-    """Using values from the runtime configuration, modify various default values of the namelist."""
-    filedata = namelist.read_text(encoding="utf-8")
-
-    nl_type = namelist.name.lower().split(".")[0]
-    if nl_type not in ("command", "releases"):
-        raise RuntimeError("Namelist to be configured must be one of COMMAND/RELEASES*")
-
-    for key, new_value in config[nl_type].items():
-        if key in ("IBTIME", "IETIME", "ITIME1", "ITIME2"):
-            new_value = f"{new_value:06}"
-        elif key == "COMMENT":
-            new_value = f"\"{new_value}\""
-
-        keys = [key, key[:-1] + "2"] if key in ("LAT1", "LON1", "Z1") else [key]
-
-        for key_ in keys:
-            filedata = re.sub(
-                key_ + r"\s*?= *?\d*(.\d*)*,.*",
-                key_ + f"={new_value},",
-                filedata,
-            )
-
-    namelist.write_text(filedata, encoding="utf-8")
-
-
-def _get_start_end(config: dict) -> tuple[datetime, datetime]:
-    start = str(config["IBDATE"]) + f"{config['IBTIME']:06}"
-    end = str(config["IEDATE"]) + f"{config['IETIME']:06}"
-
-    start_dt = datetime.strptime(start, "%Y%m%d%H%M%S")
-    end_dt = datetime.strptime(end, "%Y%m%d%H%M%S")
-
-    return start_dt, end_dt
-
-
 def select_files(
-    config: dict,
-    forecast_datetime: str,
+    job: JobConfig,
     step_unit: str,
     model: Model,
 ) -> list[str]:
+    """Pick the input GRIB whose valid times cover the job's simulation window."""
 
     step_unit = step_unit.lower()
     if step_unit not in ("minutes", "hours"):
@@ -231,11 +226,11 @@ def select_files(
             f"{step_unit}"
         )
 
-    start_dt, end_dt = _get_start_end(config)
+    start_dt = job.simulation_start
 
-    forecast_ref = datetime.strptime(forecast_datetime, "%Y%m%d%H%M")
-
-    if start_dt > forecast_ref:
+    if start_dt > job.forecast_datetime:
+        # Flexpart de-accumulates precipitation across steps, so it needs the step before the
+        # simulation start as well.
         if model == Model.IFS_HRES:
             start_dt -= timedelta(hours=3)
         elif model == Model.IFS_HRES_EUROPE:
@@ -245,14 +240,14 @@ def select_files(
 
     objs = list_objs_in_bucket(
         start_time=start_dt,
-        end_time=end_dt,
+        end_time=job.simulation_end,
     )
 
-    filtered_objs = _select_keys_in_window(objs, start_dt, end_dt, step_unit)
+    filtered_objs = _select_keys_in_window(objs, start_dt, job.simulation_end, step_unit)
 
     if not filtered_objs:
         raise RuntimeError(
-            f"There are no s3 objects for valid times between {start_dt} and {end_dt}"
+            f"There are no s3 objects for valid times between {start_dt} and {job.simulation_end}"
         )
 
     return filtered_objs

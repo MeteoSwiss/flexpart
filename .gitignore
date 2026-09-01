@@ -55,3 +55,6 @@ __pycache__
 
 # Spack build cache
 build-linux-*
+
+# Jetbrains IDEs
+.idea/
