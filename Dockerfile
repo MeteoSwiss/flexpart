@@ -121,9 +121,6 @@ COPY utils/test test
 
 RUN mkdir test_reports
 RUN chmod +x test_ci.sh
-RUN chown -R 1001:0 /scratch
-
-USER 1001
 
 # This environment tells pytest that the tests are occuring in a container.
 ENV PYTEST_ENTRYPOINT=/scratch/entrypoint.sh
