@@ -95,15 +95,9 @@ COPY utils/flexpart_ifs_utils flexpart_ifs_utils
 COPY entrypoint.sh entrypoint.sh
 COPY data/IGBP_int1.dat $JOBS_DIR
 
-RUN chmod -R a+rwx /scratch /opt/spack-view /opt/spack-root
+RUN chown -R 1001:0 /scratch
 
-ARG USERNAME=default_user
-ARG USER_UID=1000
-ARG USER_GID=$USER_UID
-
-RUN groupadd --gid $USER_GID $USERNAME \
-    && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME
-USER $USERNAME
+USER 1001
 
 ENTRYPOINT ["/bin/bash", "entrypoint.sh"]
 
@@ -125,8 +119,11 @@ RUN pip install -r /src/app-root/requirements_dev.txt --no-cache-dir --no-deps -
 COPY utils/pyproject.toml utils/test_ci.sh /scratch/
 COPY utils/test test
 
-RUN mkdir test_reports && chmod -R a+rwx test_reports
+RUN mkdir test_reports
 RUN chmod +x test_ci.sh
+RUN chown -R 1001:0 /scratch
+
+USER 1001
 
 # This environment tells pytest that the tests are occuring in a container.
 ENV PYTEST_ENTRYPOINT=/scratch/entrypoint.sh
