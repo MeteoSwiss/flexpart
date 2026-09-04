@@ -37,4 +37,5 @@ python -m flexpart_ifs_utils upload \
     --directory $JOBS_DIR \
     --site $RELEASE_SITE_NAME \
     --datetime $FORECAST_DATETIME \
-    --run-id $RUN_ID
+    --run-id $RUN_ID \
+    --run-type $RUN_TYPE
