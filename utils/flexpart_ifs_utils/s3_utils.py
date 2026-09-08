@@ -73,8 +73,9 @@ def canonicalize_output_names(output_dir: Path) -> None:
         source.rename(target)
 
 
-def upload_output(
+def upload_output(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     directory: Path,
+    run_type: str,
     run_id: str,
     site: str,
     forecast_datetime: str,
@@ -88,7 +89,8 @@ def upload_output(
     with metadata of forecast datetime and site attached. If a parent directory is specified, only files
     within that parent directory are uploaded.
 
-    The object key is rooted at ``run_id`` and carries nothing below it but the release site, this
+    The object key is rooted at ``run_type``, then ``run_id``, and carries nothing below that but
+    the release site, this
     application's only fan-out dimension. The run id is a deterministic composite that already
     encodes the run type, application, model and forecast reference, so repeating the forecast
     reference as a key segment would say the same thing twice - it is still recorded as object
@@ -112,7 +114,7 @@ def upload_output(
             path_list = [p for p in path_list if p.parent.name == parent]
 
         for path in path_list:
-            key = f"{run_id}/{site}/{path.name}"
+            key = f"{run_type}/{run_id}/{site}/{path.name}"
             _logger.info(
                 "Uploading file: %s to bucket: %s with key: %s",
                 path,

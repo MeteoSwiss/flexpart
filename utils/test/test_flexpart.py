@@ -37,6 +37,7 @@ def aws_server_session(aws_credentials):
 # root of every object key this run uploads - which is why the upload assertions below need no other
 # prefix, and why FORECAST_DATETIME no longer appears in one.
 RUN_ID = 'scheduled-flexpart-IFS-Europe-20241210-0000'
+RUN_TYPE = 'scheduled'
 
 
 @pytest.fixture
@@ -54,6 +55,7 @@ def mock_environment(monkeypatch):
     monkeypatch.setenv("RELEASE_SITE_NAME", 'Testerhausen')
     monkeypatch.setenv("MODEL", 'IFS-Europe')
     monkeypatch.setenv("RUN_ID", RUN_ID)
+    monkeypatch.setenv("RUN_TYPE", RUN_TYPE)
 
 
 # The Testerhausen site object Terraform would upload to `sites/Testerhausen.yaml` in the site-config
@@ -117,7 +119,7 @@ def test_flexpart_run(aws_server_session, mock_environment):
     # assert that output files are uploaded to S3 (moto3)
     in_mem_client = boto3.client("s3")
     for path in path_list:
-        key = f"{RUN_ID}/{os.getenv('RELEASE_SITE_NAME')}/{path.name}"
+        key = f"{RUN_TYPE}/{RUN_ID}/{os.getenv('RELEASE_SITE_NAME')}/{path.name}"
         actual = in_mem_client.get_object(Bucket = CONFIG.main.aws.s3.output.name, Key = key)["Body"].read()
         with open(path, mode='rb') as f:
             assert actual == f.read()
