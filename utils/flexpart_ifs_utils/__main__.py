@@ -38,7 +38,7 @@ from flexpart_ifs_utils.prepare_flexpart import (_path_list,
 from flexpart_ifs_utils.s3_utils import (canonicalize_output_names,
                                          download_keys_from_bucket,
                                          upload_output)
-from flexpart_ifs_utils.site_config import load_site_config
+from flexpart_ifs_utils.site_config import Direction, load_site_config
 
 if __name__ == '__main__':
 
@@ -98,6 +98,13 @@ if __name__ == '__main__':
                     choices=[m.value for m in Model],
                     required=True
                     )
+    p2.add_argument('--direction',
+                    help='Simulation direction: forward or backward. Overrides the site config direction for this run.',
+                    type=str,
+                    choices=['forward', 'backward'],
+                    required=False,
+                    default=None,
+                    )
     args = parser.parse_args()
 
     if "directory" in args:
@@ -132,6 +139,8 @@ if __name__ == '__main__':
     # Plain declarative site data - no longer a Jinja template of the namelist, so there is nothing
     # to render here and no intermediate file. The namelist templates live in the image.
     site = load_site_config(JOBS_DIR / f'{RELEASE_SITE}.yaml')
+    if args.direction is not None:
+        site = site.with_direction(Direction(args.direction))
     # On-demand runs may override the site's own offsets for this one job; scheduled runs leave
     # this empty, in which case the site's config applies. See resolve_job_config.
     overrides = json.loads(os.getenv('JOB_OVERRIDES', '{}'))
