@@ -12,7 +12,7 @@
 !
 &RELEASES_CTRL
  NSPEC=1, ! Total number of species
- SPECNUM_REL=16, ! Species numbers in directory SPECIES
+ SPECNUM_REL=16, ! Species numbers in directory SPECIES, one per nuclide
 /
 &RELEASE                   ! For each release
  IDATE1=20241210, ! Release start date, YYYYMMDD: YYYY=year, MM=month, DD=day
@@ -26,7 +26,7 @@
  Z1=100, ! Lower height of release box meters/hPa above reference level
  Z2=100, ! Upper height of release box meters/hPa above reference level
  ZKIND=1, ! Reference level 1=above ground, 2=above sea level, 3 for pressure in hPa
- MASS=2.8800E10, ! Total mass emitted, only relevant for fwd simulations
+ MASS=2.8800E10, ! Total mass emitted per nuclide (fwd only), same order as SPECNUM_REL
  PARTS   =         200000, ! Total number of particles to be released
  COMMENT="Testerhausen", ! Comment, written in the outputfile
 /

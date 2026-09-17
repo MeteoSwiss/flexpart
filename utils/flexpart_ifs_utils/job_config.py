@@ -16,21 +16,24 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from flexpart_ifs_utils.model import EnvironmentParameters, Model
-from flexpart_ifs_utils.site_config import SiteConfig
+from flexpart_ifs_utils.site_config import SiteConfig, _OPTIONAL as _SITE_OPTIONAL, _REQUIRED as _SITE_REQUIRED
 
 _logger = logging.getLogger(__name__)
 
 _FORECAST_DATETIME_FORMAT = "%Y%m%d%H%M"
 
-# The site-config fields an on-demand run's payload may override. Anything else it carries is not
-# read below, so it is logged rather than dropped without trace - see _warn_unrecognised_overrides.
-# Adding an overridable field means adding it here too.
-_OVERRIDABLE_FIELDS = frozenset({
-    "simulation_start_offset_h",
-    "release_start_offset_h",
-    "release_end_offset_h",
-    "simulation_duration_h",
-})
+# The full site-config field surface an on-demand run's payload may carry. Only the four offset
+# fields are actually read below (via _offset/.get(), patched onto whatever SiteConfig is already in
+# hand); the rest are applied earlier, when the caller builds a whole ad-hoc SiteConfig from a
+# complete override payload instead of downloading one (see site_config.site_from_overrides and
+# __main__'s use of it). This set exists so that path does not also trip the "unrecognised override"
+# warning below for fields it already applied correctly.
+#
+# Mirrors ``common.dispatch.overrides.OVERRIDABLE_FIELDS`` in leadtime-aggregator-lambda - the eager
+# check at run creation - and the identical copy of this module in the ``flexpart-cosmo-icon`` (ICON)
+# repo. Different repos, no shared package: kept in step by hand. Adding an overridable field means
+# adding it in all three places.
+_OVERRIDABLE_FIELDS = frozenset(_SITE_REQUIRED) | frozenset(_SITE_OPTIONAL)
 
 
 @dataclass(frozen=True)

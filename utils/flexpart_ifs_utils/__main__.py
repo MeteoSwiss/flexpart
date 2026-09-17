@@ -38,7 +38,7 @@ from flexpart_ifs_utils.prepare_flexpart import (_path_list,
 from flexpart_ifs_utils.s3_utils import (canonicalize_output_names,
                                          download_keys_from_bucket,
                                          upload_output)
-from flexpart_ifs_utils.site_config import load_site_config
+from flexpart_ifs_utils.site_config import is_complete_site, load_site_config, site_from_overrides
 
 if __name__ == '__main__':
 
@@ -122,19 +122,27 @@ if __name__ == '__main__':
     _logger.info('Jobs directory: %s', JOBS_DIR)
     _logger.debug('Args: %s', args)
 
-    # The site catalog is owned by dispersionmodelling-deployment and published to S3 by
-    # Terraform, one object per site actually configured for this environment - an unknown
-    # RELEASE_SITE_NAME fails here (S3 404) rather than matching against a locally-packaged
-    # catalog that could silently be stale relative to Terraform's config.
-    site_config_key = f'{CONFIG.main.runtime_config.site_config_key_prefix}{RELEASE_SITE}.yaml'
-    download_keys_from_bucket([site_config_key], JOBS_DIR, CONFIG.main.aws.s3.site_config)
-
-    # Plain declarative site data - no longer a Jinja template of the namelist, so there is nothing
-    # to render here and no intermediate file. The namelist templates live in the image.
-    site = load_site_config(JOBS_DIR / f'{RELEASE_SITE}.yaml')
-    # On-demand runs may override the site's own offsets for this one job; scheduled runs leave
-    # this empty, in which case the site's config applies. See resolve_job_config.
+    # An on-demand run may ask for its own window, or - if RELEASE_SITE is not in the
+    # Terraform-published catalog - for a whole release site of its own; a scheduled run leaves this
+    # empty, in which case the site's config applies. See resolve_job_config and
+    # site_config.site_from_overrides. Read before the S3 download so a complete ad-hoc site can skip
+    # it entirely - there is nothing under RELEASE_SITE to look up.
     overrides = json.loads(os.getenv('JOB_OVERRIDES', '{}'))
+
+    if is_complete_site(overrides):
+        site = site_from_overrides(RELEASE_SITE, overrides)
+    else:
+        # The site catalog is owned by dispersionmodelling-deployment and published to S3 by
+        # Terraform, one object per site actually configured for this environment - an unknown
+        # RELEASE_SITE_NAME fails here (S3 404) rather than matching against a locally-packaged
+        # catalog that could silently be stale relative to Terraform's config.
+        site_config_key = f'{CONFIG.main.runtime_config.site_config_key_prefix}{RELEASE_SITE}.yaml'
+        download_keys_from_bucket([site_config_key], JOBS_DIR, CONFIG.main.aws.s3.site_config)
+
+        # Plain declarative site data - no longer a Jinja template of the namelist, so there is
+        # nothing to render here and no intermediate file. The namelist templates live in the image.
+        site = load_site_config(JOBS_DIR / f'{RELEASE_SITE}.yaml')
+
     job = resolve_job_config(FORECAST_DATETIME, MODEL, site, overrides)
 
     DATA_DIR = JOBS_DIR / 'data'
