@@ -112,7 +112,7 @@ def is_complete_site(fields: dict[str, Any]) -> bool:
     """True when ``fields`` (a ``JOB_OVERRIDES`` payload) defines every field a release site needs on
     its own - see :func:`site_from_overrides`.
 
-    Mirrors ``common.dispatch.overrides.is_complete_site`` in leadtime-aggregator-lambda, which is
+    Mirrors ``common.domain.overrides.is_complete_site`` in leadtime-aggregator-lambda, which is
     what licenses an on-demand run to name a site outside the model's configured catalog in the first
     place. That is a different repo, so this cannot import it - kept in step by hand; see
     ``job_config._OVERRIDABLE_FIELDS`` for the same twin-repo note."""

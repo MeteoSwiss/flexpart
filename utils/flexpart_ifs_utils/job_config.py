@@ -29,7 +29,7 @@ _FORECAST_DATETIME_FORMAT = "%Y%m%d%H%M"
 # __main__'s use of it). This set exists so that path does not also trip the "unrecognised override"
 # warning below for fields it already applied correctly.
 #
-# Mirrors ``common.dispatch.overrides.OVERRIDABLE_FIELDS`` in leadtime-aggregator-lambda - the eager
+# Mirrors ``common.domain.overrides.OVERRIDABLE_FIELDS`` in leadtime-aggregator-lambda - the eager
 # check at run creation - and the identical copy of this module in the ``flexpart-cosmo-icon`` (ICON)
 # repo. Different repos, no shared package: kept in step by hand. Adding an overridable field means
 # adding it in all three places.
