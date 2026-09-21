@@ -9,6 +9,11 @@ its date-string encoding, and it pinned the release window to whole hours.
 Now the config is plain declarative site data in domain terms, the namelist vocabulary lives only in
 ``templates/{COMMAND,RELEASES}.j2``, and the time window is derived from per-site offsets - see
 :mod:`flexpart_ifs_utils.job_config`.
+
+This module is near-byte-identical to ``flexpart_utils/site_config.py`` in the ``flexpart-cosmo-icon``
+repo - the ICON image has its own copy of the same vocabulary. There is no shared package between the
+two repos, so a change here needs the same edit there; ``test_site_config.py``'s drift test only
+catches a change that is forgotten entirely, not one applied differently on each side.
 """
 
 from dataclasses import dataclass, replace
@@ -65,8 +70,10 @@ class SiteConfig:
     latitude: float
     longitude: float
     height_m: float
-    species: int
-    mass_bq: float
+    species: list[int]
+    """One entry per released nuclide, same order and same length as ``mass_bq`` - one release per
+    nuclide. A scalar in the catalog YAML (every entry today) reads as a one-element list."""
+    mass_bq: list[float]
     output_interval_s: int
     height_reference: HeightReference = HeightReference.AGL
     direction: Direction = Direction.FORWARD
@@ -94,15 +101,26 @@ class SiteConfig:
 
     @property
     def nspec(self) -> int:
-        """Number of species. One release species per site today; derived so the namelist and the
-        species list can never disagree."""
-        return 1
+        """Number of species - derived from ``species`` so the namelist and the species list can
+        never disagree."""
+        return len(self.species)
 
 
 _REQUIRED = ("latitude", "longitude", "height_m", "species", "mass_bq", "output_interval_s")
 
 _OPTIONAL = ("height_reference", "direction", "comment", "simulation_start_offset_h",
              "release_start_offset_h", "release_end_offset_h", "simulation_duration_h")
+
+
+def is_complete_site(fields: dict[str, Any]) -> bool:
+    """True when ``fields`` (a ``JOB_OVERRIDES`` payload) defines every field a release site needs on
+    its own - see :func:`site_from_overrides`.
+
+    Mirrors ``common.domain.overrides.is_complete_site`` in leadtime-aggregator-lambda, which is
+    what licenses an on-demand run to name a site outside the model's configured catalog in the first
+    place. That is a different repo, so this cannot import it - kept in step by hand; see
+    ``job_config._OVERRIDABLE_FIELDS`` for the same twin-repo note."""
+    return set(_REQUIRED).issubset(fields)
 
 
 def load_site_config(path: Path) -> SiteConfig:
@@ -139,13 +157,40 @@ def load_site_config(path: Path) -> SiteConfig:
     if missing:
         raise RuntimeError(f"Site config for '{name}' is missing required fields: {missing}")
 
+    return _build_site(name, fields)
+
+
+def site_from_overrides(name: str, overrides: dict[str, Any]) -> SiteConfig:
+    """Build a whole release site from a ``JOB_OVERRIDES`` payload, for an on-demand run whose
+    location is not in the Terraform-published catalog - see :func:`is_complete_site`.
+
+    Takes the same coercion path as :func:`load_site_config` (via ``_build_site``), so an ad-hoc
+    release is validated exactly as a catalog entry would be - minus the retired-schema check, which
+    only concerns objects Terraform once published in the old namelist-shaped format.
+    """
+    fields = {k: v for k, v in overrides.items() if k in _REQUIRED or k in _OPTIONAL}
+    missing = [k for k in _REQUIRED if fields.get(k) is None]
+    if missing:
+        raise RuntimeError(f"Ad-hoc site '{name}' is missing required fields: {missing}")
+    return _build_site(name, fields)
+
+
+def _build_site(name: str, fields: dict[str, Any]) -> SiteConfig:
+    """Coerce a field mapping - from the S3 catalog or from an ad-hoc ``JOB_OVERRIDES`` payload - into
+    a :class:`SiteConfig`, applying the same defaults and type coercion either way."""
+    species = _as_int_list(fields["species"])
+    mass_bq = _as_float_list(fields["mass_bq"])
+    if len(species) != len(mass_bq):
+        raise RuntimeError(
+            f"Site config for '{name}' has {len(species)} species but {len(mass_bq)} mass_bq "
+            "value(s); one release per nuclide.")
     return SiteConfig(
         name=str(name),
         latitude=float(fields["latitude"]),
         longitude=float(fields["longitude"]),
         height_m=_as_number(fields["height_m"]),
-        species=int(fields["species"]),
-        mass_bq=float(fields["mass_bq"]),
+        species=species,
+        mass_bq=mass_bq,
         output_interval_s=int(fields["output_interval_s"]),
         height_reference=_as_enum(HeightReference, fields, "height_reference", name,
                                  HeightReference.AGL),
@@ -163,6 +208,18 @@ def _as_number(value: Any) -> float:
     """Keep integral values integral, so the namelist renders `Z1=100` and not `Z1=100.0`."""
     number = float(value)
     return int(number) if number.is_integer() else number
+
+
+def _as_int_list(value: Any) -> list[int]:
+    """A scalar or list of species numbers, always returned as a list - one release per nuclide."""
+    values = value if isinstance(value, list) else [value]
+    return [int(v) for v in values]
+
+
+def _as_float_list(value: Any) -> list[float]:
+    """A scalar or list of masses, always returned as a list, same length as ``species``."""
+    values = value if isinstance(value, list) else [value]
+    return [float(v) for v in values]
 
 
 def _as_enum(enum: type[Enum], fields: dict[str, Any], field: str, site: str, default: Enum) -> Any:

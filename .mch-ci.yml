@@ -30,7 +30,7 @@ default:
                 - --secret=id=spack_buildcache_password,env=NXPASS
                 - --runtime=${var.crunPath}
           - containerBuildImage:
-              imageName: ${var.containerImageName}-aws
+              imageName: ${var.containerImageName}
               imageTag: ${var.semanticVersion}
               target: runner
               extraArgs:
@@ -84,7 +84,7 @@ default:
               removeImageToTag: false
       - artifacts:
           - containerPublishImage:
-              imageName: ${var.containerImageName}-aws
+              imageName: ${var.containerImageName}
               imageTag: ${var.semanticVersion}
               removeLocalImage: false
 
