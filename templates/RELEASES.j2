@@ -12,7 +12,7 @@
 !
 &RELEASES_CTRL
  NSPEC={{ site.nspec }}, ! Total number of species
- SPECNUM_REL={{ site.species }}, ! Species numbers in directory SPECIES
+ SPECNUM_REL={{ site.species | join(', ') }}, ! Species numbers in directory SPECIES, one per nuclide
 /
 &RELEASE                   ! For each release
  IDATE1={{ job.release_start | fp_date }}, ! Release start date, YYYYMMDD: YYYY=year, MM=month, DD=day
@@ -26,7 +26,7 @@
  Z1={{ site.height_m }}, ! Lower height of release box meters/hPa above reference level
  Z2={{ site.height_m }}, ! Upper height of release box meters/hPa above reference level
  ZKIND={{ site.zkind }}, ! Reference level 1=above ground, 2=above sea level, 3 for pressure in hPa
- MASS={{ site.mass_bq | fortran_real }}, ! Total mass emitted, only relevant for fwd simulations
+ MASS={{ site.mass_bq | map('fortran_real') | join(', ') }}, ! Total mass emitted per nuclide (fwd only), same order as SPECNUM_REL
  PARTS   =         200000, ! Total number of particles to be released
  COMMENT="{{ site.comment }}", ! Comment, written in the outputfile
 /
