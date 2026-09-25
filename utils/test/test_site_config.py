@@ -198,3 +198,27 @@ def test_overridable_fields_widened_to_the_full_site_surface():
         "simulation_start_offset_h", "release_start_offset_h", "release_end_offset_h",
         "simulation_duration_h",
     }
+
+
+def test_with_direction_returns_an_overridden_copy(site_config_file):
+    """The per-run DIRECTION override (entrypoint.sh -> generate --direction) swaps only the direction."""
+    site = load_site_config(site_config_file)
+
+    backward = site.with_direction(Direction.BACKWARD)
+
+    assert backward.direction is Direction.BACKWARD
+    assert backward.direction_value == -1
+    # A copy - the loaded catalog site is left as it was
+    assert site.direction is Direction.FORWARD
+    assert backward is not site
+    # Everything else carries over untouched
+    assert backward.with_direction(Direction.FORWARD) == site
+
+
+def test_with_direction_can_turn_a_backward_site_forward(tmp_path):
+    site = load_site_config(_write(tmp_path, MINIMAL + "direction: backward\n"))
+
+    forward = site.with_direction(Direction.FORWARD)
+
+    assert forward.direction is Direction.FORWARD
+    assert forward.direction_value == 1
