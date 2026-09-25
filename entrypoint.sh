@@ -17,12 +17,18 @@ SCRIPT_DIR=$(realpath "$(dirname "$0")")
 echo "Current working directory '$SCRIPT_DIR'"
 
 # Prepare input files for Flexpart-IFS
+DIRECTION_ARG=""
+if [ -n "$DIRECTION" ]; then
+    DIRECTION_ARG="--direction $DIRECTION"
+fi
+
 python -m flexpart_ifs_utils generate \
     --flexpart_dir $FLEXPART_PREFIX \
     --jobs_dir $JOBS_DIR \
     --datetime $FORECAST_DATETIME \
     --site $RELEASE_SITE_NAME \
-    --model $MODEL
+    --model $MODEL \
+    $DIRECTION_ARG
 
 echo JOBS_DIR: $JOBS_DIR
 
