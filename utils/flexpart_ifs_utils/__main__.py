@@ -38,7 +38,7 @@ from flexpart_ifs_utils.prepare_flexpart import (_path_list,
 from flexpart_ifs_utils.s3_utils import (canonicalize_output_names,
                                          download_keys_from_bucket,
                                          upload_output)
-from flexpart_ifs_utils.site_config import is_complete_site, load_site_config, site_from_overrides
+from flexpart_ifs_utils.site_config import Direction, is_complete_site, load_site_config, site_from_overrides
 
 if __name__ == '__main__':
 
@@ -98,6 +98,13 @@ if __name__ == '__main__':
                     choices=[m.value for m in Model],
                     required=True
                     )
+    p2.add_argument('--direction',
+                    help='Simulation direction: forward or backward. Overrides the site config direction for this run.',
+                    type=str,
+                    choices=['forward', 'backward'],
+                    required=False,
+                    default=None,
+                    )
     args = parser.parse_args()
 
     if "directory" in args:
@@ -139,9 +146,12 @@ if __name__ == '__main__':
         site_config_key = f'{CONFIG.main.runtime_config.site_config_key_prefix}{RELEASE_SITE}.yaml'
         download_keys_from_bucket([site_config_key], JOBS_DIR, CONFIG.main.aws.s3.site_config)
 
-        # Plain declarative site data - no longer a Jinja template of the namelist, so there is
+        # Plain declarative site data - no longer a Jinja template of the namelist, so there is nothing
         # nothing to render here and no intermediate file. The namelist templates live in the image.
         site = load_site_config(JOBS_DIR / f'{RELEASE_SITE}.yaml')
+
+    if args.direction is not None:
+        site = site.with_direction(Direction(args.direction))
 
     job = resolve_job_config(FORECAST_DATETIME, MODEL, site, overrides)
 

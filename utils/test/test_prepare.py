@@ -13,7 +13,7 @@ from flexpart_ifs_utils.prepare_flexpart import (_generate_available,
                                                  _write_job_script,
                                                  prepare_job_directory,
                                                  render_namelists, select_files)
-from flexpart_ifs_utils.site_config import load_site_config
+from flexpart_ifs_utils.site_config import Direction, load_site_config
 
 MOCK_MD_EXTRACTION = "flexpart_ifs_utils.grib_utils.extract_metadata_from_grib_file"
 MOCK_LIST_OBJS_IN_BUCKET = "flexpart_ifs_utils.prepare_flexpart.list_objs_in_bucket"
@@ -65,6 +65,19 @@ def test_render_namelists_renders_sub_hour_windows(tmp_path, templates_dir, site
     render_namelists(templates_dir, tmp_path, site, job)
 
     assert "ITIME1=233000," in (tmp_path / "RELEASES").read_text(encoding="utf-8")
+
+
+def test_render_namelists_renders_an_overridden_direction(tmp_path, templates_dir, site_config_file,
+                                                          reference_forecast_datetime, reference_data_end):
+    """A backward run (generate --direction backward) reaches Flexpart as LDIRECT=-1 in COMMAND."""
+    site = load_site_config(site_config_file).with_direction(Direction.BACKWARD)
+    job = resolve_job_config(reference_forecast_datetime, Model.IFS_HRES_EUROPE, site)
+
+    render_namelists(templates_dir, tmp_path, site, job)
+
+    command = (tmp_path / "COMMAND").read_text(encoding="utf-8")
+    assert " LDIRECT=-1," in command
+    assert " LDIRECT=1," not in command
 
 
 def test_write_job_script(tmp_path, mock_config):

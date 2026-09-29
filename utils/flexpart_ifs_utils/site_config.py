@@ -16,7 +16,7 @@ two repos, so a change here needs the same edit there; ``test_site_config.py``'s
 catches a change that is forgotten entirely, not one applied differently on each side.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -94,6 +94,10 @@ class SiteConfig:
     @property
     def direction_value(self) -> int:
         return self.direction.ldirect
+
+    def with_direction(self, direction: "Direction") -> "SiteConfig":
+        """Return a copy with the direction overridden (e.g. from a per-run env var)."""
+        return replace(self, direction=direction)
 
     @property
     def nspec(self) -> int:
