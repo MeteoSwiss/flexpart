@@ -4,6 +4,10 @@ output
 FLEXPART
 FLEXPART_MPI
 
+# Executables and reproducible results
+specoverview
+specoverview.txt
+
 # Spack packaging manager output
 spack-*
 
