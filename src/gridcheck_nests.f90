@@ -180,17 +180,17 @@ subroutine gridcheck_nests
     isec1(6)=168         ! indicatorOfParameter
   elseif ((parCat.eq.1).and.(parNum.eq.11).and.(typSurf.eq.1)) then ! SDE
     isec1(6)=141         ! indicatorOfParameter
-  elseif ((parCat.eq.1).and.(parNum.eq.254).and.(typSurf.eq.1)) then ! SD
+  elseif ((parCat.eq.1).and.(parNum.eq.254).and.(typSurf.eq.1) .or. typSurf.eq.105) then ! SD
     isec1(6)=141         ! indicatorOfParameter
   elseif ((parCat.eq.6).and.(parNum.eq.1) .or. parId .eq. 164) then ! CC !added by mc to make it consistent with new gridchek.f90
     isec1(6)=164         ! indicatorOfParameter
  elseif ((parCat.eq.1).and.(parNum.eq.9) .or. parId .eq. 142) then ! LSP !added by mc to make it consistent with new gridchek.f90
     isec1(6)=142         ! indicatorOfParameter
-  elseif ((parCat.eq.1).and.(parNum.eq.10)) then ! CP
+  elseif ((parCat.eq.1).and.(parNum.eq.10) .or. parId .eq. 143) then ! CP
     isec1(6)=143         ! indicatorOfParameter
   elseif ((parCat.eq.0).and.(parNum.eq.11).and.(typSurf.eq.1)) then ! SHF
     isec1(6)=146         ! indicatorOfParameter
-  elseif ((parCat.eq.4).and.(parNum.eq.9).and.(typSurf.eq.1)) then ! SR
+  elseif ((parCat.eq.4).and.(parNum.eq.9).and.(typSurf.eq.1) .or. parNum .eq. 176) then ! SR
     isec1(6)=176         ! indicatorOfParameter
 !  elseif ((parCat.eq.2).and.(parNum.eq.17) .or. parId .eq. 180) then ! EWSS --wrong
   elseif ((parCat.eq.2).and.(parNum.eq.38) .or. parId .eq. 180) then ! EWSS --correct
@@ -206,8 +206,8 @@ subroutine gridcheck_nests
        (typSurf.eq.1)) then ! LSM
     isec1(6)=172         ! indicatorOfParameter
   else
-    print*,'***ERROR: undefined GRiB2 message found!',discipl, &
-         parCat,parNum,typSurf
+    print*,'***WARNING: undefined GRiB2 message found! ', &
+        'discipl,parCat,parNum,typSurf,parId=', discipl,parCat,parNum,typSurf,parId
   endif
   if(parId .ne. isec1(6) .and. parId .ne. 77) then !added by mc to make it consistent with new gridchek.f90
     write(*,*) 'parId',parId, 'isec1(6)',isec1(6)
