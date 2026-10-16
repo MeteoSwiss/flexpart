@@ -64,7 +64,6 @@ program flexpart
   flexversion='Version '//trim(flexversion_major)//'.5.2 (2026-07-16)'
   verbosity=0
 
-
   ! Read the pathnames where input/output files are stored
   !*******************************************************
 
