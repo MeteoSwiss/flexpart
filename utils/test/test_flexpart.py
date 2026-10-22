@@ -14,16 +14,14 @@ from flexpart_ifs_utils import CONFIG
 @pytest.fixture(autouse=True)
 def aws_server_session(aws_credentials):
 
-    _S3_SERVER_HOST = '127.0.0.1'
+    _S3_SERVER_HOST = "127.0.0.1"
     # port=0 lets the OS assign a free ephemeral port, avoiding collisions when tests from
     # multiple repos/runs share this machine.
     server = ThreadedMotoServer(ip_address=_S3_SERVER_HOST, port=0)
     server.start()
     host, port = server.get_host_and_port()
 
-    with mock.patch.dict(os.environ, {
-        "AWS_ENDPOINT_URL": f'http://{host}:{port}'
-    }):
+    with mock.patch.dict(os.environ, {"AWS_ENDPOINT_URL": f"http://{host}:{port}"}):
         session = boto3.Session()
 
         try:
@@ -36,24 +34,24 @@ def aws_server_session(aws_credentials):
 # application, model and forecast reference (leadtime-aggregator: common/domain/run_id.py), and the
 # root of every object key this run uploads - which is why the upload assertions below need no other
 # prefix, and why FORECAST_DATETIME no longer appears in one.
-RUN_ID = 'scheduled-flexpart-IFS-Europe-20241210-0000'
-RUN_TYPE = 'scheduled'
+RUN_ID = "scheduled-flexpart-IFS-Europe-20241210-0000"
+RUN_TYPE = "scheduled"
 
 
 @pytest.fixture
 def mock_environment(monkeypatch):
     # End of the available model data. The eight EMISSION_* variables that used to accompany this are
     # no longer read: the release window comes from the site's own offsets.
-    monkeypatch.setenv("SIMULATION_END_YYYY", '2024')
-    monkeypatch.setenv("SIMULATION_END_MM", '12')
-    monkeypatch.setenv("SIMULATION_END_DD", '10')
-    monkeypatch.setenv("SIMULATION_END_ZZ", '05')
+    monkeypatch.setenv("SIMULATION_END_YYYY", "2024")
+    monkeypatch.setenv("SIMULATION_END_MM", "12")
+    monkeypatch.setenv("SIMULATION_END_DD", "10")
+    monkeypatch.setenv("SIMULATION_END_ZZ", "05")
     # Below vars are used in entrypoint.sh. FORECAST_DATETIME is YYYYMMDDhhmm, as the run scheduler
     # builds it from forecast_date + forecast_time; it has to stay aligned with the reference time of
     # the GRIB in TEST_DATA, because the simulation window is resolved from it.
-    monkeypatch.setenv("FORECAST_DATETIME", '202412100000')
-    monkeypatch.setenv("RELEASE_SITE_NAME", 'Testerhausen')
-    monkeypatch.setenv("MODEL", 'IFS-Europe')
+    monkeypatch.setenv("FORECAST_DATETIME", "202412100000")
+    monkeypatch.setenv("RELEASE_SITE_NAME", "Testerhausen")
+    monkeypatch.setenv("MODEL", "IFS-Europe")
     monkeypatch.setenv("RUN_ID", RUN_ID)
     monkeypatch.setenv("RUN_TYPE", RUN_TYPE)
 
@@ -83,7 +81,7 @@ release_end_offset_h: 5
 @pytest.mark.slow
 def test_flexpart_run(aws_server_session, mock_environment):
 
-    s3_client = boto3.Session().client('s3')
+    s3_client = boto3.Session().client("s3")
     s3_client.create_bucket(Bucket=CONFIG.main.aws.s3.output.name)
     s3_client.create_bucket(Bucket=CONFIG.main.aws.s3.site_config.name)
     s3_client.put_object(
@@ -92,11 +90,9 @@ def test_flexpart_run(aws_server_session, mock_environment):
         Body=TESTERHAUSEN_SITE_CONFIG.encode("utf-8"),
     )
 
-    process = subprocess.run(f"/bin/bash {os.getenv('PYTEST_ENTRYPOINT')}",
-                             shell=True,
-                             capture_output=True,
-                             text=True,
-                             env=os.environ)
+    process = subprocess.run(
+        f"/bin/bash {os.getenv('PYTEST_ENTRYPOINT')}", shell=True, capture_output=True, text=True, env=os.environ
+    )
 
     print(process.stdout)
     print(process.stderr)
@@ -106,20 +102,24 @@ def test_flexpart_run(aws_server_session, mock_environment):
     assert process.returncode == 0
     assert expected_msg in process.stdout
 
-    jobs_dir = Path(os.environ['JOBS_DIR'])
+    jobs_dir = Path(os.environ["JOBS_DIR"])
 
     # assert that NETCDF output files were produced
-    path_list = [Path(f) for f in glob.iglob(str(jobs_dir)+'/*/output/*', recursive=True) if os.path.isfile(f) and Path(f).suffix == '.nc']
+    path_list = [
+        Path(f)
+        for f in glob.iglob(str(jobs_dir) + "/*/output/*", recursive=True)
+        if os.path.isfile(f) and Path(f).suffix == ".nc"
+    ]
     assert len(path_list) > 0
 
     # The concentration grid carries no simulation-start stamp, so nothing downstream has to
     # re-derive the release offset to address it.
-    assert 'grid_conc.nc' in [path.name for path in path_list]
+    assert "grid_conc.nc" in [path.name for path in path_list]
 
     # assert that output files are uploaded to S3 (moto3)
     in_mem_client = boto3.client("s3")
     for path in path_list:
         key = f"{RUN_TYPE}/{RUN_ID}/{os.getenv('RELEASE_SITE_NAME')}/{path.name}"
-        actual = in_mem_client.get_object(Bucket = CONFIG.main.aws.s3.output.name, Key = key)["Body"].read()
-        with open(path, mode='rb') as f:
+        actual = in_mem_client.get_object(Bucket=CONFIG.main.aws.s3.output.name, Key=key)["Body"].read()
+        with open(path, mode="rb") as f:
             assert actual == f.read()

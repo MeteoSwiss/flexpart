@@ -1,8 +1,13 @@
 import pytest
 
-from flexpart_ifs_utils.site_config import (Direction, HeightReference, SiteConfig,
-                                            is_complete_site, load_site_config,
-                                            site_from_overrides)
+from flexpart_ifs_utils.site_config import (
+    Direction,
+    HeightReference,
+    SiteConfig,
+    is_complete_site,
+    load_site_config,
+    site_from_overrides,
+)
 
 MINIMAL = """
 name: Testerhausen
@@ -52,8 +57,7 @@ def test_load_site_config_applies_defaults(tmp_path):
     # A site that names itself only through the catalog key still gets a namelist comment
     assert site.comment == "Testerhausen"
     # The values the run scheduler used while the window was a global constant
-    assert (site.simulation_start_offset_h, site.release_start_offset_h,
-            site.release_end_offset_h) == (3, 3, 9)
+    assert (site.simulation_start_offset_h, site.release_start_offset_h, site.release_end_offset_h) == (3, 3, 9)
 
 
 def test_load_site_config_derives_namelist_values(tmp_path):
@@ -112,8 +116,7 @@ def test_load_site_config_rejects_a_nameless_entry(tmp_path):
         load_site_config(_write(tmp_path, nameless))
 
 
-@pytest.mark.parametrize("field", ["simulation_start_offset_h", "release_start_offset_h",
-                                   "release_end_offset_h"])
+@pytest.mark.parametrize("field", ["simulation_start_offset_h", "release_start_offset_h", "release_end_offset_h"])
 def test_load_site_config_rejects_negative_offsets(tmp_path, field):
 
     with pytest.raises(RuntimeError, match=f"negative {field}"):
@@ -136,7 +139,8 @@ def test_load_site_config_accepts_fractional_offsets(tmp_path):
 
 def test_load_site_config_accepts_an_explicit_multi_nuclide_list(tmp_path):
     multi = MINIMAL.replace("species: 16", "species: [15, 16]").replace(
-        "mass_bq: 2.8800e+10", "mass_bq: [1.0e+12, 1.0e+11]")
+        "mass_bq: 2.8800e+10", "mass_bq: [1.0e+12, 1.0e+11]"
+    )
 
     site = load_site_config(_write(tmp_path, multi))
 
@@ -154,7 +158,11 @@ def test_load_site_config_rejects_mismatched_species_and_mass_bq_lengths(tmp_pat
 
 def test_is_complete_site_requires_every_required_field():
     complete = {
-        "latitude": 47.55, "longitude": 8.18, "height_m": 100, "species": 16, "mass_bq": 1e12,
+        "latitude": 47.55,
+        "longitude": 8.18,
+        "height_m": 100,
+        "species": 16,
+        "mass_bq": 1e12,
         "output_interval_s": 10800,
     }
     assert is_complete_site(complete) is True
@@ -163,11 +171,19 @@ def test_is_complete_site_requires_every_required_field():
 
 
 def test_site_from_overrides_builds_an_ad_hoc_site_outside_the_catalog():
-    site = site_from_overrides("Fakenberg", {
-        "latitude": 35.42, "longitude": 141.03, "height_m": 10, "species": [16, 39],
-        "mass_bq": [1e12, 2e11], "output_interval_s": 3600, "release_start_offset_h": 0,
-        "release_end_offset_h": 6,
-    })
+    site = site_from_overrides(
+        "Fakenberg",
+        {
+            "latitude": 35.42,
+            "longitude": 141.03,
+            "height_m": 10,
+            "species": [16, 39],
+            "mass_bq": [1e12, 2e11],
+            "output_interval_s": 3600,
+            "release_start_offset_h": 0,
+            "release_end_offset_h": 6,
+        },
+    )
 
     assert isinstance(site, SiteConfig)
     assert site.name == "Fakenberg"
@@ -193,9 +209,18 @@ def test_overridable_fields_widened_to_the_full_site_surface():
     from flexpart_ifs_utils.job_config import _OVERRIDABLE_FIELDS
 
     assert _OVERRIDABLE_FIELDS == {
-        "latitude", "longitude", "height_m", "species", "mass_bq", "output_interval_s",
-        "height_reference", "direction", "comment",
-        "simulation_start_offset_h", "release_start_offset_h", "release_end_offset_h",
+        "latitude",
+        "longitude",
+        "height_m",
+        "species",
+        "mass_bq",
+        "output_interval_s",
+        "height_reference",
+        "direction",
+        "comment",
+        "simulation_start_offset_h",
+        "release_start_offset_h",
+        "release_end_offset_h",
         "simulation_duration_h",
     }
 

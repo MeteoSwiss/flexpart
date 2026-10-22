@@ -1,4 +1,3 @@
-
 import os
 import subprocess
 import sys
@@ -11,9 +10,9 @@ from flexpart_ifs_utils.job_config import _data_end_from_env
 @pytest.fixture
 def mock_environment_incomplete(monkeypatch):
     # SIMULATION_END_ZZ is intentionally not set here
-    monkeypatch.setenv("SIMULATION_END_YYYY", '2026')
-    monkeypatch.setenv("SIMULATION_END_MM", '05')
-    monkeypatch.setenv("SIMULATION_END_DD", '25')
+    monkeypatch.setenv("SIMULATION_END_YYYY", "2026")
+    monkeypatch.setenv("SIMULATION_END_MM", "05")
+    monkeypatch.setenv("SIMULATION_END_DD", "25")
     monkeypatch.delenv("SIMULATION_END_ZZ", raising=False)
 
 
@@ -25,13 +24,25 @@ def test_missing_data_end_variable(mock_environment_incomplete):
     assert "['SIMULATION_END_ZZ']" in str(exc_info.value)
 
 
-_GENERATE_ARGS = ["generate", "--flexpart_dir", "/unused", "--jobs_dir", "/unused",
-                  "--datetime", "202412092100", "--site", "Testerhausen", "--model", "IFS-Europe"]
+_GENERATE_ARGS = [
+    "generate",
+    "--flexpart_dir",
+    "/unused",
+    "--jobs_dir",
+    "/unused",
+    "--datetime",
+    "202412092100",
+    "--site",
+    "Testerhausen",
+    "--model",
+    "IFS-Europe",
+]
 
 
 def _run_cli(*args):
-    return subprocess.run([sys.executable, "-m", "flexpart_ifs_utils", *args],
-                          capture_output=True, text=True, check=False)
+    return subprocess.run(
+        [sys.executable, "-m", "flexpart_ifs_utils", *args], capture_output=True, text=True, check=False
+    )
 
 
 def test_generate_accepts_a_direction_option():
@@ -62,17 +73,22 @@ def run_entrypoint_until_generate(tmp_path):
 
     def run(direction=None):
         env = {k: v for k, v in os.environ.items() if k != "DIRECTION"}
-        env.update({
-            "PATH": f"{stub_bin}{os.pathsep}{env.get('PATH', '')}",
-            "ARGS_FILE": str(args_file),
-            "FLEXPART_PREFIX": "/opt/flexpart", "JOBS_DIR": str(tmp_path / "jobs"),
-            "FORECAST_DATETIME": "202412092100", "RELEASE_SITE_NAME": "Testerhausen",
-            "MODEL": "IFS-Europe",
-        })
+        env.update(
+            {
+                "PATH": f"{stub_bin}{os.pathsep}{env.get('PATH', '')}",
+                "ARGS_FILE": str(args_file),
+                "FLEXPART_PREFIX": "/opt/flexpart",
+                "JOBS_DIR": str(tmp_path / "jobs"),
+                "FORECAST_DATETIME": "202412092100",
+                "RELEASE_SITE_NAME": "Testerhausen",
+                "MODEL": "IFS-Europe",
+            }
+        )
         if direction is not None:
             env["DIRECTION"] = direction
-        result = subprocess.run(["bash", os.environ["PYTEST_ENTRYPOINT"]], env=env,
-                                capture_output=True, text=True, check=False)
+        result = subprocess.run(
+            ["bash", os.environ["PYTEST_ENTRYPOINT"]], env=env, capture_output=True, text=True, check=False
+        )
         assert result.returncode == 1, result.stdout + result.stderr
         return args_file.read_text(encoding="utf-8").splitlines()
 
