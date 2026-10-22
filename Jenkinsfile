@@ -9,6 +9,9 @@ class Globals {
     // sets to abort the pipeline if the Sonarqube QualityGate fails
     static boolean qualityGateAbortPipeline = false
 
+    // set to false to disable the formatting quality gate
+    static boolean formattingQualityGateEnabled = true
+
     // sets the public docker container registry
     static String publicContainerRegistry = 'docker-public-nexus.meteoswiss.ch'
 
@@ -122,6 +125,15 @@ pipeline {
                             build.artifacts
                     """
                 }
+            }
+        }
+
+        stage('Format check') {
+            when { expression { Globals.formattingQualityGateEnabled } }
+            steps {
+                sh """
+                    mchbuild -s semanticVersion=${Globals.semanticVersion} -s containerImageName=${Globals.containerImageName} verify.format
+                """
             }
         }
 
