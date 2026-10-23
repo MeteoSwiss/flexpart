@@ -40,6 +40,16 @@ default:
                 - --secret=id=spack_buildcache_password,env=NXPASS
                 - --runtime=${var.crunPath}
               pullAlways: false
+  - verify:
+      - format:
+          # utils/ is the Python project; ruff reads its config from utils/pyproject.toml
+          - pythonContainerRun:
+              imageName: ${var.containerImageName}-tester
+              imageTag: ${var.semanticVersion}
+              pullAlways: false
+              packageManager: ''
+              removeLocalImage: false
+              commands: ruff format --check utils || { echo "Format check failed. Run 'ruff format utils' to fix."; exit 1; }
   - test:
       - unitPodman:
           - script: |

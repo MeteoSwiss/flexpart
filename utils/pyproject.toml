@@ -24,7 +24,7 @@ types-pyyaml = "^6.0.12.20260518"
 pytest-cov = "*"
 pytest-mock = "*"
 pylint = "*"
-yapf = "*"
+ruff = ">=0.15.20,<0.16.0"
 mypy = "*"
 sphinx = "*"
 importlib_resources = "*"
@@ -32,9 +32,8 @@ pydata-sphinx-theme = "*"
 sphinx-autoapi = "*"
 moto = {extras = ["server", "s3"], version = "^5.0.6"}
 
-[tool.yapf]
-based_on_style = "pep8"
-column_limit = "120"
+[tool.ruff]
+line-length = 120
 
 [tool.pylint.master]
 disable = [

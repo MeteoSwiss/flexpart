@@ -25,12 +25,33 @@ import yaml
 
 # Namelist keys and section names from the retired schema. Recognised purely so a stale S3 object
 # fails with a message that says what is wrong rather than "missing key 'latitude'".
-_RETIRED_KEYS = frozenset({
-    "command", "releases",
-    "LDIRECT", "IBDATE", "IBTIME", "IEDATE", "IETIME", "LOUTSTEP",
-    "NSPEC", "SPECNUM_REL", "IDATE1", "ITIME1", "IDATE2", "ITIME2",
-    "LON1", "LON2", "LAT1", "LAT2", "Z1", "Z2", "ZKIND", "MASS", "COMMENT",
-})
+_RETIRED_KEYS = frozenset(
+    {
+        "command",
+        "releases",
+        "LDIRECT",
+        "IBDATE",
+        "IBTIME",
+        "IEDATE",
+        "IETIME",
+        "LOUTSTEP",
+        "NSPEC",
+        "SPECNUM_REL",
+        "IDATE1",
+        "ITIME1",
+        "IDATE2",
+        "ITIME2",
+        "LON1",
+        "LON2",
+        "LAT1",
+        "LAT2",
+        "Z1",
+        "Z2",
+        "ZKIND",
+        "MASS",
+        "COMMENT",
+    }
+)
 
 
 class HeightReference(Enum):
@@ -108,8 +129,15 @@ class SiteConfig:
 
 _REQUIRED = ("latitude", "longitude", "height_m", "species", "mass_bq", "output_interval_s")
 
-_OPTIONAL = ("height_reference", "direction", "comment", "simulation_start_offset_h",
-             "release_start_offset_h", "release_end_offset_h", "simulation_duration_h")
+_OPTIONAL = (
+    "height_reference",
+    "direction",
+    "comment",
+    "simulation_start_offset_h",
+    "release_start_offset_h",
+    "release_end_offset_h",
+    "simulation_duration_h",
+)
 
 
 def is_complete_site(fields: dict[str, Any]) -> bool:
@@ -183,7 +211,8 @@ def _build_site(name: str, fields: dict[str, Any]) -> SiteConfig:
     if len(species) != len(mass_bq):
         raise RuntimeError(
             f"Site config for '{name}' has {len(species)} species but {len(mass_bq)} mass_bq "
-            "value(s); one release per nuclide.")
+            "value(s); one release per nuclide."
+        )
     return SiteConfig(
         name=str(name),
         latitude=float(fields["latitude"]),
@@ -192,15 +221,17 @@ def _build_site(name: str, fields: dict[str, Any]) -> SiteConfig:
         species=species,
         mass_bq=mass_bq,
         output_interval_s=int(fields["output_interval_s"]),
-        height_reference=_as_enum(HeightReference, fields, "height_reference", name,
-                                 HeightReference.AGL),
+        height_reference=_as_enum(HeightReference, fields, "height_reference", name, HeightReference.AGL),
         direction=_as_enum(Direction, fields, "direction", name, Direction.FORWARD),
         comment=str(fields.get("comment") or name),
         simulation_start_offset_h=_as_offset(fields, "simulation_start_offset_h", name, 3),
         release_start_offset_h=_as_offset(fields, "release_start_offset_h", name, 3),
         release_end_offset_h=_as_offset(fields, "release_end_offset_h", name, 9),
-        simulation_duration_h=(None if fields.get("simulation_duration_h") is None
-                               else _as_offset(fields, "simulation_duration_h", name, 0)),
+        simulation_duration_h=(
+            None
+            if fields.get("simulation_duration_h") is None
+            else _as_offset(fields, "simulation_duration_h", name, 0)
+        ),
     )
 
 
@@ -230,9 +261,7 @@ def _as_enum(enum: type[Enum], fields: dict[str, Any], field: str, site: str, de
         return enum(str(raw).lower())
     except ValueError as exc:
         allowed = [e.value for e in enum]
-        raise RuntimeError(
-            f"Site config for '{site}' has {field}={raw!r}; expected one of {allowed}"
-        ) from exc
+        raise RuntimeError(f"Site config for '{site}' has {field}={raw!r}; expected one of {allowed}") from exc
 
 
 def _as_offset(fields: dict[str, Any], field: str, site: str, default: float) -> float:

@@ -28,9 +28,7 @@ output_interval_s: 10800
 
 def test_resolve_job_config_applies_the_sites_offsets(tmp_path, reference_data_end):
 
-    site = _site(tmp_path, "simulation_start_offset_h: 3\n"
-                           "release_start_offset_h: 3\n"
-                           "release_end_offset_h: 8\n")
+    site = _site(tmp_path, "simulation_start_offset_h: 3\nrelease_start_offset_h: 3\nrelease_end_offset_h: 8\n")
 
     job = resolve_job_config(FORECAST, Model.IFS_HRES_EUROPE, site)
 
@@ -102,8 +100,9 @@ def test_resolve_job_config_prefers_a_payload_override(tmp_path, reference_data_
 
     site = _site(tmp_path, "release_start_offset_h: 3\nrelease_end_offset_h: 9\n")
 
-    job = resolve_job_config(FORECAST, Model.IFS_HRES_EUROPE, site,
-                             overrides={"release_start_offset_h": 1, "release_end_offset_h": 4})
+    job = resolve_job_config(
+        FORECAST, Model.IFS_HRES_EUROPE, site, overrides={"release_start_offset_h": 1, "release_end_offset_h": 4}
+    )
 
     assert job.release_start == datetime(2024, 12, 9, 22)
     assert job.release_end == datetime(2024, 12, 10, 1)
@@ -120,9 +119,12 @@ def test_resolve_job_config_warns_about_unrecognised_overrides(tmp_path, referen
     site = _site(tmp_path, "release_start_offset_h: 3\nrelease_end_offset_h: 9\n")
 
     with caplog.at_level(logging.WARNING):
-        job = resolve_job_config(FORECAST, Model.IFS_HRES_EUROPE, site,
-                                 overrides={"model": {"name": "IFS-HRES-Europe"},
-                                            "release": {"duration": 6}})
+        job = resolve_job_config(
+            FORECAST,
+            Model.IFS_HRES_EUROPE,
+            site,
+            overrides={"model": {"name": "IFS-HRES-Europe"}, "release": {"duration": 6}},
+        )
 
     assert "Ignoring unrecognised job override(s) for Testerhausen: model, release" in caplog.text
     # ... and the site's own config still applies, unchanged.
@@ -130,8 +132,7 @@ def test_resolve_job_config_warns_about_unrecognised_overrides(tmp_path, referen
     assert job.release_end == datetime(2024, 12, 10, 6)
 
 
-def test_resolve_job_config_does_not_warn_about_a_full_ad_hoc_site_override(tmp_path, reference_data_end,
-                                                                            caplog):
+def test_resolve_job_config_does_not_warn_about_a_full_ad_hoc_site_override(tmp_path, reference_data_end, caplog):
     """The site-field overrides an ad-hoc SiteConfig was already built from (see
     site_config.site_from_overrides) must not also read as "unrecognised" here - they widened
     _OVERRIDABLE_FIELDS precisely so this case does not warn."""
@@ -139,11 +140,22 @@ def test_resolve_job_config_does_not_warn_about_a_full_ad_hoc_site_override(tmp_
     site = _site(tmp_path, "release_start_offset_h: 3\nrelease_end_offset_h: 9\n")
 
     with caplog.at_level(logging.WARNING):
-        resolve_job_config(FORECAST, Model.IFS_HRES_EUROPE, site, overrides={
-            "latitude": 35.42, "longitude": 141.03, "height_m": 10, "species": [16, 39],
-            "mass_bq": [1e12, 2e11], "output_interval_s": 3600, "height_reference": "agl",
-            "direction": "forward", "comment": "Fakenberg",
-        })
+        resolve_job_config(
+            FORECAST,
+            Model.IFS_HRES_EUROPE,
+            site,
+            overrides={
+                "latitude": 35.42,
+                "longitude": 141.03,
+                "height_m": 10,
+                "species": [16, 39],
+                "mass_bq": [1e12, 2e11],
+                "output_interval_s": 3600,
+                "height_reference": "agl",
+                "direction": "forward",
+                "comment": "Fakenberg",
+            },
+        )
 
     assert "unrecognised" not in caplog.text
 
@@ -154,8 +166,7 @@ def test_resolve_job_config_does_not_warn_about_a_recognised_override(tmp_path, 
     site = _site(tmp_path, "release_start_offset_h: 3\n")
 
     with caplog.at_level(logging.WARNING):
-        resolve_job_config(FORECAST, Model.IFS_HRES_EUROPE, site,
-                           overrides={"release_start_offset_h": 1})
+        resolve_job_config(FORECAST, Model.IFS_HRES_EUROPE, site, overrides={"release_start_offset_h": 1})
 
     assert "unrecognised" not in caplog.text
 

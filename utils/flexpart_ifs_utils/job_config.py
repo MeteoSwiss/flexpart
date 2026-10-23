@@ -91,8 +91,7 @@ def resolve_job_config(
         )
 
     simulation_start = reference + timedelta(hours=simulation_start_offset)
-    simulation_end = data_end if duration is None else min(
-        reference + timedelta(hours=float(duration)), data_end)
+    simulation_end = data_end if duration is None else min(reference + timedelta(hours=float(duration)), data_end)
 
     if simulation_end <= simulation_start:
         raise RuntimeError(
@@ -110,10 +109,14 @@ def resolve_job_config(
     )
 
     _logger.info(
-        "Resolved window for %s: simulation %s to %s, release %s to %s "
-        "(forecast reference %s, available data ends %s)",
-        site.name, job.simulation_start, job.simulation_end, job.release_start, job.release_end,
-        reference, data_end,
+        "Resolved window for %s: simulation %s to %s, release %s to %s (forecast reference %s, available data ends %s)",
+        site.name,
+        job.simulation_start,
+        job.simulation_end,
+        job.release_start,
+        job.release_end,
+        reference,
+        data_end,
     )
     return job
 
@@ -132,7 +135,9 @@ def _warn_unrecognised_overrides(overrides: dict[str, Any], site: SiteConfig) ->
         _logger.warning(
             "Ignoring unrecognised job override(s) for %s: %s. The site's own config applies for "
             "these; the overridable fields are %s.",
-            site.name, ", ".join(unrecognised), ", ".join(sorted(_OVERRIDABLE_FIELDS)),
+            site.name,
+            ", ".join(unrecognised),
+            ", ".join(sorted(_OVERRIDABLE_FIELDS)),
         )
 
 
@@ -145,9 +150,7 @@ def _parse_forecast_datetime(forecast_datetime: str) -> datetime:
     try:
         return datetime.strptime(forecast_datetime, _FORECAST_DATETIME_FORMAT)
     except ValueError as exc:
-        raise RuntimeError(
-            f"FORECAST_DATETIME {forecast_datetime!r} is not in format YYYYMMDDhhmm"
-        ) from exc
+        raise RuntimeError(f"FORECAST_DATETIME {forecast_datetime!r} is not in format YYYYMMDDhhmm") from exc
 
 
 def _data_end_from_env() -> datetime:
@@ -161,12 +164,12 @@ def _data_end_from_env() -> datetime:
 
     missing = sorted(name for name, value in parts.items() if value is None)
     if missing:
-        raise RuntimeError(
-            f"Environment is missing variables needed to resolve the job window: {missing}"
-        )
+        raise RuntimeError(f"Environment is missing variables needed to resolve the job window: {missing}")
 
-    stamp = (f"{parts['SIMULATION_END_YYYY']}{parts['SIMULATION_END_MM']}"
-             f"{parts['SIMULATION_END_DD']}{parts['SIMULATION_END_ZZ']}")
+    stamp = (
+        f"{parts['SIMULATION_END_YYYY']}{parts['SIMULATION_END_MM']}"
+        f"{parts['SIMULATION_END_DD']}{parts['SIMULATION_END_ZZ']}"
+    )
     try:
         return datetime.strptime(stamp, "%Y%m%d%H")
     except ValueError as exc:
