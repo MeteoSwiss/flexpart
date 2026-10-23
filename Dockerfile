@@ -50,7 +50,7 @@ RUN --mount=type=secret,id=spack_buildcache_user,target=/run/secrets/spack_build
 ##########################################
 # Python builder stage to prepare requirements files
 ##########################################
-FROM dockerhub.apps.cp.meteoswiss.ch/mch/python-3.13:latest AS python-builder
+FROM dockerhub.apps.cp.meteoswiss.ch/mch/python-3.13:latest-poetry2 AS python-builder
 ARG VERSION
 LABEL ch.meteoswiss.project=flexpart-ifs-${VERSION}
 
