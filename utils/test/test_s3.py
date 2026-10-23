@@ -8,10 +8,12 @@ import pytest
 from flexpart_ifs_utils import CONFIG
 from flexpart_ifs_utils.config.service_settings import Bucket
 from flexpart_ifs_utils.grib_utils import extract_metadata_from_grib_file
-from flexpart_ifs_utils.s3_utils import (canonicalize_output_names,
-                                         download_keys_from_bucket,
-                                         list_objs_in_bucket,
-                                         upload_output)
+from flexpart_ifs_utils.s3_utils import (
+    canonicalize_output_names,
+    download_keys_from_bucket,
+    list_objs_in_bucket,
+    upload_output,
+)
 
 
 @pytest.mark.parametrize("legacy", [False, True])
@@ -19,7 +21,7 @@ def test_list_objs_in_bucket(s3, model_data: Path, legacy: bool):
 
     bucket = CONFIG.main.aws.s3.nwp_model_data
 
-    params = {'date': '20241210', 'time': '0000', 'model': 'IFS-Global'}
+    params = {"date": "20241210", "time": "0000", "model": "IFS-Global"}
 
     path_list = list(model_data.iterdir())[:3]
 
@@ -30,11 +32,11 @@ def test_list_objs_in_bucket(s3, model_data: Path, legacy: bool):
     result = list_objs_in_bucket(
         start_time=datetime.strptime("20241210_0000", "%Y%m%d_%H%M"),
         end_time=datetime.strptime("20241210_0000", "%Y%m%d_%H%M") + timedelta(hours=3),
-        bucket = bucket
+        bucket=bucket,
     )
 
     # Validate the results
-    assert len(result) == 2*len(path_list)
+    assert len(result) == 2 * len(path_list)
     assert {k for k in result} == {str(path) for path in path_list} | {f"{path}_c" for path in path_list}
 
 
@@ -61,31 +63,31 @@ def test_upload_output(s3, model_data: Path):
 
     # given
     bucket = CONFIG.main.aws.s3.output
-    site = 'ABC'
-    datetime = '2024060712'
-    run_id = 'scheduled-flexpart-IFS-Global-20240607-1200'
-    run_type = 'scheduled'
+    site = "ABC"
+    datetime = "2024060712"
+    run_id = "scheduled-flexpart-IFS-Global-20240607-1200"
+    run_type = "scheduled"
 
     # when
     upload_output(model_data, run_type, run_id, site, datetime, bucket)
 
     # then
-    assert 'Contents' in s3.list_objects(Bucket = bucket.name)
+    assert "Contents" in s3.list_objects(Bucket=bucket.name)
 
     for path in model_data.iterdir():
-
         # check the files were uploaded as expected: the run type folder, the run id, the site,
         # with the forecast reference carried as metadata rather than as a key segment
-        obj = s3.get_object(Bucket = bucket.name, Key = f"{run_type}/{run_id}/{site}/{path.name}")
-        with open(path, mode='rb') as f:
+        obj = s3.get_object(Bucket=bucket.name, Key=f"{run_type}/{run_id}/{site}/{path.name}")
+        with open(path, mode="rb") as f:
             assert obj["Body"].read() == f.read()
 
         assert obj["Metadata"] == {
-            'run-id': run_id,
-            'date': '20240607',
-            'time': '12',
-            'site': site,
+            "run-id": run_id,
+            "date": "20240607",
+            "time": "12",
+            "site": site,
         }
+
 
 def test_canonicalize_output_names(tmp_path: Path):
 

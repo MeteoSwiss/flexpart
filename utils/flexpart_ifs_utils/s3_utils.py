@@ -13,10 +13,13 @@ from botocore.exceptions import ClientError
 
 from flexpart_ifs_utils import CONFIG
 from flexpart_ifs_utils.config.service_settings import Bucket
-from flexpart_ifs_utils.grib_utils import (GribMetadata, RunMetadata,
-                                           _is_grib_file,
-                                           extract_metadata_from_grib_file,
-                                           _get_valid_datetime)
+from flexpart_ifs_utils.grib_utils import (
+    GribMetadata,
+    RunMetadata,
+    _is_grib_file,
+    extract_metadata_from_grib_file,
+    _get_valid_datetime,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -53,8 +56,7 @@ def canonicalize_output_names(output_dir: Path) -> None:
 
         if len(matches) > 1:
             raise RuntimeError(
-                f"Expected at most one {pattern.pattern} in {output_dir}, found "
-                f"{[p.name for p in matches]}"
+                f"Expected at most one {pattern.pattern} in {output_dir}, found {[p.name for p in matches]}"
             )
         if not matches:
             if (output_dir / canonical_name).exists():
@@ -104,11 +106,7 @@ def upload_output(  # pylint: disable=too-many-arguments,too-many-positional-arg
     try:
         client = _create_s3_client(bucket)
 
-        path_list = [
-            Path(f)
-            for f in glob.iglob(f"{directory}/**", recursive=True)
-            if os.path.isfile(f)
-        ]
+        path_list = [Path(f) for f in glob.iglob(f"{directory}/**", recursive=True) if os.path.isfile(f)]
 
         if parent:
             path_list = [p for p in path_list if p.parent.name == parent]
@@ -195,9 +193,7 @@ def list_objs_in_bucket(
                 required_keys = ("time", "date", "step")
                 missing = [k for k in required_keys if k not in metadata]
                 if missing:
-                    raise KeyError(
-                        f"S3 object '{obj['Key']}' is missing required metadata keys: {missing}"
-                    )
+                    raise KeyError(f"S3 object '{obj['Key']}' is missing required metadata keys: {missing}")
                 items[obj["Key"]] = GribMetadata(
                     time=metadata["time"],
                     date=metadata["date"],

@@ -84,6 +84,7 @@ def _write_pathnames(
         "".join(lines),
     )
 
+
 def prepare_job_directory(
     site: SiteConfig,
     job: JobConfig,
@@ -195,13 +196,7 @@ def _write_job_script(
 
 def _generate_available(path: Path, data_paths: list[Path]) -> None:
     with open(path, "w", encoding="utf-8") as f:
-        f.writelines(
-            [
-                "DATE     TIME        FILENAME\n"
-                "YYYYMMDD HHMISS\n"
-                "________ ______      __________________\n"
-            ]
-        )
+        f.writelines(["DATE     TIME        FILENAME\nYYYYMMDD HHMISS\n________ ______      __________________\n"])
         _logger.info("Writing lines to %s file", path.name)
         for file in data_paths:
             step_datetime = _get_valid_datetime(file)
@@ -221,10 +216,7 @@ def select_files(
 
     step_unit = step_unit.lower()
     if step_unit not in ("minutes", "hours"):
-        raise ValueError(
-            "Steps must be provided in either minutes or hours, not "
-            f"{step_unit}"
-        )
+        raise ValueError(f"Steps must be provided in either minutes or hours, not {step_unit}")
 
     start_dt = job.simulation_start
 
@@ -246,8 +238,6 @@ def select_files(
     filtered_objs = _select_keys_in_window(objs, start_dt, job.simulation_end, step_unit)
 
     if not filtered_objs:
-        raise RuntimeError(
-            f"There are no s3 objects for valid times between {start_dt} and {job.simulation_end}"
-        )
+        raise RuntimeError(f"There are no s3 objects for valid times between {start_dt} and {job.simulation_end}")
 
     return filtered_objs

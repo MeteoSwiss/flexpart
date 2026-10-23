@@ -4,10 +4,13 @@ class Globals {
     static int mypyIssueThreshold = 40
 
     // Pin mchbuild to stable version to avoid breaking changes
-    static String mchbuildPipPackage = 'mchbuild>=0.13.0,<0.14.0'
+    static String mchbuildPipPackage = 'mchbuild>=1.2.1,<2.0.0'
 
     // sets to abort the pipeline if the Sonarqube QualityGate fails
     static boolean qualityGateAbortPipeline = false
+
+    // set to false to disable the formatting quality gate
+    static boolean formattingQualityGateEnabled = true
 
     // sets the public docker container registry
     static String publicContainerRegistry = 'docker-public-nexus.meteoswiss.ch'
@@ -122,6 +125,15 @@ pipeline {
                             build.artifacts
                     """
                 }
+            }
+        }
+
+        stage('Format check') {
+            when { expression { Globals.formattingQualityGateEnabled } }
+            steps {
+                sh """
+                    mchbuild -s semanticVersion=${Globals.semanticVersion} -s containerImageName=${Globals.containerImageName} verify.format
+                """
             }
         }
 

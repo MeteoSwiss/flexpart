@@ -10,8 +10,9 @@ class EnvironmentParameters(Enum):
 
 
 class Model(Enum):
-    IFS_HRES = 'IFS-Global'
-    IFS_HRES_EUROPE = 'IFS-Europe'
+    IFS_HRES = "IFS-Global"
+    IFS_HRES_EUROPE = "IFS-Europe"
+
 
 MODEL_PREFIX: dict[Model, str] = {
     Model.IFS_HRES: "dispc*",

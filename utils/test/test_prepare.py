@@ -8,23 +8,28 @@ import pytest
 from flexpart_ifs_utils.grib_utils import GribMetadata
 from flexpart_ifs_utils.job_config import JobConfig, resolve_job_config
 from flexpart_ifs_utils.model import Model
-from flexpart_ifs_utils.prepare_flexpart import (_generate_available,
-                                                 _get_valid_datetime,
-                                                 _write_job_script,
-                                                 prepare_job_directory,
-                                                 render_namelists, select_files)
+from flexpart_ifs_utils.prepare_flexpart import (
+    _generate_available,
+    _get_valid_datetime,
+    _write_job_script,
+    prepare_job_directory,
+    render_namelists,
+    select_files,
+)
 from flexpart_ifs_utils.site_config import Direction, load_site_config
 
 MOCK_MD_EXTRACTION = "flexpart_ifs_utils.grib_utils.extract_metadata_from_grib_file"
 MOCK_LIST_OBJS_IN_BUCKET = "flexpart_ifs_utils.prepare_flexpart.list_objs_in_bucket"
+
 
 @pytest.fixture
 def mock_logger(mocker):
     return mocker.patch("flexpart_ifs_utils.prepare_flexpart._logger", autospec=True)
 
 
-def test_render_namelists(tmp_path, templates_dir, site_config_file, references,
-                          reference_forecast_datetime, reference_data_end):
+def test_render_namelists(
+    tmp_path, templates_dir, site_config_file, references, reference_forecast_datetime, reference_data_end
+):
     """The site object plus the resolved window must reproduce the reference namelists exactly.
 
     This is the contract that replaced the regex-substitution pass: everything Flexpart reads comes
@@ -40,12 +45,17 @@ def test_render_namelists(tmp_path, templates_dir, site_config_file, references,
         assert (tmp_path / name).read_text(encoding="utf-8") == expected
 
 
-def test_render_namelists_follows_the_sites_offsets(tmp_path, templates_dir, site_config_file,
-                                                    reference_forecast_datetime, reference_data_end):
+def test_render_namelists_follows_the_sites_offsets(
+    tmp_path, templates_dir, site_config_file, reference_forecast_datetime, reference_data_end
+):
     """Change a site's release offset and the namelist follows - nothing else re-derives it."""
     site = load_site_config(site_config_file)
-    job = resolve_job_config(reference_forecast_datetime, Model.IFS_HRES_EUROPE, site,
-                             overrides={"release_start_offset_h": 4, "release_end_offset_h": 6})
+    job = resolve_job_config(
+        reference_forecast_datetime,
+        Model.IFS_HRES_EUROPE,
+        site,
+        overrides={"release_start_offset_h": 4, "release_end_offset_h": 6},
+    )
 
     render_namelists(templates_dir, tmp_path, site, job)
 
@@ -55,20 +65,23 @@ def test_render_namelists_follows_the_sites_offsets(tmp_path, templates_dir, sit
     assert "ITIME2=030000," in releases
 
 
-def test_render_namelists_renders_sub_hour_windows(tmp_path, templates_dir, site_config_file,
-                                                   reference_forecast_datetime, reference_data_end):
+def test_render_namelists_renders_sub_hour_windows(
+    tmp_path, templates_dir, site_config_file, reference_forecast_datetime, reference_data_end
+):
     """HHMISS, not HH + a literal '0000' - fractional offsets are expressible now."""
     site = load_site_config(site_config_file)
-    job = resolve_job_config(reference_forecast_datetime, Model.IFS_HRES_EUROPE, site,
-                             overrides={"release_start_offset_h": 2.5})
+    job = resolve_job_config(
+        reference_forecast_datetime, Model.IFS_HRES_EUROPE, site, overrides={"release_start_offset_h": 2.5}
+    )
 
     render_namelists(templates_dir, tmp_path, site, job)
 
     assert "ITIME1=233000," in (tmp_path / "RELEASES").read_text(encoding="utf-8")
 
 
-def test_render_namelists_renders_an_overridden_direction(tmp_path, templates_dir, site_config_file,
-                                                          reference_forecast_datetime, reference_data_end):
+def test_render_namelists_renders_an_overridden_direction(
+    tmp_path, templates_dir, site_config_file, reference_forecast_datetime, reference_data_end
+):
     """A backward run (generate --direction backward) reaches Flexpart as LDIRECT=-1 in COMMAND."""
     site = load_site_config(site_config_file).with_direction(Direction.BACKWARD)
     job = resolve_job_config(reference_forecast_datetime, Model.IFS_HRES_EUROPE, site)
@@ -84,15 +97,11 @@ def test_write_job_script(tmp_path, mock_config):
     from flexpart_ifs_utils import CONFIG
 
     data = {
-        "file_path" : tmp_path / "job.sh",
-        "flexpart_exe" : tmp_path / "flexpart_exe",
+        "file_path": tmp_path / "job.sh",
+        "flexpart_exe": tmp_path / "flexpart_exe",
     }
 
-    _write_job_script(
-        data["file_path"],
-        data["flexpart_exe"],
-        CONFIG.main.openmp_config
-    )
+    _write_job_script(data["file_path"], data["flexpart_exe"], CONFIG.main.openmp_config)
 
     job = Path(data["file_path"])
 
@@ -105,15 +114,15 @@ def test_write_job_script(tmp_path, mock_config):
     assert openmp_expected_1 in job.read_text()
     assert openmp_expected_2 in job.read_text()
 
-    for i in run_command.split(' '):
+    for i in run_command.split(" "):
         assert f"export {i[1:]}={data[i[1:].lower()]}" in job.read_text()
 
 
 def test_generate_available(tmp_path):
 
     def side_effect(arg):
-        step = int(str(arg).split('-')[-1])
-        return GribMetadata(date = "20240401", time = "1800", step = step)
+        step = int(str(arg).split("-")[-1])
+        return GribMetadata(date="20240401", time="1800", step=step)
 
     data_paths: list[Path] = [
         tmp_path / "data-0",
@@ -145,16 +154,17 @@ def test_generate_available(tmp_path):
     assert f"20240402 000000      data-6" in path.read_text()
     assert f"20240402 010000      data-7" in path.read_text()
 
+
 def test_get_valid_datetime(tmp_path):
     grib_file = tmp_path / "test.grib"
     grib_file.touch()
 
     with patch(MOCK_MD_EXTRACTION) as mock_extract_metadata:
-        mock_extract_metadata.return_value = GribMetadata(date = "20240101", time = "1200", step = 1)
+        mock_extract_metadata.return_value = GribMetadata(date="20240101", time="1200", step=1)
         dt = _get_valid_datetime(grib_file)
         assert dt == datetime(2024, 1, 1, 13)
 
-        mock_extract_metadata.return_value = GribMetadata(date = "20240101", time = "1800", step = 8)
+        mock_extract_metadata.return_value = GribMetadata(date="20240101", time="1800", step=8)
         dt = _get_valid_datetime(grib_file)
         assert dt == datetime(2024, 1, 2, 2)
 
@@ -162,25 +172,26 @@ def test_get_valid_datetime(tmp_path):
 def test_get_valid_datetime_with_metadata(tmp_path):
     grib_file = tmp_path / "test.grib"
 
-    md = GribMetadata(date = "20240101", time = "1200", step = 1)
+    md = GribMetadata(date="20240101", time="1200", step=1)
 
     dt = _get_valid_datetime(grib_file, md)
     assert dt == datetime(2024, 1, 1, 13)
 
-    md.time = '1800'
+    md.time = "1800"
     md.step = 8
 
     dt = _get_valid_datetime(grib_file, md)
     assert dt == datetime(2024, 1, 2, 2)
 
 
-def test_prepare_job_directory(tmp_path: Path, references, site_config_file,
-                               reference_forecast_datetime, reference_data_end):
+def test_prepare_job_directory(
+    tmp_path: Path, references, site_config_file, reference_forecast_datetime, reference_data_end
+):
     from flexpart_ifs_utils import CONFIG
 
     def side_effect(arg):
-        step = int(str(arg).split('-')[-1])
-        return GribMetadata(date = "20240319", time = "0900", step = step)
+        step = int(str(arg).split("-")[-1])
+        return GribMetadata(date="20240319", time="0900", step=step)
 
     site = load_site_config(site_config_file)
     job = resolve_job_config(reference_forecast_datetime, Model.IFS_HRES_EUROPE, site)
@@ -191,9 +202,9 @@ def test_prepare_job_directory(tmp_path: Path, references, site_config_file,
     os.mkdir(jobs_dir)
     os.mkdir(data_dir)
 
-    flexpart_dir = Path(os.environ['FLEXPART_PREFIX'])
+    flexpart_dir = Path(os.environ["FLEXPART_PREFIX"])
 
-    data_paths: list[Path] = [ data_dir / f"dispf-{step}" for step in range(3,27) ]
+    data_paths: list[Path] = [data_dir / f"dispf-{step}" for step in range(3, 27)]
 
     for file in data_paths:
         file.touch()
@@ -201,49 +212,52 @@ def test_prepare_job_directory(tmp_path: Path, references, site_config_file,
     with patch(MOCK_MD_EXTRACTION) as mock_extract_metadata:
         mock_extract_metadata.side_effect = side_effect
 
-        job_dir = prepare_job_directory(site, job, jobs_dir, flexpart_dir, data_dir, CONFIG.main.openmp_config, model=Model.IFS_HRES_EUROPE)
+        job_dir = prepare_job_directory(
+            site, job, jobs_dir, flexpart_dir, data_dir, CONFIG.main.openmp_config, model=Model.IFS_HRES_EUROPE
+        )
 
         assert job_dir.is_dir()
         assert job_dir.name == site.name
-        assert (job_dir / 'input' ).is_dir()
-        assert (job_dir / 'output' ).is_dir()
-        assert (job_dir / 'data' ).is_symlink()
-        assert (job_dir / 'job' ).exists()
+        assert (job_dir / "input").is_dir()
+        assert (job_dir / "output").is_dir()
+        assert (job_dir / "data").is_symlink()
+        assert (job_dir / "job").exists()
 
-        for file in ('COMMAND', 'RELEASES'):
-            assert (job_dir / 'input' / file).exists()
-            with open(job_dir / 'input' / file, 'r') as actual:
-                with open(references / 'Testerhausen/input' / file, 'r') as expected:
+        for file in ("COMMAND", "RELEASES"):
+            assert (job_dir / "input" / file).exists()
+            with open(job_dir / "input" / file, "r") as actual:
+                with open(references / "Testerhausen/input" / file, "r") as expected:
                     assert actual.read() == expected.read()
 
         # The packaged skeletons and the archived per-site variants are no longer copied in: the
         # only RELEASES in the job directory is the one that was rendered for this site.
-        assert [p.name for p in job_dir.glob('input/RELEASES*')] == ['RELEASES']
+        assert [p.name for p in job_dir.glob("input/RELEASES*")] == ["RELEASES"]
 
         # Test that the correct outgrid was used, given the model.
-        assert (job_dir / 'input' / 'OUTGRID').exists()
-        with open(job_dir / 'input' / "OUTGRID", 'r') as outgrid_actual:
-            with open(references / 'Testerhausen/input' / "OUTGRID", 'r') as outgrid_expected:
+        assert (job_dir / "input" / "OUTGRID").exists()
+        with open(job_dir / "input" / "OUTGRID", "r") as outgrid_actual:
+            with open(references / "Testerhausen/input" / "OUTGRID", "r") as outgrid_expected:
                 assert outgrid_actual.read() == outgrid_expected.read()
 
         # Test that all the input data filenames are in the available file.
-        assert (job_dir / 'input' / 'AVAILABLE').exists()
-        assert not (job_dir / 'input' / 'AVAILABLE_NESTED').exists()
-        available = (job_dir / 'input' / 'AVAILABLE').read_text()
+        assert (job_dir / "input" / "AVAILABLE").exists()
+        assert not (job_dir / "input" / "AVAILABLE_NESTED").exists()
+        available = (job_dir / "input" / "AVAILABLE").read_text()
         for path in data_paths:
             assert str(path.name) in available
 
 
 def test_prepare_job_directory_nests_the_europe_domain_for_ifs_global(
-        tmp_path: Path, references, site_config_file, reference_forecast_datetime, reference_data_end):
+    tmp_path: Path, references, site_config_file, reference_forecast_datetime, reference_data_end
+):
     """IFS-Global branches twice on top of what IFS-Europe does: OUTGRID.g instead of OUTGRID.f, and
     a second AVAILABLE_NESTED built from the Europe-prefixed data alongside the global one. Only the
     IFS-Europe branch of both had a test before this one."""
     from flexpart_ifs_utils import CONFIG
 
     def side_effect(arg):
-        step = int(str(arg).split('-')[-1])
-        return GribMetadata(date = "20240319", time = "0900", step = step)
+        step = int(str(arg).split("-")[-1])
+        return GribMetadata(date="20240319", time="0900", step=step)
 
     site = load_site_config(site_config_file)
     job = resolve_job_config(reference_forecast_datetime, Model.IFS_HRES, site)
@@ -254,7 +268,7 @@ def test_prepare_job_directory_nests_the_europe_domain_for_ifs_global(
     os.mkdir(jobs_dir)
     os.mkdir(data_dir)
 
-    flexpart_dir = Path(os.environ['FLEXPART_PREFIX'])
+    flexpart_dir = Path(os.environ["FLEXPART_PREFIX"])
 
     # IFS-Global pulls both its own global-domain data (dispc*) and the nested Europe-domain data
     # (dispf*) out of the same data directory.
@@ -267,20 +281,22 @@ def test_prepare_job_directory_nests_the_europe_domain_for_ifs_global(
     with patch(MOCK_MD_EXTRACTION) as mock_extract_metadata:
         mock_extract_metadata.side_effect = side_effect
 
-        job_dir = prepare_job_directory(site, job, jobs_dir, flexpart_dir, data_dir, CONFIG.main.openmp_config, model=Model.IFS_HRES)
+        job_dir = prepare_job_directory(
+            site, job, jobs_dir, flexpart_dir, data_dir, CONFIG.main.openmp_config, model=Model.IFS_HRES
+        )
 
-        assert (job_dir / 'input' / 'OUTGRID').exists()
-        with open(job_dir / 'input' / "OUTGRID", 'r') as outgrid_actual:
-            with open(references / 'Testerhausen/input' / "OUTGRID.g", 'r') as outgrid_expected:
+        assert (job_dir / "input" / "OUTGRID").exists()
+        with open(job_dir / "input" / "OUTGRID", "r") as outgrid_actual:
+            with open(references / "Testerhausen/input" / "OUTGRID.g", "r") as outgrid_expected:
                 assert outgrid_actual.read() == outgrid_expected.read()
 
-        assert (job_dir / 'input' / 'AVAILABLE').exists()
-        available = (job_dir / 'input' / 'AVAILABLE').read_text()
+        assert (job_dir / "input" / "AVAILABLE").exists()
+        available = (job_dir / "input" / "AVAILABLE").read_text()
         for path in global_paths:
             assert str(path.name) in available
 
-        assert (job_dir / 'input' / 'AVAILABLE_NESTED').exists()
-        available_nested = (job_dir / 'input' / 'AVAILABLE_NESTED').read_text()
+        assert (job_dir / "input" / "AVAILABLE_NESTED").exists()
+        available_nested = (job_dir / "input" / "AVAILABLE_NESTED").read_text()
         for path in europe_paths:
             assert str(path.name) in available_nested
 
@@ -300,8 +316,8 @@ def test_select_files(tmp_path, step_unit, model, expected_step_hours):
 
     CONFIG.main.input.step_unit = step_unit
 
-    DATE="20240501"
-    TIME="1200"
+    DATE = "20240501"
+    TIME = "1200"
 
     # A simulation window of 14:00 to 18:00 against a 12:00 forecast reference. The window arrives as
     # datetimes now, rather than being re-parsed out of the namelist's date strings.
@@ -314,9 +330,9 @@ def test_select_files(tmp_path, step_unit, model, expected_step_hours):
         release_end=datetime(2024, 5, 1, 16),
     )
 
-    if step_unit == 'minutes':
+    if step_unit == "minutes":
         multiplier = 60
-    elif step_unit == 'hours':
+    elif step_unit == "hours":
         multiplier = 1
 
     keys = [
@@ -333,14 +349,15 @@ def test_select_files(tmp_path, step_unit, model, expected_step_hours):
     ]
 
     with patch(MOCK_LIST_OBJS_IN_BUCKET, spec=True) as mock_list_bucket:
-        mock_list_bucket.return_value = {key: GribMetadata(
-            date = DATE,
-            time = TIME,
-            step = int(str(key).split('/')[-1][0])*multiplier,
-            ) for key in keys}
-        subset = select_files(job,
-                            step_unit=CONFIG.main.input.step_unit,
-                            model=model)
+        mock_list_bucket.return_value = {
+            key: GribMetadata(
+                date=DATE,
+                time=TIME,
+                step=int(str(key).split("/")[-1][0]) * multiplier,
+            )
+            for key in keys
+        }
+        subset = select_files(job, step_unit=CONFIG.main.input.step_unit, model=model)
 
         expected = {str(tmp_path / f"{hour}000") for hour in expected_step_hours}
         assert len(subset) == len(expected_step_hours)

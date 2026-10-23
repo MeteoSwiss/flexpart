@@ -29,7 +29,6 @@ def aws_credentials():
         del os.environ["AWS_PROFILE"]
 
 
-
 @pytest.fixture(scope="function")
 def s3(aws_credentials):
     with mock_aws():
@@ -42,20 +41,21 @@ def s3(aws_credentials):
 
 @pytest.fixture(scope="session")
 def model_data() -> Path:
-    return Path(os.environ['TEST_DATA'])
+    return Path(os.environ["TEST_DATA"])
 
 
 @pytest.fixture(scope="session")
 def resource_dir() -> Path:
-    resource: Path = Path(os.path.dirname(os.path.realpath(__file__))) / 'resource'
+    resource: Path = Path(os.path.dirname(os.path.realpath(__file__))) / "resource"
     return resource
+
 
 @pytest.fixture(scope="session")
 def site_config_file() -> Path:
     # A single site's config as downloaded from the site-config S3 bucket (see
     # dispersionmodelling-deployment/config/flexpart/sites_ifs.yaml). Plain data: it is no longer a
     # Jinja template of the namelist, so there is nothing to render before loading it.
-    return Path(os.path.dirname(os.path.realpath(__file__))) / 'references/testerhausen_site.yaml'
+    return Path(os.path.dirname(os.path.realpath(__file__))) / "references/testerhausen_site.yaml"
 
 
 @pytest.fixture(scope="session")
@@ -77,7 +77,7 @@ def templates_dir() -> Path:
     are installed via spack into FLEXPART_PREFIX/share/templates, and that env var is guaranteed set
     here - pytest_configure below raises before collection otherwise.
     """
-    return Path(os.environ['FLEXPART_PREFIX']) / 'share' / 'templates'
+    return Path(os.environ["FLEXPART_PREFIX"]) / "share" / "templates"
 
 
 @pytest.fixture
@@ -91,7 +91,7 @@ def reference_data_end(monkeypatch):
 
 @pytest.fixture(scope="session")
 def references() -> Path:
-    references: Path = Path(os.path.dirname(os.path.realpath(__file__))) / 'references'
+    references: Path = Path(os.path.dirname(os.path.realpath(__file__))) / "references"
     return references
 
 
@@ -101,7 +101,9 @@ def mock_config() -> Generator:
         mock_config.main.openmp_config = MagicMock(num_threads=5, stack_size="1000M")
         yield mock_config
 
+
 WORKDIR: Path = Path(os.path.realpath(__file__)).parent
+
 
 def pytest_configure(config):
 
@@ -115,62 +117,68 @@ def pytest_configure(config):
 
 def _set_local_flexpart_install_prefix():
     # If running locally, provide a installation path FLEXPART_PREFIX (where Flexpart IFS is installed) in .env
-    if not os.getenv('FLEXPART_PREFIX'):
-
-        bin_dir = Path(os.getenv("FLEXPART_PREFIX", '/unset')) / 'bin' / 'FLEXPART'
+    if not os.getenv("FLEXPART_PREFIX"):
+        bin_dir = Path(os.getenv("FLEXPART_PREFIX", "/unset")) / "bin" / "FLEXPART"
         if bin_dir.exists():
-            print("FLEXPART_PREFIX: %s" % os.getenv("FLEXPART_PREFIX", 'unset'))
+            print("FLEXPART_PREFIX: %s" % os.getenv("FLEXPART_PREFIX", "unset"))
         else:
             logging.error("Set FLEXPART_PREFIX in test/.env for local testing.")
             raise RuntimeError("FLEXPART_PREFIX is undefined.")
+
 
 def _set_local_eccodes_install_prefix():
     try:
         import eccodes
     except RuntimeError as e:
         load_dotenv()
-        lib = Path(os.getenv("ECCODES_DIR", '/unset')) / 'lib' / 'libeccodes.so'
+        lib = Path(os.getenv("ECCODES_DIR", "/unset")) / "lib" / "libeccodes.so"
         if lib.exists():
-            print("ECCODES_DIR: %s" % os.getenv("ECCODES_DIR", 'unset'))
+            print("ECCODES_DIR: %s" % os.getenv("ECCODES_DIR", "unset"))
         else:
             logging.error("Set ECCODES_DIR in test/.env for local testing.")
             raise RuntimeError("ECCODES_DIR is undefined.")
 
+
 def _set_local_jobs_dir():
-    if not os.getenv('JOBS_DIR'):
-        jobs_dir = WORKDIR / 'jobs'
-        os.environ['JOBS_DIR'] = str(jobs_dir)
-        print("JOBS_DIR: %s" % os.getenv("JOBS_DIR", 'unset'))
+    if not os.getenv("JOBS_DIR"):
+        jobs_dir = WORKDIR / "jobs"
+        os.environ["JOBS_DIR"] = str(jobs_dir)
+        print("JOBS_DIR: %s" % os.getenv("JOBS_DIR", "unset"))
 
         if not jobs_dir.exists():
-            os.makedirs( jobs_dir )
+            os.makedirs(jobs_dir)
         else:
-            shutil.rmtree( jobs_dir )
-            os.makedirs( jobs_dir )
+            shutil.rmtree(jobs_dir)
+            os.makedirs(jobs_dir)
+
 
 @pytest.fixture(autouse=True)
 def set_entrypoint(monkeypatch):
-    if 'PYTEST_ENTRYPOINT' not in os.environ:
-        entrypoint_script = str( WORKDIR.parent.parent / 'entrypoint.sh' )
+    if "PYTEST_ENTRYPOINT" not in os.environ:
+        entrypoint_script = str(WORKDIR.parent.parent / "entrypoint.sh")
         print("PYTEST_ENTRYPOINT: %s" % entrypoint_script)
         monkeypatch.setenv("PYTEST_ENTRYPOINT", entrypoint_script)
 
+
 def _set_local_test_data_path():
     # If running locally, provide a path for TEST_DATA in .env - the directory will be symlinked to the job dir.
-    if os.getenv('TEST_DATA'):
+    if os.getenv("TEST_DATA"):
         try:
-            src_data_dir = Path(os.getenv('TEST_DATA'))
+            src_data_dir = Path(os.getenv("TEST_DATA"))
             contents = os.listdir(src_data_dir)
             if not contents:
                 raise FileNotFoundError
         except FileNotFoundError:
-            raise FileNotFoundError('The path you provided for environment variable TEST_DATA: %s is empty or does not exist.' % src_data_dir)
+            raise FileNotFoundError(
+                "The path you provided for environment variable TEST_DATA: %s is empty or does not exist."
+                % src_data_dir
+            )
 
-        print("TEST_DATA: %s" % os.getenv("TEST_DATA", 'unset'))
-        dst_data_dir = Path(os.getenv('JOBS_DIR')) / 'data'
+        print("TEST_DATA: %s" % os.getenv("TEST_DATA", "unset"))
+        dst_data_dir = Path(os.getenv("JOBS_DIR")) / "data"
         if dst_data_dir.is_symlink():
             os.unlink(dst_data_dir)
 
         os.symlink(src_data_dir, dst_data_dir)
     else:
-        raise RuntimeError('TEST_DATA path is undefined.')
+        raise RuntimeError("TEST_DATA path is undefined.")
