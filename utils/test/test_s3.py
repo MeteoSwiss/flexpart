@@ -26,8 +26,12 @@ def test_list_objs_in_bucket(s3, model_data: Path, legacy: bool):
     path_list = list(model_data.iterdir())[:3]
 
     for i, path in enumerate(path_list):
-        _add_item_to_bucket_with_metadata(bucket, s3, str(path), str(path), step=i, domain='GLOBAL', legacy=legacy, **params)
-        _add_item_to_bucket_with_metadata(bucket, s3, str(path), f"{path}_c", domain='EUROPE', step=i, legacy=legacy, **params)
+        _add_item_to_bucket_with_metadata(
+            bucket, s3, str(path), str(path), step=i, domain="GLOBAL", legacy=legacy, **params
+        )
+        _add_item_to_bucket_with_metadata(
+            bucket, s3, str(path), f"{path}_c", domain="EUROPE", step=i, legacy=legacy, **params
+        )
 
     result = list_objs_in_bucket(
         start_time=datetime.strptime("20241210_0000", "%Y%m%d_%H%M"),
@@ -168,16 +172,18 @@ def _add_files_to_bucket(bucket: Bucket, files: list[Path], s3) -> None:
         s3.upload_file(path, bucket.name, path.name)
 
 
-def _add_item_to_bucket_with_metadata(bucket: Bucket,
-                       s3_client,
-                       path: str,
-                       key: str,
-                       time: str = '1200',
-                       date: str = '20240607',
-                       step: int = 1,
-                       model: str = "IFS-Global",
-                       domain: str = "GLOBAL",
-                       legacy: bool = False) -> None:
+def _add_item_to_bucket_with_metadata(
+    bucket: Bucket,
+    s3_client,
+    path: str,
+    key: str,
+    time: str = "1200",
+    date: str = "20240607",
+    step: int = 1,
+    model: str = "IFS-Global",
+    domain: str = "GLOBAL",
+    legacy: bool = False,
+) -> None:
 
     metadata = {
         "time": time,
