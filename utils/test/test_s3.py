@@ -14,7 +14,8 @@ from flexpart_ifs_utils.s3_utils import (canonicalize_output_names,
                                          upload_output)
 
 
-def test_list_objs_in_bucket(s3, model_data: Path):
+@pytest.mark.parametrize("legacy", [False, True])
+def test_list_objs_in_bucket(s3, model_data: Path, legacy: bool):
 
     bucket = CONFIG.main.aws.s3.nwp_model_data
 
@@ -23,8 +24,8 @@ def test_list_objs_in_bucket(s3, model_data: Path):
     path_list = list(model_data.iterdir())[:3]
 
     for i, path in enumerate(path_list):
-        _add_item_to_bucket_with_metadata(bucket, s3, str(path), str(path), step=i, domain='GLOBAL', **params)
-        _add_item_to_bucket_with_metadata(bucket, s3, str(path), f"{path}_c", domain='EUROPE', step=i, **params)
+        _add_item_to_bucket_with_metadata(bucket, s3, str(path), str(path), step=i, domain='GLOBAL', legacy=legacy, **params)
+        _add_item_to_bucket_with_metadata(bucket, s3, str(path), f"{path}_c", domain='EUROPE', step=i, legacy=legacy, **params)
 
     result = list_objs_in_bucket(
         start_time=datetime.strptime("20241210_0000", "%Y%m%d_%H%M"),
@@ -173,20 +174,21 @@ def _add_item_to_bucket_with_metadata(bucket: Bucket,
                        date: str = '20240607',
                        step: int = 1,
                        model: str = "IFS-Global",
-                       domain: str = "GLOBAL") -> None:
+                       domain: str = "GLOBAL",
+                       legacy: bool = False) -> None:
+
+    metadata = {
+        "time": time,
+        "date": date,
+        "step": str(step),
+        "model": model,
+        "domain": domain,
+    }
 
     with open(path, "rb") as f:
         s3_client.put_object(
             Bucket=bucket.name,
             Key=path if key is None else key,
             Body=f,
-            Metadata={
-                "data": json.dumps({
-                    "time": time,
-                    "date": date,
-                    "step": str(step),
-                    "model": model,
-                    "domain": domain,
-                }),
-            },
+            Metadata={"data": json.dumps(metadata)} if legacy else metadata,
         )
