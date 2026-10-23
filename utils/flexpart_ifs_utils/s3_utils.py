@@ -183,7 +183,13 @@ def list_objs_in_bucket(
         for page in page_iterator:
             for obj in page.get("Contents", []):
                 head = client.head_object(Bucket=bucket.name, Key=obj["Key"])
-                metadata = json.loads(head.get("Metadata")["data"])
+                user_metadata = head.get("Metadata", {})
+                # Producers write flat metadata keys; objects written before the flattening carry
+                # them as a JSON string under a single "data" key instead.
+                if "data" in user_metadata:
+                    metadata = json.loads(user_metadata["data"])
+                else:
+                    metadata = user_metadata
                 required_keys = ("time", "date", "step")
                 missing = [k for k in required_keys if k not in metadata]
                 if missing:
