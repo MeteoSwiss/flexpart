@@ -1,7 +1,6 @@
 """Download input files from an input manifest produced by the leadtime-aggregator.
 
-When ``INPUT_MANIFEST_URI`` is set, the container skips its own file-selection logic and downloads
-exactly the files listed in the manifest.
+``INPUT_MANIFEST_URI`` must be set — the container has no fallback file-selection logic.
 """
 import json
 import logging
@@ -15,14 +14,11 @@ _logger = logging.getLogger(__name__)
 INPUT_MANIFEST_URI_VAR = "INPUT_MANIFEST_URI"
 
 
-def download_from_manifest(data_dir: Path, member: int) -> bool:
-    """Download input files listed in the manifest for *member*.
-
-    Returns True if the manifest was used, False if ``INPUT_MANIFEST_URI`` is not set
-    and the caller should fall back to the existing selection logic."""
+def download_from_manifest(data_dir: Path, member: int) -> None:
+    """Download input files listed in the manifest for *member*."""
     uri = os.environ.get(INPUT_MANIFEST_URI_VAR)
     if not uri:
-        return False
+        raise RuntimeError(f"Environment variable '{INPUT_MANIFEST_URI_VAR}' is not set")
 
     _logger.info("Using input manifest from %s for member %d", uri, member)
     bucket, key = _parse_s3_uri(uri)
@@ -44,7 +40,6 @@ def download_from_manifest(data_dir: Path, member: int) -> bool:
         s3.download_file(entry["bucket"], entry["key"], str(dest))
 
     _logger.info("Downloaded %d files from manifest", len(entries))
-    return True
 
 
 def _parse_s3_uri(uri: str) -> tuple[str, str]:
