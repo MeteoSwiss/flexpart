@@ -154,4 +154,9 @@ if __name__ == "__main__":
     if not data_paths:
         download_from_manifest(DATA_DIR, member=-1)
 
+    _logger.info("Files in DATA_DIR: %s", sorted(os.listdir(DATA_DIR)))
     job_dir = prepare_job_directory(site, job, JOBS_DIR, FLEXPART_DIR, DATA_DIR, CONFIG.main.openmp_config, model=MODEL)
+    _logger.info("AVAILABLE content:\n%s", (job_dir / "input" / "AVAILABLE").read_text())
+    _logger.info("pathnames content:\n%s", (job_dir / "pathnames").read_text())
+    if (job_dir / "input" / "AVAILABLE_NESTED").exists():
+        _logger.info("AVAILABLE_NESTED content:\n%s", (job_dir / "input" / "AVAILABLE_NESTED").read_text())
