@@ -32,7 +32,8 @@ from pathlib import Path
 from flexpart_ifs_utils import CONFIG
 from flexpart_ifs_utils.job_config import resolve_job_config
 from flexpart_ifs_utils.model import Model
-from flexpart_ifs_utils.prepare_flexpart import _path_list, prepare_job_directory, select_files
+from flexpart_ifs_utils.manifest import download_from_manifest
+from flexpart_ifs_utils.prepare_flexpart import _path_list, prepare_job_directory
 from flexpart_ifs_utils.s3_utils import canonicalize_output_names, download_keys_from_bucket, upload_output
 from flexpart_ifs_utils.site_config import Direction, is_complete_site, load_site_config, site_from_overrides
 
@@ -151,9 +152,11 @@ if __name__ == "__main__":
     data_paths = _path_list(DATA_DIR, MODEL)
 
     if not data_paths:
-        # Search the db for the relevant files and download data
-        keys = select_files(job, step_unit=CONFIG.main.input.step_unit, model=MODEL)
+        download_from_manifest(DATA_DIR, member=-1)
 
-        download_keys_from_bucket(keys, DATA_DIR, CONFIG.main.aws.s3.nwp_model_data)
-
+    _logger.info("Files in DATA_DIR: %s", sorted(os.listdir(DATA_DIR)))
     job_dir = prepare_job_directory(site, job, JOBS_DIR, FLEXPART_DIR, DATA_DIR, CONFIG.main.openmp_config, model=MODEL)
+    _logger.info("AVAILABLE content:\n%s", (job_dir / "input" / "AVAILABLE").read_text())
+    _logger.info("pathnames content:\n%s", (job_dir / "pathnames").read_text())
+    if (job_dir / "input" / "AVAILABLE_NESTED").exists():
+        _logger.info("AVAILABLE_NESTED content:\n%s", (job_dir / "input" / "AVAILABLE_NESTED").read_text())
