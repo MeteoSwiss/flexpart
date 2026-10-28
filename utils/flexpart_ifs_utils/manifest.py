@@ -2,6 +2,7 @@
 
 ``INPUT_MANIFEST_URI`` must be set — the container has no fallback file-selection logic.
 """
+
 import json
 import logging
 import os
@@ -30,8 +31,8 @@ def download_from_manifest(data_dir: Path, member: int) -> None:
     entries = manifest.get(str(member))
     if entries is None:
         raise RuntimeError(
-            f"Manifest at {uri} has no entries for member {member}; "
-            f"available members: {sorted(manifest.keys())}")
+            f"Manifest at {uri} has no entries for member {member}; available members: {sorted(manifest.keys())}"
+        )
 
     data_dir.mkdir(parents=True, exist_ok=True)
     for entry in entries:
