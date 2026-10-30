@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 
 from flexpart_ifs_utils.grib_utils import GribMetadata
-from flexpart_ifs_utils.job_config import JobConfig, resolve_job_config
+from flexpart_ifs_utils.job_config import resolve_job_config
 from flexpart_ifs_utils.model import Model
 from flexpart_ifs_utils.prepare_flexpart import (
     _generate_available,
@@ -14,12 +14,10 @@ from flexpart_ifs_utils.prepare_flexpart import (
     _write_job_script,
     prepare_job_directory,
     render_namelists,
-    select_files,
 )
 from flexpart_ifs_utils.site_config import Direction, load_site_config
 
 MOCK_MD_EXTRACTION = "flexpart_ifs_utils.grib_utils.extract_metadata_from_grib_file"
-MOCK_LIST_OBJS_IN_BUCKET = "flexpart_ifs_utils.prepare_flexpart.list_objs_in_bucket"
 
 
 @pytest.fixture
@@ -299,66 +297,3 @@ def test_prepare_job_directory_nests_the_europe_domain_for_ifs_global(
         available_nested = (job_dir / "input" / "AVAILABLE_NESTED").read_text()
         for path in europe_paths:
             assert str(path.name) in available_nested
-
-
-@pytest.mark.parametrize("step_unit", [("minutes"), ("hours")])
-@pytest.mark.parametrize(
-    "model, expected_step_hours",
-    [
-        # IFS-Europe backs off 1h for de-accumulation; IFS-Global backs off 3h. Same window, same
-        # data, different model -> a different file selection, so both branches need their own case.
-        pytest.param(Model.IFS_HRES_EUROPE, (1, 2, 3, 4, 5, 6), id="europe-1h-backoff"),
-        pytest.param(Model.IFS_HRES, (0, 1, 2, 3, 4, 5, 6), id="global-3h-backoff"),
-    ],
-)
-def test_select_files(tmp_path, step_unit, model, expected_step_hours):
-    from flexpart_ifs_utils import CONFIG
-
-    CONFIG.main.input.step_unit = step_unit
-
-    DATE = "20240501"
-    TIME = "1200"
-
-    # A simulation window of 14:00 to 18:00 against a 12:00 forecast reference. The window arrives as
-    # datetimes now, rather than being re-parsed out of the namelist's date strings.
-    job = JobConfig(
-        model=model,
-        forecast_datetime=datetime(2024, 5, 1, 12),
-        simulation_start=datetime(2024, 5, 1, 14),
-        simulation_end=datetime(2024, 5, 1, 18),
-        release_start=datetime(2024, 5, 1, 14),
-        release_end=datetime(2024, 5, 1, 16),
-    )
-
-    if step_unit == "minutes":
-        multiplier = 60
-    elif step_unit == "hours":
-        multiplier = 1
-
-    keys = [
-        str(tmp_path / "0000"),
-        str(tmp_path / "1000"),
-        str(tmp_path / "2000"),
-        str(tmp_path / "3000"),
-        str(tmp_path / "4000"),
-        str(tmp_path / "5000"),
-        str(tmp_path / "6000"),
-        str(tmp_path / "7000"),
-        str(tmp_path / "8000"),
-        str(tmp_path / "9000"),
-    ]
-
-    with patch(MOCK_LIST_OBJS_IN_BUCKET, spec=True) as mock_list_bucket:
-        mock_list_bucket.return_value = {
-            key: GribMetadata(
-                date=DATE,
-                time=TIME,
-                step=int(str(key).split("/")[-1][0]) * multiplier,
-            )
-            for key in keys
-        }
-        subset = select_files(job, step_unit=CONFIG.main.input.step_unit, model=model)
-
-        expected = {str(tmp_path / f"{hour}000") for hour in expected_step_hours}
-        assert len(subset) == len(expected_step_hours)
-        assert set(subset) == expected

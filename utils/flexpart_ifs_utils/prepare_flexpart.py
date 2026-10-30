@@ -8,7 +8,6 @@ and writing the job script with the relevent paths to the input files.
 import logging
 import os
 import shutil
-from datetime import timedelta
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
@@ -18,7 +17,6 @@ from flexpart_ifs_utils.grib_utils import _get_valid_datetime
 from flexpart_ifs_utils.job_config import JobConfig
 from flexpart_ifs_utils.model import MODEL_PREFIX, Model
 from flexpart_ifs_utils.site_config import SiteConfig
-from flexpart_ifs_utils.s3_utils import list_objs_in_bucket, _select_keys_in_window
 
 _logger = logging.getLogger(__name__)
 
@@ -205,39 +203,3 @@ def _generate_available(path: Path, data_paths: list[Path]) -> None:
             entry = f"{adate} {int(atime):02}0000      {file.name}\n"
             f.write(entry)
             _logger.info(entry)
-
-
-def select_files(
-    job: JobConfig,
-    step_unit: str,
-    model: Model,
-) -> list[str]:
-    """Pick the input GRIB whose valid times cover the job's simulation window."""
-
-    step_unit = step_unit.lower()
-    if step_unit not in ("minutes", "hours"):
-        raise ValueError(f"Steps must be provided in either minutes or hours, not {step_unit}")
-
-    start_dt = job.simulation_start
-
-    if start_dt > job.forecast_datetime:
-        # Flexpart de-accumulates precipitation across steps, so it needs the step before the
-        # simulation start as well.
-        if model == Model.IFS_HRES:
-            start_dt -= timedelta(hours=3)
-        elif model == Model.IFS_HRES_EUROPE:
-            start_dt -= timedelta(hours=1)
-        else:
-            raise ValueError(f"Unsupported model: {model}")
-
-    objs = list_objs_in_bucket(
-        start_time=start_dt,
-        end_time=job.simulation_end,
-    )
-
-    filtered_objs = _select_keys_in_window(objs, start_dt, job.simulation_end, step_unit)
-
-    if not filtered_objs:
-        raise RuntimeError(f"There are no s3 objects for valid times between {start_dt} and {job.simulation_end}")
-
-    return filtered_objs

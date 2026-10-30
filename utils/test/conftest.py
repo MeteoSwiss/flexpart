@@ -34,8 +34,8 @@ def s3(aws_credentials):
     with mock_aws():
         s3 = boto3.Session().client("s3", region_name="us-east-1")
 
-        s3.create_bucket(Bucket=CONFIG.main.aws.s3.nwp_model_data.name)
         s3.create_bucket(Bucket=CONFIG.main.aws.s3.output.name)
+        s3.create_bucket(Bucket="test-bucket")
         yield s3
 
 

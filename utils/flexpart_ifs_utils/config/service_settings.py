@@ -10,7 +10,6 @@ class Bucket(BaseModel):
 
 
 class S3(BaseModel):
-    nwp_model_data: Bucket
     output: Bucket
     site_config: Bucket
 
