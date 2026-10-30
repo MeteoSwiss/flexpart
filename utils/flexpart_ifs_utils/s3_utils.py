@@ -1,9 +1,7 @@
 import glob
-import json
 import logging
 import os
 import re
-from datetime import datetime
 from pathlib import Path
 
 import boto3
@@ -13,13 +11,6 @@ from botocore.exceptions import ClientError
 
 from flexpart_ifs_utils import CONFIG
 from flexpart_ifs_utils.config.service_settings import Bucket
-from flexpart_ifs_utils.grib_utils import (
-    GribMetadata,
-    RunMetadata,
-    _is_grib_file,
-    extract_metadata_from_grib_file,
-    _get_valid_datetime,
-)
 
 _logger = logging.getLogger(__name__)
 
@@ -145,71 +136,10 @@ def upload_output(  # pylint: disable=too-many-arguments,too-many-positional-arg
         raise err
 
 
-def _select_keys_in_window(
-    objs: dict[str, GribMetadata],
-    start_dt: datetime,
-    end_dt: datetime,
-    step_unit: str,
-) -> list[str]:
-    subset: list[str] = []
-    for key, metadata in objs.items():
-        file_validtime = _get_valid_datetime(Path(key), metadata, step_unit)
-        if start_dt <= file_validtime <= end_dt:
-            subset.append(key)
-    return subset
-
-
-def list_objs_in_bucket(
-    start_time: datetime,
-    end_time: datetime,
-    bucket: Bucket = CONFIG.main.aws.s3.nwp_model_data,
-) -> dict[str, GribMetadata]:
-    """
-    List objects in a S3 bucket with a filter on metadata.
-    """
-    _logger.info(
-        "Fetching objects from S3 with valid time between: start_date=%s, end_date=%s",
-        start_time,
-        end_time,
-    )
-
-    client = _create_s3_client(bucket)
-
-    try:
-        paginator = client.get_paginator("list_objects_v2")
-        page_iterator = paginator.paginate(Bucket=bucket.name)
-
-        items: dict[str, GribMetadata] = {}
-        for page in page_iterator:
-            for obj in page.get("Contents", []):
-                head = client.head_object(Bucket=bucket.name, Key=obj["Key"])
-                user_metadata = head.get("Metadata", {})
-                # Producers write flat metadata keys; objects written before the flattening carry
-                # them as a JSON string under a single "data" key instead.
-                if "data" in user_metadata:
-                    metadata = json.loads(user_metadata["data"])
-                else:
-                    metadata = user_metadata
-                required_keys = ("time", "date", "step")
-                missing = [k for k in required_keys if k not in metadata]
-                if missing:
-                    raise KeyError(f"S3 object '{obj['Key']}' is missing required metadata keys: {missing}")
-                items[obj["Key"]] = GribMetadata(
-                    time=metadata["time"],
-                    date=metadata["date"],
-                    step=float(metadata["step"]),
-                )
-    except ClientError as exc:
-        _logger.error("Error listing objects in bucket: %s", exc)
-        raise exc
-
-    return items
-
-
 def download_keys_from_bucket(
     keys: list[str],
     dst_dir: Path,
-    bucket: Bucket = CONFIG.main.aws.s3.nwp_model_data,
+    bucket: Bucket,
 ) -> None:
     """Download objects from an S3 bucket to dst_dir."""
     _logger.info("Downloading input data from S3 bucket.")

@@ -1,52 +1,19 @@
-import json
 import tempfile
 from pathlib import Path
-from datetime import datetime, timedelta
 
 import pytest
 
 from flexpart_ifs_utils import CONFIG
 from flexpart_ifs_utils.config.service_settings import Bucket
-from flexpart_ifs_utils.grib_utils import extract_metadata_from_grib_file
 from flexpart_ifs_utils.s3_utils import (
     canonicalize_output_names,
     download_keys_from_bucket,
-    list_objs_in_bucket,
     upload_output,
 )
 
 
-@pytest.mark.parametrize("legacy", [False, True])
-def test_list_objs_in_bucket(s3, model_data: Path, legacy: bool):
-
-    bucket = CONFIG.main.aws.s3.nwp_model_data
-
-    params = {"date": "20241210", "time": "0000", "model": "IFS-Global"}
-
-    path_list = list(model_data.iterdir())[:3]
-
-    for i, path in enumerate(path_list):
-        _add_item_to_bucket_with_metadata(
-            bucket, s3, str(path), str(path), step=i, domain="GLOBAL", legacy=legacy, **params
-        )
-        _add_item_to_bucket_with_metadata(
-            bucket, s3, str(path), f"{path}_c", domain="EUROPE", step=i, legacy=legacy, **params
-        )
-
-    result = list_objs_in_bucket(
-        start_time=datetime.strptime("20241210_0000", "%Y%m%d_%H%M"),
-        end_time=datetime.strptime("20241210_0000", "%Y%m%d_%H%M") + timedelta(hours=3),
-        bucket=bucket,
-    )
-
-    # Validate the results
-    assert len(result) == 2 * len(path_list)
-    assert {k for k in result} == {str(path) for path in path_list} | {f"{path}_c" for path in path_list}
-
-
 def test_download_keys_from_bucket(s3, model_data: Path):
-    # Configure the bucket dynamically
-    bucket = CONFIG.main.aws.s3.nwp_model_data
+    bucket = Bucket(region="us-east-1", name="test-bucket", retries=3)
 
     # Add some files to the mocked bucket
     path_list = list(model_data.iterdir())[4:7]
@@ -170,33 +137,3 @@ def _add_files_to_bucket(bucket: Bucket, files: list[Path], s3) -> None:
 
     for path in files:
         s3.upload_file(path, bucket.name, path.name)
-
-
-def _add_item_to_bucket_with_metadata(
-    bucket: Bucket,
-    s3_client,
-    path: str,
-    key: str,
-    time: str = "1200",
-    date: str = "20240607",
-    step: int = 1,
-    model: str = "IFS-Global",
-    domain: str = "GLOBAL",
-    legacy: bool = False,
-) -> None:
-
-    metadata = {
-        "time": time,
-        "date": date,
-        "step": str(step),
-        "model": model,
-        "domain": domain,
-    }
-
-    with open(path, "rb") as f:
-        s3_client.put_object(
-            Bucket=bucket.name,
-            Key=path if key is None else key,
-            Body=f,
-            Metadata={"data": json.dumps(metadata)} if legacy else metadata,
-        )
