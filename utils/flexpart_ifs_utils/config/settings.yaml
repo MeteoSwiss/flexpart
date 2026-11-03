@@ -17,10 +17,6 @@ main:
     site_config_key_prefix: "sites/"
   aws:
     s3:
-      nwp_model_data:
-        region: eu-central-2
-        name: flexpart-input
-        retries: 10
       output:
         region: eu-central-2
         name: flexpart-output
