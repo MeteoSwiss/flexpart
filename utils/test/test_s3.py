@@ -12,11 +12,11 @@ from flexpart_ifs_utils.s3_utils import (
 )
 
 
-def test_download_keys_from_bucket(s3, model_data: Path):
+def test_download_keys_from_bucket(s3, sample_files: Path):
     bucket = Bucket(region="us-east-1", name="test-bucket", retries=3)
 
     # Add some files to the mocked bucket
-    path_list = list(model_data.iterdir())[4:7]
+    path_list = list(sample_files.iterdir())
     _add_files_to_bucket(bucket, path_list, s3)
 
     # Use a temporary directory to download files
@@ -30,7 +30,7 @@ def test_download_keys_from_bucket(s3, model_data: Path):
             assert file.name in files_downloaded
 
 
-def test_upload_output(s3, model_data: Path):
+def test_upload_output(s3, sample_files: Path):
 
     # given
     bucket = CONFIG.main.aws.s3.output
@@ -40,12 +40,12 @@ def test_upload_output(s3, model_data: Path):
     run_type = "scheduled"
 
     # when
-    upload_output(model_data, run_type, run_id, site, datetime, bucket)
+    upload_output(sample_files, run_type, run_id, site, datetime, bucket)
 
     # then
     assert "Contents" in s3.list_objects(Bucket=bucket.name)
 
-    for path in model_data.iterdir():
+    for path in sample_files.iterdir():
         # check the files were uploaded as expected: the run type folder, the run id, the site,
         # with the forecast reference carried as metadata rather than as a key segment
         obj = s3.get_object(Bucket=bucket.name, Key=f"{run_type}/{run_id}/{site}/{path.name}")

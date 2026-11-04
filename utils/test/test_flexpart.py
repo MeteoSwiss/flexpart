@@ -79,7 +79,7 @@ release_end_offset_h: 5
 
 
 @pytest.mark.slow
-def test_flexpart_run(aws_server_session, mock_environment):
+def test_flexpart_run(aws_server_session, mock_environment, flexpart_install, jobs_dir):
 
     s3_client = boto3.Session().client("s3")
     s3_client.create_bucket(Bucket=CONFIG.main.aws.s3.output.name)
@@ -101,8 +101,6 @@ def test_flexpart_run(aws_server_session, mock_environment):
 
     assert process.returncode == 0
     assert expected_msg in process.stdout
-
-    jobs_dir = Path(os.environ["JOBS_DIR"])
 
     # assert that NETCDF output files were produced
     path_list = [

@@ -118,11 +118,15 @@ RUN pip install -r /src/app-root/requirements_dev.txt --no-cache-dir --no-deps -
 
 COPY utils/pyproject.toml utils/test_ci.sh /scratch/
 COPY utils/test test
+# Control files the job-preparation tests read from the source tree (conftest.py: control_files_prefix).
+COPY options options
+COPY options.meteoswiss options.meteoswiss
+COPY templates templates
 
 RUN mkdir test_reports
 RUN chmod +x test_ci.sh
 
-# This environment tells pytest that the tests are occuring in a container.
+# The entrypoint script the tests run. Outside the image, conftest.py falls back to the repo's copy.
 ENV PYTEST_ENTRYPOINT=/scratch/entrypoint.sh
 # Point pylint and mypy to the config inside the image; /scratch is not bind-mounted
 # during the lint stage so this path is always visible.
