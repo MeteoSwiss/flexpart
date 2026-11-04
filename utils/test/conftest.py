@@ -1,17 +1,19 @@
-import logging
 import os
 import shutil
 from pathlib import Path
-from typing import Generator
+from typing import Generator, NoReturn
 from unittest.mock import MagicMock, patch
 
 import boto3
 import pytest
-from botocore.config import Config
 from dotenv import load_dotenv
 from moto import mock_aws
 
 from flexpart_ifs_utils import CONFIG
+
+WORKDIR: Path = Path(os.path.realpath(__file__)).parent
+# Found above the tests: the repository root in a checkout, /scratch in the tester image.
+_CONTROL_FILE_DIRS = ("options", "options.meteoswiss", "templates")
 
 
 @pytest.fixture(scope="function")
@@ -41,7 +43,21 @@ def s3(aws_credentials):
 
 @pytest.fixture(scope="session")
 def model_data() -> Path:
-    return Path(os.environ["TEST_DATA"])
+    """Real IFS GRIB input (TEST_DATA). Only the end-to-end Flexpart run needs it."""
+    path = Path(os.getenv("TEST_DATA", ""))
+    if not os.getenv("TEST_DATA") or not path.is_dir() or not any(path.iterdir()):
+        _missing(f"TEST_DATA must point to a non-empty directory of model data (got {os.getenv('TEST_DATA')!r}).")
+    return path
+
+
+@pytest.fixture
+def sample_files(tmp_path) -> Path:
+    """A few small files to move through S3, for tests that care about bytes, not GRIB contents."""
+    data_dir = tmp_path / "sample"
+    data_dir.mkdir()
+    for i in range(3):
+        (data_dir / f"dispf-{i}").write_bytes(os.urandom(64))
+    return data_dir
 
 
 @pytest.fixture(scope="session")
@@ -69,15 +85,63 @@ def reference_forecast_datetime() -> str:
 
 
 @pytest.fixture(scope="session")
-def templates_dir() -> Path:
-    """Where the anonymized control-file templates live, same path prepare_job_directory uses.
+def control_files_prefix(tmp_path_factory) -> Path:
+    """A stand-in for a Flexpart install prefix holding only the control files prepare_job_directory
+    copies in (share/options, share/options.meteoswiss, share/templates) - no bin/FLEXPART.
 
-    Not a path relative to this test file: the tester image copies utils/test to /scratch/test,
-    dropping the utils/ level, so a source-tree-relative path silently points nowhere. The templates
-    are installed via spack into FLEXPART_PREFIX/share/templates, and that env var is guaranteed set
-    here - pytest_configure below raises before collection otherwise.
+    They are linked from the source tree: the same directories spack installs under share/ (see
+    spack_repo/flexpart/packages/flexpart_ifs/package.py), so preparing a job directory is tested
+    without a Flexpart build. Tests that run the model use `flexpart_install` instead.
     """
-    return Path(os.environ["FLEXPART_PREFIX"]) / "share" / "templates"
+    source_root = next(
+        (d for d in WORKDIR.parents if all((d / name).is_dir() for name in _CONTROL_FILE_DIRS)),
+        None,
+    )
+    if source_root is None:
+        pytest.fail(f"No ancestor of {WORKDIR} contains the control file directories {_CONTROL_FILE_DIRS}.")
+
+    prefix = tmp_path_factory.mktemp("flexpart_prefix")
+    (prefix / "share").mkdir()
+    for name in _CONTROL_FILE_DIRS:
+        (prefix / "share" / name).symlink_to(source_root / name, target_is_directory=True)
+    return prefix
+
+
+@pytest.fixture(scope="session")
+def templates_dir(control_files_prefix) -> Path:
+    """Where the anonymized control-file templates live, same path prepare_job_directory uses."""
+    return control_files_prefix / "share" / "templates"
+
+
+@pytest.fixture(scope="session")
+def flexpart_install() -> Path:
+    """A real Flexpart installation (FLEXPART_PREFIX with bin/FLEXPART), for tests running the model."""
+    prefix = Path(os.getenv("FLEXPART_PREFIX", "/unset"))
+    if not (prefix / "bin" / "FLEXPART").exists():
+        _missing("Set FLEXPART_PREFIX (e.g. in test/.env) to a Flexpart IFS installation with bin/FLEXPART.")
+    return prefix
+
+
+@pytest.fixture(scope="session")
+def jobs_dir(model_data) -> Path:
+    """The jobs directory entrypoint.sh works in, with the model data linked in as jobs/data.
+
+    JOBS_DIR when set (the tester image sets it); otherwise a fresh test/jobs.
+    """
+    if os.getenv("JOBS_DIR"):
+        path = Path(os.environ["JOBS_DIR"])
+        path.mkdir(parents=True, exist_ok=True)
+    else:
+        path = WORKDIR / "jobs"
+        shutil.rmtree(path, ignore_errors=True)
+        path.mkdir()
+        os.environ["JOBS_DIR"] = str(path)
+
+    data_link = path / "data"
+    if data_link.is_symlink():
+        data_link.unlink()
+    data_link.symlink_to(model_data)
+    return path
 
 
 @pytest.fixture
@@ -102,56 +166,6 @@ def mock_config() -> Generator:
         yield mock_config
 
 
-WORKDIR: Path = Path(os.path.realpath(__file__)).parent
-
-
-def pytest_configure(config):
-
-    # The below functions are required for setting up local tests only.
-    load_dotenv(override=True)
-    _set_local_flexpart_install_prefix()
-    _set_local_eccodes_install_prefix()
-    _set_local_jobs_dir()
-    _set_local_test_data_path()
-
-
-def _set_local_flexpart_install_prefix():
-    # If running locally, provide a installation path FLEXPART_PREFIX (where Flexpart IFS is installed) in .env
-    if not os.getenv("FLEXPART_PREFIX"):
-        bin_dir = Path(os.getenv("FLEXPART_PREFIX", "/unset")) / "bin" / "FLEXPART"
-        if bin_dir.exists():
-            print("FLEXPART_PREFIX: %s" % os.getenv("FLEXPART_PREFIX", "unset"))
-        else:
-            logging.error("Set FLEXPART_PREFIX in test/.env for local testing.")
-            raise RuntimeError("FLEXPART_PREFIX is undefined.")
-
-
-def _set_local_eccodes_install_prefix():
-    try:
-        import eccodes
-    except RuntimeError as e:
-        load_dotenv()
-        lib = Path(os.getenv("ECCODES_DIR", "/unset")) / "lib" / "libeccodes.so"
-        if lib.exists():
-            print("ECCODES_DIR: %s" % os.getenv("ECCODES_DIR", "unset"))
-        else:
-            logging.error("Set ECCODES_DIR in test/.env for local testing.")
-            raise RuntimeError("ECCODES_DIR is undefined.")
-
-
-def _set_local_jobs_dir():
-    if not os.getenv("JOBS_DIR"):
-        jobs_dir = WORKDIR / "jobs"
-        os.environ["JOBS_DIR"] = str(jobs_dir)
-        print("JOBS_DIR: %s" % os.getenv("JOBS_DIR", "unset"))
-
-        if not jobs_dir.exists():
-            os.makedirs(jobs_dir)
-        else:
-            shutil.rmtree(jobs_dir)
-            os.makedirs(jobs_dir)
-
-
 @pytest.fixture(autouse=True)
 def set_entrypoint(monkeypatch):
     if "PYTEST_ENTRYPOINT" not in os.environ:
@@ -160,25 +174,12 @@ def set_entrypoint(monkeypatch):
         monkeypatch.setenv("PYTEST_ENTRYPOINT", entrypoint_script)
 
 
-def _set_local_test_data_path():
-    # If running locally, provide a path for TEST_DATA in .env - the directory will be symlinked to the job dir.
-    if os.getenv("TEST_DATA"):
-        try:
-            src_data_dir = Path(os.getenv("TEST_DATA"))
-            contents = os.listdir(src_data_dir)
-            if not contents:
-                raise FileNotFoundError
-        except FileNotFoundError:
-            raise FileNotFoundError(
-                "The path you provided for environment variable TEST_DATA: %s is empty or does not exist."
-                % src_data_dir
-            )
+def pytest_configure(config):
+    # Local runs can provide FLEXPART_PREFIX, TEST_DATA, ... in test/.env. Nothing is
+    # required up front: each test requests the resources it needs through the fixtures above.
+    load_dotenv(override=True)
 
-        print("TEST_DATA: %s" % os.getenv("TEST_DATA", "unset"))
-        dst_data_dir = Path(os.getenv("JOBS_DIR")) / "data"
-        if dst_data_dir.is_symlink():
-            os.unlink(dst_data_dir)
 
-        os.symlink(src_data_dir, dst_data_dir)
-    else:
-        raise RuntimeError("TEST_DATA path is undefined.")
+def _missing(reason: str) -> NoReturn:
+    """Skip a test whose external resource is unavailable."""
+    pytest.skip(reason)

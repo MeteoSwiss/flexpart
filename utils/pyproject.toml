@@ -15,10 +15,10 @@ boto3 = "^1.34.14"
 botocore = "^1.34.31"
 pyyaml = "^6.0.1"
 jinja2 = "^3.1.3"
-python-dotenv = "^1.0.1"
-eccodes = "1.7.0"
+eccodes = ">=2.37"
 mchpy = "^4.0.3"
 types-pyyaml = "^6.0.12.20260518"
+findlibs = ">=0.1.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest-cov = "*"
@@ -31,6 +31,7 @@ importlib_resources = "*"
 pydata-sphinx-theme = "*"
 sphinx-autoapi = "*"
 moto = {extras = ["server", "s3"], version = "^5.0.6"}
+python-dotenv = "^1.0.1"
 
 [tool.ruff]
 line-length = 120
@@ -68,6 +69,8 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.pytest.ini_options]
+# Always list why tests were skipped (e.g. a missing FLEXPART_PREFIX or TEST_DATA).
+addopts = "-rs"
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
 ]

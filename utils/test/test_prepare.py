@@ -183,7 +183,7 @@ def test_get_valid_datetime_with_metadata(tmp_path):
 
 
 def test_prepare_job_directory(
-    tmp_path: Path, references, site_config_file, reference_forecast_datetime, reference_data_end
+    tmp_path: Path, references, site_config_file, reference_forecast_datetime, reference_data_end, control_files_prefix
 ):
     from flexpart_ifs_utils import CONFIG
 
@@ -200,7 +200,7 @@ def test_prepare_job_directory(
     os.mkdir(jobs_dir)
     os.mkdir(data_dir)
 
-    flexpart_dir = Path(os.environ["FLEXPART_PREFIX"])
+    flexpart_dir = control_files_prefix
 
     data_paths: list[Path] = [data_dir / f"dispf-{step}" for step in range(3, 27)]
 
@@ -246,7 +246,7 @@ def test_prepare_job_directory(
 
 
 def test_prepare_job_directory_nests_the_europe_domain_for_ifs_global(
-    tmp_path: Path, references, site_config_file, reference_forecast_datetime, reference_data_end
+    tmp_path: Path, references, site_config_file, reference_forecast_datetime, reference_data_end, control_files_prefix
 ):
     """IFS-Global branches twice on top of what IFS-Europe does: OUTGRID.g instead of OUTGRID.f, and
     a second AVAILABLE_NESTED built from the Europe-prefixed data alongside the global one. Only the
@@ -266,7 +266,7 @@ def test_prepare_job_directory_nests_the_europe_domain_for_ifs_global(
     os.mkdir(jobs_dir)
     os.mkdir(data_dir)
 
-    flexpart_dir = Path(os.environ["FLEXPART_PREFIX"])
+    flexpart_dir = control_files_prefix
 
     # IFS-Global pulls both its own global-domain data (dispc*) and the nested Europe-domain data
     # (dispf*) out of the same data directory.
