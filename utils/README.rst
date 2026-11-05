@@ -6,6 +6,7 @@ Install dependencies & start the service locally
 1. Install spack packages
 
 .. code-block:: console
+
     spack env activate spack_env
     spack install
 
@@ -40,35 +41,60 @@ Run the tests and quality tools (locally)
 
     cd utils
 
-2. Create a .env file in the test folder containing following four variables (paths need changing):
+2. Create a ``.env`` file in the test folder with the settings for the end-to-end Flexpart run
+   (``test/test_flexpart.py``). Relative paths are relative to ``utils/``. All other tests run without it.
 
 .. code-block::
 
-    FLEXPART_PREFIX=../spack-view
-    TEST_DATA=../test_data
-    ECCODES_DIR=../spack-view
+    # IFS GRIB input for the end-to-end run (dispf2024121000 ... dispf2024121005).
+    TEST_DATA=test_data
 
-1. Activate conda env (if running at CSCS)
+    # Optional: a Flexpart IFS installation (with bin/FLEXPART) to run instead of building one.
+    # FLEXPART_PREFIX=/path/to/flexpart-ifs/installation
+
+    # Optional: where the end-to-end run writes its job directory (default: test/jobs).
+    # JOBS_DIR=/path/to/jobs
+
+3. Make sure ``spack`` is on your ``PATH`` (see the `Spack installation instructions
+   <https://spack.readthedocs.io/en/latest/getting_started.html>`_), unless you set ``FLEXPART_PREFIX``.
+
+   Without ``FLEXPART_PREFIX``, the end-to-end test builds Flexpart from this checkout itself, with the
+   same spack environment as the image (``spack_env``). The dependencies are installed from the
+   MeteoSwiss spack build cache in Nexus (``test/spack/mirrors.yaml``, read-only, no credentials needed),
+   so the first build takes about a minute. The build is kept under ``spack-root/`` and reused until the
+   Flexpart sources (``src``, ``options``, ``options.meteoswiss``, ``templates``, ``pathnames``,
+   ``spack_repo``, ``spack_env/spack.yaml``) change. It is built from a copy of those, so spack never
+   modifies the checkout.
+
+   To use another Flexpart binary instead, set ``FLEXPART_PREFIX`` in ``test/.env`` to an installation
+   containing ``bin/FLEXPART``; nothing is built then.
+
+   Without spack on the ``PATH`` and without ``FLEXPART_PREFIX``, the end-to-end test is skipped, with the
+   reason shown in the pytest summary.
+
+4. Activate conda env (if running at CSCS)
 
 .. code-block:: console
 
     conda activate ./.conda-env
 
-4. Run tests 
+5. Run tests. A spack build always shows its progress. Add ``-s`` to also see the end-to-end run's own
+   output (``entrypoint.sh`` and Flexpart) as it happens; without it, that output is only shown when the
+   test fails.
 
 .. code-block:: console
 
     poetry run pytest
+    poetry run pytest -s test/test_flexpart.py
 
-
-5. Run pylint
+6. Run pylint
 
 .. code-block:: console
 
     poetry run pylint flexpart_ifs_utils
 
 
-6. Run mypy
+7. Run mypy
 
 .. code-block:: console
 

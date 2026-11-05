@@ -49,6 +49,9 @@ spack-*
 
 # Test artefacts
 flexpart-test
+utils/test/jobs/
+# Local test settings (see utils/README.rst)
+utils/test/.env
 
 # Spack environment files
 .spack-env
