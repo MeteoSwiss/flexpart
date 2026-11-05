@@ -1,6 +1,7 @@
 import glob
 import os
 import subprocess
+import sys
 from pathlib import Path
 from unittest import mock
 
@@ -90,17 +91,29 @@ def test_flexpart_run(aws_server_session, mock_environment, flexpart_install, jo
         Body=TESTERHAUSEN_SITE_CONFIG.encode("utf-8"),
     )
 
-    process = subprocess.run(
-        f"/bin/bash {os.getenv('PYTEST_ENTRYPOINT')}", shell=True, capture_output=True, text=True, env=os.environ
-    )
-
-    print(process.stdout)
-    print(process.stderr)
+    # The entrypoint calls `python`: make that the interpreter running the tests, venv activated or not.
+    env = {**os.environ, "PATH": f"{Path(sys.executable).parent}{os.pathsep}{os.environ['PATH']}"}
+    # stdout and stderr as one stream, in the order they were written - the Python steps log (and raise) on
+    # stderr, Flexpart writes to stdout. Printed line by line: live with `pytest -s`, otherwise shown under
+    # "Captured stdout call" when the test fails.
+    lines = []
+    with subprocess.Popen(
+        ["bash", os.environ["PYTEST_ENTRYPOINT"]],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        env=env,
+        text=True,
+        errors="replace",
+    ) as process:
+        for line in process.stdout:
+            print(line, end="", flush=True)
+            lines.append(line)
+    output, returncode = "".join(lines), process.returncode
 
     expected_msg = "CONGRATULATIONS: YOU HAVE SUCCESSFULLY COMPLETED A FLEXPART MODEL RUN!"
 
-    assert process.returncode == 0
-    assert expected_msg in process.stdout
+    assert returncode == 0, "entrypoint.sh failed, see its output under Captured stdout call"
+    assert expected_msg in output, "Flexpart did not report a successful run, see its output under Captured stdout call"
 
     # assert that NETCDF output files were produced
     path_list = [
