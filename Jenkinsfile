@@ -6,6 +6,11 @@ class Globals {
     // Pin mchbuild to stable version to avoid breaking changes
     static String mchbuildPipPackage = 'mchbuild>=1.2.1,<2.0.0'
 
+    // TEMPORARY (RMF-1424): Nexus dev build of mchbuild branch feat/RMF-1424-post-back-image-version
+    // (commit 9826b7f) with the notificationMergeRequestComment task, installed in Preflight only.
+    // Switch Preflight back to mchbuildPipPackage once mchbuild 1.3.0 is released.
+    static String mchbuildBranchPipPackage = 'mchbuild==0.1.dev557+g9826b7fef'
+
     // sets to abort the pipeline if the Sonarqube QualityGate fails
     static boolean qualityGateAbortPipeline = false
 
@@ -59,7 +64,7 @@ pipeline {
                     sh """
                     python -m venv .venv-mchbuild
                     PIP_INDEX_URL=https://hub.meteoswiss.ch/nexus/repository/python-all/simple \
-                      .venv-mchbuild/bin/pip install --upgrade "${Globals.mchbuildPipPackage}"
+                      .venv-mchbuild/bin/pip install --upgrade "${Globals.mchbuildBranchPipPackage}"
                     """
 
                     echo '---- INITIALIZE PARAMETERS ----'
@@ -253,6 +258,33 @@ pipeline {
                     sh """
                         mchbuild -s semanticVersion=${Globals.semanticVersion} -s containerImageName=${Globals.containerImageName} publish.artifacts
                     """
+                }
+            }
+        }
+
+        stage('Report Image Tag') {
+            when { not { anyOf { buildingTag(); branch 'main' } } }
+            environment {
+                HTTP_PROXY = 'http://proxy.meteoswiss.ch:8080'
+                HTTPS_PROXY = 'http://proxy.meteoswiss.ch:8080'
+                NO_PROXY = '.meteoswiss.ch,localhost'
+            }
+            steps {
+                echo '---- POSTING IMAGE TAGS TO PULL REQUEST ----'
+                // Never fail the build over a comment; the stage turns yellow instead
+                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                    withCredentials([usernamePassword(
+                                        credentialsId: 'github app credential for the meteoswiss github organization',
+                                        usernameVariable: 'GITHUB_APP',
+                                        passwordVariable: 'GITHUB_TOKEN')
+                                ]) {
+                        sh """
+                            mchbuild -s semanticVersion=${Globals.semanticVersion} \
+                                -s containerImageName=${Globals.containerImageName} \
+                                -s publicContainerImageName=${Globals.containerImageNamePublic} \
+                                notify.mergeRequest
+                        """
+                    }
                 }
             }
         }
