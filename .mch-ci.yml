@@ -97,6 +97,15 @@ default:
               imageName: ${var.containerImageName}
               imageTag: ${var.semanticVersion}
               removeLocalImage: false
+  - notify:
+      - mergeRequest:
+          - notificationMergeRequestComment:
+              key: image-tags
+              content: |
+                **Built images**
+
+                - `${var.containerImageName}:${var.semanticVersion}`
+                - `${var.publicContainerImageName}-tester:${var.semanticVersion}`
 
   - clean:
     - images:
