@@ -1,0 +1,8 @@
+# Extra spack config scope (spack -C) for building Flexpart for the tests outside the image: pulls
+# the dependencies from the build cache the image build pushes to (see Dockerfile), read-only and
+# without credentials. Kept out of spack_env/spack.yaml, where it would replace the image's
+# authenticated mirror of the same cache.
+mirrors:
+  nexus-build-cache:
+    url: oci://docker-intern-nexus.meteoswiss.ch/numericalweatherpredictions/spack-build-cache
+    signed: false
