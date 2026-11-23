@@ -9,9 +9,20 @@ class Bucket(BaseModel):
     retries: int | None
 
 
+class InputManifest(BaseModel):
+    """S3 client for the input manifest and the files it lists. Entries carry their own bucket, so
+    there is no bucket name here."""
+
+    region: str
+    retries: int
+    max_concurrent_downloads: int
+
+
 class S3(BaseModel):
     output: Bucket
     site_config: Bucket
+    input_manifest: InputManifest
+    download_chunk_size_bytes: int
 
 
 class AWS(BaseModel):

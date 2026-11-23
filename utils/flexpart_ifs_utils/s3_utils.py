@@ -141,7 +141,8 @@ def download_keys_from_bucket(
     dst_dir: Path,
     bucket: Bucket,
 ) -> None:
-    """Download objects from an S3 bucket to dst_dir."""
+    """Download objects from an S3 bucket to dst_dir, one after another. Only used for the single
+    site-config YAML; the bulk input data goes through the parallel manifest download."""
     _logger.info("Downloading input data from S3 bucket.")
     client = _create_s3_client(bucket)
 

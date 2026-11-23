@@ -25,3 +25,11 @@ main:
         region: eu-central-2
         name: flexpart-ifs-static-input
         retries: 10
+      input_manifest:
+        region: eu-central-2
+        retries: 10
+        # Files downloaded in parallel (and the client's connection pool size). Tune per environment
+        # with MAIN__AWS__S3__INPUT_MANIFEST__MAX_CONCURRENT_DOWNLOADS; compare the MiB/s in the
+        # "Downloaded ... from manifest" log line.
+        max_concurrent_downloads: 16
+      download_chunk_size_bytes: 65536
