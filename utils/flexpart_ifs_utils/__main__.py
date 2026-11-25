@@ -33,7 +33,7 @@ from flexpart_ifs_utils import CONFIG
 from flexpart_ifs_utils.job_config import resolve_job_config
 from flexpart_ifs_utils.model import Model
 from flexpart_ifs_utils.manifest import download_from_manifest
-from flexpart_ifs_utils.prepare_flexpart import _path_list, prepare_job_directory
+from flexpart_ifs_utils.prepare_flexpart import prepare_job_directory
 from flexpart_ifs_utils.s3_utils import canonicalize_output_names, download_keys_from_bucket, upload_output
 from flexpart_ifs_utils.site_config import Direction, is_complete_site, load_site_config, site_from_overrides
 
@@ -148,11 +148,8 @@ if __name__ == "__main__":
     if not os.path.exists(DATA_DIR):
         os.makedirs(DATA_DIR)
 
-    # Check if data already exists for the domain
-    data_paths = _path_list(DATA_DIR, MODEL)
-
-    if not data_paths:
-        download_from_manifest(DATA_DIR, member=-1)
+    # Always download: files already in DATA_DIR may be partial or stale.
+    download_from_manifest(DATA_DIR, member=-1)
 
     _logger.info("Files in DATA_DIR: %s", sorted(os.listdir(DATA_DIR)))
     job_dir = prepare_job_directory(site, job, JOBS_DIR, FLEXPART_DIR, DATA_DIR, CONFIG.main.openmp_config, model=MODEL)
