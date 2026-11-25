@@ -44,6 +44,13 @@ class TestDownloadFromManifest:
         with pytest.raises(RuntimeError, match="no entries for member -1"):
             download_from_manifest(tmp_path / "data", member=-1)
 
+    def test_empty_member_raises(self, monkeypatch, tmp_path, s3):
+        """A member listed with no files must fail here, not later inside FLEXPART."""
+        _put_manifest(s3, monkeypatch, {"-1": []})
+
+        with pytest.raises(RuntimeError, match="no entries for member -1"):
+            download_from_manifest(tmp_path / "data", member=-1)
+
     def test_downloads_files_and_creates_data_dir(self, monkeypatch, tmp_path, s3):
         s3.put_object(Bucket=TEST_BUCKET, Key="ifs/a.grib", Body=b"content_a")
         s3.put_object(Bucket=TEST_BUCKET, Key="ifs/b.grib", Body=b"content_b")
@@ -192,6 +199,26 @@ class TestGetObjectToFile:
             _get_object_to_file(client, TEST_BUCKET, "k", tmp_path / "f")
 
         assert client.calls == manifest._STREAM_ATTEMPTS
+
+    def test_failed_download_leaves_no_file(self, monkeypatch, tmp_path):
+        """A failed download leaves neither the target nor the temp file behind."""
+        monkeypatch.setattr(manifest, "_STREAM_RETRY_DELAY_S", 0)
+        client = _FakeClient([_Body(b"", broken=True) for _ in range(manifest._STREAM_ATTEMPTS)])
+
+        with pytest.raises(ResponseStreamingError):
+            _get_object_to_file(client, TEST_BUCKET, "k", tmp_path / "dispf2024060712")
+
+        assert list(tmp_path.iterdir()) == []
+
+    def test_completed_download_replaces_existing_file_and_leaves_no_temp(self, tmp_path):
+        target = tmp_path / "dispf2024060712"
+        target.write_bytes(b"stale")
+        client = _FakeClient([_Body(b"fresh")])
+
+        _get_object_to_file(client, TEST_BUCKET, "k", target)
+
+        assert target.read_bytes() == b"fresh"
+        assert [p.name for p in tmp_path.iterdir()] == ["dispf2024060712"]
 
 
 def _put_manifest(s3, monkeypatch, content: dict) -> None:

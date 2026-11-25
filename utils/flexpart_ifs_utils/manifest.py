@@ -49,7 +49,7 @@ def download_from_manifest(data_dir: Path, member: int) -> None:
     manifest = json.loads(body)
 
     entries = manifest.get(str(member))
-    if entries is None:
+    if not entries:
         raise RuntimeError(
             f"Manifest at {uri} has no entries for member {member}; available members: {sorted(manifest.keys())}"
         )
@@ -107,24 +107,32 @@ def _get_object_to_file(client: BaseClient, bucket: str, key: str, path: Path) -
 
     Each request is billed, and input files run to several hundred MB, so this deliberately avoids
     boto3's managed transfer (``download_file``), which sends a HeadObject and then splits any file over
-    8 MiB into 8 MiB ranged GETs."""
+    8 MiB into 8 MiB ranged GETs.
+
+    Writes to a hidden ``.<name>.part`` (outside the ``dispc*``/``dispf*`` globs), renamed when complete."""
     chunk_size = CONFIG.main.aws.s3.download_chunk_size_bytes
     path.parent.mkdir(parents=True, exist_ok=True)
+    part_path = path.with_name(f".{path.name}.part")
     _logger.info("Downloading s3://%s/%s → %s", bucket, key, path)
 
-    for attempt in range(1, _STREAM_ATTEMPTS + 1):
-        try:
-            body = client.get_object(Bucket=bucket, Key=key)["Body"]
-            with body, open(path, "wb") as f:
-                shutil.copyfileobj(body, f, chunk_size)
-                return f.tell()
-        except _STREAM_ERRORS as e:
-            if attempt == _STREAM_ATTEMPTS:
-                _logger.error("Failed after %d download attempts: s3://%s/%s", _STREAM_ATTEMPTS, bucket, key)
-                raise
-            _logger.info("Retrying download of s3://%s/%s due to %r", bucket, key, e)
-            time.sleep(_STREAM_RETRY_DELAY_S * 2 ** (attempt - 1))
-    raise AssertionError("unreachable")
+    try:
+        for attempt in range(1, _STREAM_ATTEMPTS + 1):
+            try:
+                body = client.get_object(Bucket=bucket, Key=key)["Body"]
+                with body, open(part_path, "wb") as f:
+                    shutil.copyfileobj(body, f, chunk_size)
+                    size = f.tell()
+                os.replace(part_path, path)
+                return size
+            except _STREAM_ERRORS as e:
+                if attempt == _STREAM_ATTEMPTS:
+                    _logger.error("Failed after %d download attempts: s3://%s/%s", _STREAM_ATTEMPTS, bucket, key)
+                    raise
+                _logger.info("Retrying download of s3://%s/%s due to %r", bucket, key, e)
+                time.sleep(_STREAM_RETRY_DELAY_S * 2 ** (attempt - 1))
+        raise AssertionError("unreachable")
+    finally:
+        part_path.unlink(missing_ok=True)
 
 
 def _parse_s3_uri(uri: str) -> tuple[str, str]:
